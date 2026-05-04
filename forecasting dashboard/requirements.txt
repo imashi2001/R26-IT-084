@@ -1,0 +1,6 @@
+dash>=2.17
+plotly>=5.20
+dash-bootstrap-components>=1.6
+requests>=2.31
+geopy>=2.4
+python-dotenv>=1.0

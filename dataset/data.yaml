@@ -1,0 +1,13 @@
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 3
+names: ['Empty', 'Half', 'Overflow']
+
+roboflow:
+  workspace: charuka-edirisinghe
+  project: garbage_fill_level
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/charuka-edirisinghe/garbage_fill_level/dataset/2

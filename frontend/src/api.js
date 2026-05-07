@@ -1,17 +1,15 @@
+import axios from 'axios'
+
 export async function predictWaste(file) {
   const form = new FormData()
   form.append('file', file)
 
-  const res = await fetch('/api/predict', {
-    method: 'POST',
-    body: form,
+  const { data } = await axios.post('/api/predict', form, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
   })
 
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text || `Request failed (${res.status})`)
-  }
-
-  return await res.json()
+  return data
 }
 

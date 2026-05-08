@@ -1,0 +1,19 @@
+# Railway / Nixpacks build config for the YOLO model microservice.
+#
+# `opencv-python` (pulled in by ultralytics) is built against GUI/X11 system
+# libraries. The default Railway container is headless and missing them, so
+# `import cv2` fails at boot with:
+#   ImportError: libxcb.so.1: cannot open shared object file
+# We install the required shared libs here.
+
+[phases.setup]
+aptPkgs = [
+  "...",
+  "libgl1",
+  "libglib2.0-0",
+  "libsm6",
+  "libxext6",
+  "libxrender1",
+  "libxcb1",
+  "libgomp1",
+]

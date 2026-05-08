@@ -1,0 +1,43 @@
+const app = require("./app");
+const {
+  PORT,
+  DEFAULT_MODEL,
+  MODEL_REGISTRY,
+  DB_SYNC,
+  DB_SYNC_ALTER,
+} = require("./config/env");
+const db = require("./config/db");
+const models = require("./models");
+
+async function bootstrap() {
+  const connected = await db.connect();
+
+  if (connected) {
+    models.init();
+
+    if (DB_SYNC) {
+      try {
+        await db.getSequelize().sync({ alter: DB_SYNC_ALTER });
+        console.log(
+          `[db] tables synced (alter=${DB_SYNC_ALTER ? "true" : "false"}).`
+        );
+      } catch (err) {
+        console.error("[db] sync failed:", err.message);
+      }
+    }
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`backend (express) listening on http://0.0.0.0:${PORT}`);
+    console.log(`default model: ${DEFAULT_MODEL}`);
+    for (const [name, url] of Object.entries(MODEL_REGISTRY)) {
+      console.log(`  model[${name}] -> ${url}`);
+    }
+    console.log(`db enabled: ${db.isDbEnabled() ? "yes" : "no"}`);
+  });
+}
+
+bootstrap().catch((err) => {
+  console.error("[bootstrap] fatal:", err);
+  process.exit(1);
+});

@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from ultralytics import YOLO
 
-MODEL_PATH = Path(__file__).parent / "backend" / "model" / "best.pt"
+MODEL_PATH = Path(__file__).parent / "model-yolo" / "model" / "best.pt"
 CONF_THRESHOLD = 0.25
 
 

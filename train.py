@@ -26,7 +26,7 @@ def main():
     )
 
     best_weights = Path(results.save_dir) / "weights" / "best.pt"
-    dest = Path(__file__).parent / "backend" / "model" / "best.pt"
+    dest = Path(__file__).parent / "model-yolo" / "model" / "best.pt"
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     import shutil

@@ -25,6 +25,6 @@ Default port: `6000` (override with `PORT` env var).
 ## Deploy on Railway
 
 - Root directory: `model-yolo`
-- Start command: `gunicorn server:app -b 0.0.0.0:$PORT --timeout 120`
+- **Custom start command:** leave empty (Dockerfile `ENTRYPOINT` runs gunicorn and reads `PORT`). If you must set one, never use `$PORT` in the dashboard — it is not expanded by a shell; use only the Dockerfile default.
 - Required file: `model/best.pt` must be committed (or mounted via volume).
 - Expose service URL and pass it to backend as `MODEL_YOLO_URL`.

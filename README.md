@@ -63,7 +63,7 @@ Open http://localhost:3000.
 
 Create one Railway project with three services:
 
-1. **model-yolo** - root: `model-yolo`, start: `gunicorn server:app -b 0.0.0.0:$PORT --timeout 120`
+1. **model-yolo** - root: `model-yolo`; uses `Dockerfile` (leave Railway **custom start command** empty so `$PORT` is not passed literally).
 2. **backend** - root: `backend`, start: `npm start`,
    set `MODEL_YOLO_URL` to the public URL of the `model-yolo` service.
 3. **frontend** - root: `frontend`, build: `npm run build`, set `REACT_APP_API_URL` to the public URL of `backend`.

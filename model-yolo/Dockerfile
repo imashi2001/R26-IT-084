@@ -31,9 +31,12 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 COPY . .
 
 EXPOSE 8080
 
-# Railway sets $PORT at runtime; default to 8080 locally.
-CMD ["sh", "-c", "gunicorn server:app -b 0.0.0.0:${PORT:-8080} --timeout 120 --workers 1"]
+# Bind port comes from Railway's PORT env; read in docker-entrypoint.sh.
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

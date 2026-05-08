@@ -1,0 +1,10 @@
+[build]
+packages = [
+  "libxcb1",
+  "libxkbcommon0",
+  "libxrender1",
+  "libxext6",
+  "libsm6",
+  "libxext-dev",
+  "libxrender-dev"
+]

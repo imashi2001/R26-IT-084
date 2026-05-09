@@ -2,20 +2,32 @@ import React, { useState, useRef, useCallback } from "react";
 import "./App.css";
 import ImageCanvas from "./components/ImageCanvas";
 import PredictionList from "./components/PredictionList";
+import Esp32Panel from "./components/Esp32Panel";
 import {
   getApiBaseUrl,
   getPredictUrl,
   isApiUrlPointingAtFrontend,
 } from "./utils/apiBase";
 
+const DEFAULT_ESP32_URL =
+  process.env.REACT_APP_ESP32_CAPTURE_URL ||
+  "http://10.134.126.191/capture";
+
 export default function App() {
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
   const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [esp32Loading, setEsp32Loading] = useState(false);
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [esp32Url, setEsp32Url] = useState(DEFAULT_ESP32_URL);
   const fileInputRef = useRef(null);
+
+  const mixedContentBlocked =
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    esp32Url.trim().toLowerCase().startsWith("http:");
 
   const handleFile = useCallback((file) => {
     if (!file || !file.type.startsWith("image/")) {
@@ -23,7 +35,10 @@ export default function App() {
       return;
     }
     setImageFile(file);
-    setImageUrl(URL.createObjectURL(file));
+    setImageUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
     setPredictions([]);
     setError(null);
   }, []);
@@ -42,6 +57,36 @@ export default function App() {
   };
 
   const onDragLeave = () => setDragOver(false);
+
+  const loadFromEsp32 = async () => {
+    const trimmed = esp32Url.trim();
+    if (!trimmed) return;
+
+    if (mixedContentBlocked) {
+      setError(
+        "HTTPS page cannot load HTTP ESP32 (mixed content). Use VisionWaste/bridge on your laptop or upload a file."
+      );
+      return;
+    }
+
+    setEsp32Loading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(trimmed);
+      if (!response.ok) {
+        throw new Error(`ESP32 returned HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const type = blob.type?.startsWith("image/") ? blob.type : "image/jpeg";
+      const file = new File([blob], "capture.jpg", { type });
+      handleFile(file);
+    } catch (e) {
+      setError(e.message || "Could not reach ESP32. Check URL and Wi‑Fi.");
+    } finally {
+      setEsp32Loading(false);
+    }
+  };
 
   const runPrediction = async () => {
     if (!imageFile) return;
@@ -99,7 +144,9 @@ export default function App() {
 
       const data = await response.json();
       if (!Array.isArray(data)) {
-        throw new Error("Unexpected API response. Expected a JSON array of detections.");
+        throw new Error(
+          "Unexpected API response. Expected a JSON array of detections."
+        );
       }
 
       setPredictions(data);
@@ -118,7 +165,10 @@ export default function App() {
 
   const reset = () => {
     setImageFile(null);
-    setImageUrl(null);
+    setImageUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setPredictions([]);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -137,23 +187,39 @@ export default function App() {
 
       <main className="main">
         {!imageUrl ? (
-          <div
-            className={`drop-zone ${dragOver ? "drag-over" : ""}`}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <div className="drop-icon">📁</div>
-            <p className="drop-text">Drag & drop an image here</p>
-            <p className="drop-subtext">or click to browse</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={onFileChange}
-              style={{ display: "none" }}
+          <div className="drop-zone-wrapper">
+            <div
+              className={`drop-zone ${dragOver ? "drag-over" : ""}`}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="drop-icon">📁</div>
+              <p className="drop-text">Drag & drop an image here</p>
+              <p className="drop-subtext">or click to browse</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={onFileChange}
+                style={{ display: "none" }}
+              />
+            </div>
+
+            <Esp32Panel
+              esp32Url={esp32Url}
+              onEsp32UrlChange={setEsp32Url}
+              onLoadFromEsp32={loadFromEsp32}
+              loading={esp32Loading}
+              mixedContentBlocked={mixedContentBlocked}
             />
+
+            {error && !imageUrl && (
+              <div className="error-banner" style={{ marginTop: "16px" }}>
+                {error}
+              </div>
+            )}
           </div>
         ) : (
           <div className="workspace">

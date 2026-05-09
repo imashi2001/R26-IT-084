@@ -39,6 +39,12 @@
   padding: 40px 24px;
 }
 
+.drop-zone-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 /* Drop zone */
 .drop-zone {
   border: 2px dashed #475569;
@@ -164,4 +170,65 @@
   border-radius: 8px;
   width: 100%;
   font-size: 0.9rem;
+}
+
+/* ESP32 panel */
+.esp32-panel {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #334155;
+  width: 100%;
+  max-width: 500px;
+  text-align: left;
+}
+
+.esp32-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.esp32-help {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.esp32-help code {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.esp32-warning {
+  background: #422006;
+  border: 1px solid #b45309;
+  color: #fcd34d;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.esp32-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.esp32-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.esp32-btn {
+  flex-shrink: 0;
 }

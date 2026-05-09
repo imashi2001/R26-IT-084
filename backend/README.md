@@ -55,6 +55,7 @@ The backend works both **with** and **without** a database:
 
 | Method | Path             | Body / Query                                | Returns                                     |
 |--------|------------------|---------------------------------------------|---------------------------------------------|
+| GET    | /                | -                                           | small JSON map of service routes            |
 | GET    | /health          | -                                           | gateway + models + database health          |
 | POST   | /predict         | multipart `image`, optional `model`, `conf` | `[{label, confidence, box}, ...]`           |
 | GET    | /captures        | `?limit=20&offset=0`                        | `{ count, limit, offset, captures: [...] }` |
@@ -82,7 +83,8 @@ See `.env.example`:
 
 | Variable                | Default                  | Notes                                              |
 |-------------------------|--------------------------|----------------------------------------------------|
-| `MODEL_YOLO_URL`        | `http://localhost:6000`  | URL of the YOLO model microservice                 |
+| `MODEL_YOLO_URL`        | `http://localhost:6000`  | Model microservice base URL; `https://` added automatically if you omit the scheme (except localhost). Use full Railway URLs in production |
+| `CORS_ORIGIN`           | (empty)                  | Comma-separated allowed frontend origins; empty keeps permissive CORS |
 | `DEFAULT_MODEL`         | `yolo`                   | Default model when client doesn't pick one         |
 | `INFER_TIMEOUT_SECONDS` | `60`                     | Max wait per model inference                       |
 | `MAX_UPLOAD_MB`         | `25`                     | Max upload size                                    |

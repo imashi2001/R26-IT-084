@@ -5,10 +5,24 @@
  *   package.json "proxy" forwards to localhost:5000 (no CORS hassle).
  * - Production: REACT_APP_API_URL must be set to the backend origin only,
  *   e.g. https://your-backend.up.railway.app (no trailing slash).
+ *
+ * ensureHttpsBase: if the env value is host-only (missing scheme), prepend https://
+ * so the browser does not treat it as a relative path on the frontend origin.
  */
 
+function ensureHttpsBase(raw) {
+  const trimmed = (raw || "").trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const hostPart = trimmed.split("/")[0];
+  if (/^(localhost|127\.0\.0\.1|\[::1\])/i.test(hostPart)) {
+    return `http://${trimmed}`;
+  }
+  return `https://${trimmed}`;
+}
+
 export function getApiBaseUrl() {
-  const fromEnv = (process.env.REACT_APP_API_URL || "").trim().replace(/\/+$/, "");
+  const fromEnv = ensureHttpsBase(process.env.REACT_APP_API_URL || "");
 
   if (process.env.NODE_ENV === "development") {
     return fromEnv || "";

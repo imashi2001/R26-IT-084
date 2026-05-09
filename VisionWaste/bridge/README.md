@@ -38,6 +38,7 @@ Set **`BACKEND_PREDICT_URL`** to your real Express service (must start with `htt
 ```powershell
 $env:ESP32_CAPTURE_URL = "http://10.134.126.191/capture"
 $env:BACKEND_PREDICT_URL = "https://your-backend.up.railway.app/predict"
+$env:DEVICE_ESP32_ID = "esp-cam-1"
 python bridge.py
 ```
 
@@ -46,6 +47,7 @@ python bridge.py
 ```bash
 export ESP32_CAPTURE_URL=http://10.134.126.191/capture
 export BACKEND_PREDICT_URL=https://your-backend.up.railway.app/predict
+export DEVICE_ESP32_ID=esp-cam-1
 python bridge.py
 ```
 
@@ -53,6 +55,7 @@ python bridge.py
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
+| `DEVICE_ESP32_ID` | (empty) | Sent as multipart `esp32_id` with each prediction — **must match** the bin row created in Admin (`devices.esp32_id`) |
 | `POLL_INTERVAL_SEC` | `60` | Seconds between capture cycles |
 | `ESP32_TIMEOUT` | `10` | GET snapshot timeout (seconds) |
 | `BACKEND_TIMEOUT` | `120` | POST /predict timeout (YOLO can be slow) |
@@ -80,7 +83,10 @@ This repo gateway expects:
 
 - **Method:** `POST`
 - **Path:** `/predict`
-- **Body:** `multipart/form-data`, field name **`image`** (file)
+- **Body:** `multipart/form-data`
+  - **`image`** — JPEG file (required)
+  - **`esp32_id`** — optional text field; must match `devices.esp32_id` in Postgres so captures attach to the correct bin (see `DEVICE_ESP32_ID` env var)
+  - **`device_id`** — optional numeric alternative to `esp32_id`
 
 Response: JSON **array** of detections, e.g.
 

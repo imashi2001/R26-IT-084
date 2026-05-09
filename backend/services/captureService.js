@@ -18,7 +18,10 @@ function ensureModels() {
  *
  * @param {object} payload
  * @param {string} payload.modelName
- * @param {string|null} payload.imageUrl  (Cloudinary URL or null)
+ * @param {string|null} payload.imageUrl  (external URL or null)
+ * @param {Buffer|null} payload.imageBuffer  (persisted when DB enabled)
+ * @param {string|null} payload.imageMimetype
+ * @param {string|null} payload.fillLevel  (Empty | Half | Overflow)
  * @param {number|null} payload.userId
  * @param {number|null} payload.deviceId
  * @param {Array<{label:string, confidence:number, box:number[]}>} payload.predictions
@@ -28,6 +31,9 @@ function ensureModels() {
 async function saveCaptureWithPredictions({
   modelName,
   imageUrl = null,
+  imageBuffer = null,
+  imageMimetype = null,
+  fillLevel = null,
   userId = null,
   deviceId = null,
   predictions = [],
@@ -43,6 +49,9 @@ async function saveCaptureWithPredictions({
         user_id: userId,
         device_id: deviceId,
         image_url: imageUrl,
+        image_buffer: imageBuffer,
+        image_mimetype: imageMimetype,
+        fill_level: fillLevel,
         model_name: modelName,
         captured_at: new Date(),
       },

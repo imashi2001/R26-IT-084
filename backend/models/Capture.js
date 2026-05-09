@@ -21,6 +21,18 @@ module.exports = (sequelize) =>
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      image_buffer: {
+        type: DataTypes.BLOB("medium"),
+        allowNull: true,
+      },
+      image_mimetype: {
+        type: DataTypes.STRING(80),
+        allowNull: true,
+      },
+      fill_level: {
+        type: DataTypes.STRING(40),
+        allowNull: true,
+      },
       model_name: {
         type: DataTypes.STRING(60),
         allowNull: false,
@@ -36,5 +48,6 @@ module.exports = (sequelize) =>
       tableName: "captures",
       underscored: true,
       timestamps: true,
+      indexes: [{ fields: ["device_id", "captured_at"] }],
     }
   );

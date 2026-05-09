@@ -20,7 +20,16 @@ async function listCaptures(req, res, next) {
     const offset = clamp(req.query.offset ?? 0, 0, 1_000_000);
 
     const captures = await captureService.listCaptures({ limit, offset });
-    res.json({ count: captures.length, limit, offset, captures });
+    const sanitized = captures.map((c) => {
+      const { image_buffer: _ib, ...rest } = c;
+      return rest;
+    });
+    res.json({
+      count: sanitized.length,
+      limit,
+      offset,
+      captures: sanitized,
+    });
   } catch (err) {
     next(err);
   }
@@ -40,7 +49,8 @@ async function getCapture(req, res, next) {
     const capture = await captureService.getCapture(id);
     if (!capture) return res.status(404).json({ error: "Capture not found." });
 
-    res.json(capture);
+    const { image_buffer: _ib, ...rest } = capture;
+    res.json(rest);
   } catch (err) {
     next(err);
   }

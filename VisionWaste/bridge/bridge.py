@@ -32,13 +32,29 @@ BACKEND_PREDICT_URL = os.environ.get(
     "https://YOUR-BACKEND.up.railway.app/predict",
 )
 
-POLL_INTERVAL_SEC = float(os.environ.get("POLL_INTERVAL_SEC", "60"))
+_poll_raw = os.environ.get("POLL_INTERVAL_SEC", "60")
+try:
+    POLL_INTERVAL_SEC = float(_poll_raw)
+except ValueError:
+    POLL_INTERVAL_SEC = 60.0
+
+# Enforce the project requirement: capture every 60s (minimum).
+if POLL_INTERVAL_SEC < 60:
+    print(
+        f"Warning: POLL_INTERVAL_SEC={POLL_INTERVAL_SEC} is too small. "
+        "Forcing to 60 seconds.",
+        file=sys.stderr,
+    )
+    POLL_INTERVAL_SEC = 60.0
 
 ESP32_TIMEOUT = float(os.environ.get("ESP32_TIMEOUT", "10"))
 BACKEND_TIMEOUT = float(os.environ.get("BACKEND_TIMEOUT", "120"))
 
 BACKEND_MAX_RETRIES = int(os.environ.get("BACKEND_MAX_RETRIES", "3"))
 BACKEND_RETRY_DELAY_SEC = float(os.environ.get("BACKEND_RETRY_DELAY_SEC", "2"))
+
+# Sent as multipart field alongside `image` so the backend can attach captures to a Device row.
+DEVICE_ESP32_ID = os.environ.get("DEVICE_ESP32_ID", "").strip()
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CAPTURES_DIR = SCRIPT_DIR / "captures"
@@ -76,6 +92,9 @@ def save_latest_capture(image_bytes: bytes) -> None:
 def post_predict_with_retries(image_bytes: bytes) -> requests.Response:
     print("Sending image to backend...")
     files = {"image": ("capture.jpg", image_bytes, "image/jpeg")}
+    data = {}
+    if DEVICE_ESP32_ID:
+        data["esp32_id"] = DEVICE_ESP32_ID
     last_exc: Exception | None = None
 
     for attempt in range(1, BACKEND_MAX_RETRIES + 1):
@@ -83,6 +102,7 @@ def post_predict_with_retries(image_bytes: bytes) -> requests.Response:
             resp = requests.post(
                 BACKEND_PREDICT_URL,
                 files=files,
+                data=data or None,
                 timeout=BACKEND_TIMEOUT,
             )
             if resp.status_code >= 500:
@@ -128,6 +148,8 @@ def main() -> None:
     print("VisionWaste bridge started.")
     print(f"  ESP32:    {ESP32_CAPTURE_URL}")
     print(f"  Backend:  {BACKEND_PREDICT_URL}")
+    if DEVICE_ESP32_ID:
+        print(f"  Device:   esp32_id={DEVICE_ESP32_ID}")
     print(f"  Interval: {POLL_INTERVAL_SEC}s")
     print("Ctrl+C to stop.\n")
 

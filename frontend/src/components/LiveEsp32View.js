@@ -1,14 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ImageCanvas from "./ImageCanvas";
-import { getApiBaseUrl } from "../utils/apiBase";
+import { apiUrl, getApiBaseUrl } from "../utils/apiBase";
 
 const POLL_MS = 60_000;
 
+const LIVE_DEVICE_ID = (process.env.REACT_APP_LIVE_DEVICE_ID || "").trim();
+
 export default function LiveEsp32View() {
   const apiBase = getApiBaseUrl();
+
   const latestUrl = useMemo(() => {
-    if (!apiBase) return null;
-    return apiBase === "" ? "/latest" : `${apiBase}/latest`;
+    if (apiBase === null) return null;
+    try {
+      if (LIVE_DEVICE_ID) {
+        return apiUrl(`/devices/${LIVE_DEVICE_ID}/latest`);
+      }
+      return apiBase === "" ? "/latest" : `${apiBase}/latest`;
+    } catch {
+      return null;
+    }
   }, [apiBase]);
 
   const [imageUrl, setImageUrl] = useState(null);
@@ -42,10 +52,18 @@ export default function LiveEsp32View() {
       if (!res.ok) throw new Error(`Backend error ${res.status}`);
 
       const data = await res.json();
-      setPredictions(Array.isArray(data.predictions) ? data.predictions : []);
-      setTimestamp(data.timestamp || null);
-      // data.image.url is already absolute; cache-bust is included by backend
-      setImageUrl(data.image?.url || null);
+
+      if (LIVE_DEVICE_ID) {
+        setPredictions(
+          Array.isArray(data.latest?.predictions) ? data.latest.predictions : []
+        );
+        setTimestamp(data.latest?.captured_at || null);
+        setImageUrl(data.latest?.image?.url || null);
+      } else {
+        setPredictions(Array.isArray(data.predictions) ? data.predictions : []);
+        setTimestamp(data.timestamp || null);
+        setImageUrl(data.image?.url || null);
+      }
     } catch (e) {
       setError(e.message || "Failed to load latest capture.");
     } finally {
@@ -62,7 +80,14 @@ export default function LiveEsp32View() {
   return (
     <div className="live-esp32">
       <div className="live-esp32-header">
-        <h3 className="live-esp32-title">Live ESP32 (last capture)</h3>
+        <h3 className="live-esp32-title">
+          Live ESP32 (last capture)
+          {LIVE_DEVICE_ID ? (
+            <span className="live-esp32-meta" style={{ marginLeft: 8 }}>
+              device #{LIVE_DEVICE_ID}
+            </span>
+          ) : null}
+        </h3>
         <button
           type="button"
           className="btn btn-secondary"
@@ -89,4 +114,3 @@ export default function LiveEsp32View() {
     </div>
   );
 }
-

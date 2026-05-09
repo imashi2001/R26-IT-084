@@ -1,0 +1,181 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Popup,
+  useMap,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import { apiUrl } from "../utils/apiBase";
+
+function fillColor(level) {
+  const key = (level || "").toLowerCase();
+  if (key === "overflow") return "#e53935";
+  if (key === "half") return "#ffa726";
+  if (key === "empty") return "#43a047";
+  return "#5c6bc0";
+}
+
+function FlyTo({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) map.flyTo(center, zoom ?? 15, { duration: 0.9 });
+  }, [map, center, zoom]);
+  return null;
+}
+
+export default function MapPage() {
+  const [bins, setBins] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [nearestMsg, setNearestMsg] = useState(null);
+  const [focus, setFocus] = useState(null);
+
+  const defaultCenter = useMemo(() => [7.8731, 80.7718], []);
+
+  const loadMap = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(apiUrl("/devices/map"));
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setBins(Array.isArray(data.bins) ? data.bins : []);
+    } catch (e) {
+      setError(e.message || "Could not load map data.");
+      setBins([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMap();
+  }, [loadMap]);
+
+  const onNearest = () => {
+    setNearestMsg(null);
+    if (!navigator.geolocation) {
+      setNearestMsg("Geolocation is not supported in this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          const res = await fetch(
+            apiUrl(
+              `/devices/nearest?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&limit=5`
+            )
+          );
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          const results = Array.isArray(data.results) ? data.results : [];
+          if (!results.length) {
+            setNearestMsg("No bins with coordinates found.");
+            return;
+          }
+          const top = results[0];
+          setNearestMsg(
+            `Nearest: ${top.name} (~${top.distance_meters} m) — fill: ${top.latest_fill_level || "unknown"}`
+          );
+          setFocus({ center: [top.latitude, top.longitude], zoom: 16 });
+        } catch (e) {
+          setNearestMsg(e.message || "Nearest lookup failed.");
+        }
+      },
+      () => {
+        setNearestMsg("Location permission denied or unavailable.");
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
+
+  return (
+    <div className="page map-page">
+      <header className="page-header">
+        <h1>Bin map</h1>
+        <p className="subtitle">
+          OpenStreetMap tiles — markers show latest fill level when available.
+        </p>
+        <div className="map-toolbar">
+          <button type="button" className="btn btn-primary" onClick={loadMap} disabled={loading}>
+            {loading ? "Loading…" : "Refresh"}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={onNearest}>
+            Find nearest bin
+          </button>
+        </div>
+        {nearestMsg && <div className="info-banner">{nearestMsg}</div>}
+        {error && <div className="error-banner">{error}</div>}
+      </header>
+
+      <div className="map-frame">
+        <MapContainer
+          center={defaultCenter}
+          zoom={7}
+          scrollWheelZoom
+          style={{ height: "480px", width: "100%", borderRadius: "12px" }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {focus?.center && (
+            <FlyTo center={focus.center} zoom={focus.zoom} />
+          )}
+          {bins.map((b) => (
+            <CircleMarker
+              key={b.id}
+              center={[b.latitude, b.longitude]}
+              radius={11}
+              pathOptions={{
+                color: "#fff",
+                weight: 2,
+                fillColor: fillColor(b.latest_fill_level),
+                fillOpacity: 0.9,
+              }}
+            >
+              <Popup>
+                <strong>{b.name}</strong>
+                <div>Level: {b.latest_fill_level || "—"}</div>
+                {b.latest_captured_at && (
+                  <div className="popup-muted">{b.latest_captured_at}</div>
+                )}
+                <div style={{ marginTop: 8 }}>
+                  <Link className="popup-link" to={`/bins/${b.id}`}>
+                    Open bin detail
+                  </Link>
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
+        </MapContainer>
+      </div>
+
+      <section className="map-list">
+        <h2>Bins on map ({bins.length})</h2>
+        <ul className="bin-list">
+          {bins.map((b) => (
+            <li key={b.id}>
+              <Link to={`/bins/${b.id}`}>{b.name}</Link>
+              <span className="bin-meta">
+                {" "}
+                — {b.latest_fill_level || "unknown"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}

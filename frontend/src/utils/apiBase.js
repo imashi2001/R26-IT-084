@@ -52,3 +52,16 @@ export function isApiUrlPointingAtFrontend(baseUrl) {
     return false;
   }
 }
+
+/** Build absolute or proxied URL for any API path (leading slash optional). */
+export function apiUrl(path) {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const base = getApiBaseUrl();
+  if (base === null) {
+    throw new Error(
+      "API URL missing. Set REACT_APP_API_URL for production builds."
+    );
+  }
+  if (base === "") return p;
+  return `${base.replace(/\/+$/, "")}${p}`;
+}

@@ -1,26 +1,27 @@
 /**
- * latestState - in-memory latest ESP32 capture.
+ * latestState - in-memory latest capture per device (+ global mirror).
  *
- * Purpose: allow the deployed frontend (HTTPS) to show the most recent ESP32
- * snapshot + predictions even though it cannot directly fetch http://10.x.x.x
- * camera URLs (mixed content + private network).
- *
- * This state resets on backend redeploy/restart. For permanent history, use DB.
+ * Global snapshot keeps legacy GET /latest working for single-bin demos.
+ * Per-device entries power GET /devices/:id/image/latest when DB is empty or cold.
  */
 
-let latest = null;
+/** @type {Map<number, object>} */
+const byDeviceId = new Map();
 
-/**
- * @param {object} payload
- * @param {Buffer} payload.imageBuffer
- * @param {string} payload.mimetype
- * @param {string} payload.filename
- * @param {string} payload.modelName
- * @param {Array} payload.predictions
- */
-function setLatest({ imageBuffer, mimetype, filename, modelName, predictions }) {
-  latest = {
+/** @type {object|null} */
+let globalLatest = null;
+
+function buildSnapshot({
+  deviceId,
+  imageBuffer,
+  mimetype,
+  filename,
+  modelName,
+  predictions,
+}) {
+  return {
     timestamp: new Date().toISOString(),
+    deviceId: deviceId != null ? Number(deviceId) : null,
     image: {
       buffer: imageBuffer,
       mimetype: mimetype || "image/jpeg",
@@ -32,13 +33,58 @@ function setLatest({ imageBuffer, mimetype, filename, modelName, predictions }) 
   };
 }
 
+/**
+ * @param {object} payload
+ * @param {number|string|null} [payload.deviceId]
+ * @param {Buffer} payload.imageBuffer
+ * @param {string} payload.mimetype
+ * @param {string} payload.filename
+ * @param {string} payload.modelName
+ * @param {Array} payload.predictions
+ */
+function setLatest({
+  deviceId = null,
+  imageBuffer,
+  mimetype,
+  filename,
+  modelName,
+  predictions,
+}) {
+  const snapshot = buildSnapshot({
+    deviceId,
+    imageBuffer,
+    mimetype,
+    filename,
+    modelName,
+    predictions,
+  });
+
+  globalLatest = snapshot;
+
+  if (deviceId != null && deviceId !== "") {
+    const id =
+      typeof deviceId === "number" ? deviceId : parseInt(deviceId, 10);
+    if (Number.isFinite(id)) {
+      byDeviceId.set(id, snapshot);
+    }
+  }
+}
+
+/** Legacy: last prediction globally (any device). */
 function getLatest() {
-  return latest;
+  return globalLatest;
+}
+
+function getLatestForDevice(deviceId) {
+  const id =
+    typeof deviceId === "number" ? deviceId : parseInt(deviceId, 10);
+  if (!Number.isFinite(id)) return null;
+  return byDeviceId.get(id) || null;
 }
 
 function clearLatest() {
-  latest = null;
+  globalLatest = null;
+  byDeviceId.clear();
 }
 
-module.exports = { setLatest, getLatest, clearLatest };
-
+module.exports = { setLatest, getLatest, getLatestForDevice, clearLatest };

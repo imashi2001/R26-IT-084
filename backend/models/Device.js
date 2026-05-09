@@ -26,6 +26,18 @@ module.exports = (sequelize) =>
         type: DataTypes.STRING(160),
         allowNull: true,
       },
+      address: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
+      latitude: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+      },
+      longitude: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+      },
     },
     {
       tableName: "devices",

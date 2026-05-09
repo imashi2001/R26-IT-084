@@ -1,5 +1,13 @@
 const latestState = require("../services/latestState");
 
+function getPublicBaseUrl(req) {
+  // On Railway, Express sits behind a proxy/edge that terminates TLS.
+  // req.protocol may be "http" unless trust proxy is set, so prefer forwarded proto.
+  const forwardedProto = (req.headers["x-forwarded-proto"] || "").toString();
+  const proto = forwardedProto.split(",")[0].trim() || req.protocol || "http";
+  return `${proto}://${req.get("host")}`;
+}
+
 function getLatest(req, res) {
   const latest = latestState.getLatest();
   if (!latest) {
@@ -8,7 +16,7 @@ function getLatest(req, res) {
 
   // Cache-bust helper for frontend image URL
   const ts = encodeURIComponent(latest.timestamp);
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const baseUrl = getPublicBaseUrl(req);
 
   return res.json({
     timestamp: latest.timestamp,
@@ -17,7 +25,7 @@ function getLatest(req, res) {
     image: {
       bytes: latest.image.bytes,
       mimetype: latest.image.mimetype,
-      url: `${baseUrl}/latest.jpg?t=${ts}`,
+      url: `${baseUrl}/latest/image?t=${ts}`,
     },
   });
 }

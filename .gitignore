@@ -1,5 +1,13 @@
 venv/
 data_set/
+dataset/
 *.h5
+*.pt
 __pycache__/
 skipped_samples.tsv
+
+# Training / inference outputs (regeneratable artifacts)
+runs/
+animal_detection/runs/
+animal_detection/models/
+animal_detection/yolov8n.pt

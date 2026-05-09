@@ -1,108 +1,215 @@
-import { useMemo, useState } from 'react'
-import { AnalyticsPanel } from './components/AnalyticsPanel'
-import { ResultPanel } from './components/ResultPanel'
-import { StatCard } from './components/StatCard'
-import { SystemInfoPanel } from './components/SystemInfoPanel'
-import { UploadPanel } from './components/UploadPanel'
-import { predictWaste } from './api'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchMetrics, predictAnimal, predictWaste } from './api'
 
 function App() {
-  const [file, setFile] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState('')
-  const [history, setHistory] = useState([])
+  const [metrics, setMetrics] = useState(null)
+  const [metricsErr, setMetricsErr] = useState('')
 
-  const confidencePct = useMemo(() => {
-    if (!result) return null
-    const p = result.organic_probability
-    const conf = result.predicted_label === 'organic' ? p : 1 - p
-    return conf * 100
-  }, [result])
+  const [wasteFile, setWasteFile] = useState(null)
+  const [wastePreview, setWastePreview] = useState('')
+  const [wasteBusy, setWasteBusy] = useState(false)
+  const [wasteResult, setWasteResult] = useState(null)
+  const [wasteErr, setWasteErr] = useState('')
 
-  function onSelectFile(nextFile) {
-    setFile(nextFile)
-    setResult(null)
-    setError('')
-    setPreviewUrl((currentUrl) => {
-      if (currentUrl) URL.revokeObjectURL(currentUrl)
-      return URL.createObjectURL(nextFile)
+  const [animalFile, setAnimalFile] = useState(null)
+  const [animalPreview, setAnimalPreview] = useState('')
+  const [animalBusy, setAnimalBusy] = useState(false)
+  const [animalResult, setAnimalResult] = useState(null)
+  const [animalErr, setAnimalErr] = useState('')
+
+  useEffect(() => {
+    fetchMetrics()
+      .then(setMetrics)
+      .catch((e) => setMetricsErr(e?.message || 'Failed to load metrics'))
+  }, [])
+
+  const wasteConfidencePct = useMemo(() => {
+    if (!wasteResult) return null
+    const p = wasteResult.organic_probability
+    const conf = wasteResult.predicted_label === 'organic' ? p : 1 - p
+    return (conf * 100).toFixed(1)
+  }, [wasteResult])
+
+  function pickWaste(f) {
+    if (!f) return
+    setWasteFile(f)
+    setWasteResult(null)
+    setWasteErr('')
+    setWastePreview((u) => {
+      if (u) URL.revokeObjectURL(u)
+      return URL.createObjectURL(f)
     })
   }
 
-  async function onPredict() {
-    if (!file) return
-    setError('')
-    setResult(null)
-    setBusy(true)
+  function pickAnimal(f) {
+    if (!f) return
+    setAnimalFile(f)
+    setAnimalResult(null)
+    setAnimalErr('')
+    setAnimalPreview((u) => {
+      if (u) URL.revokeObjectURL(u)
+      return URL.createObjectURL(f)
+    })
+  }
+
+  async function runWaste() {
+    if (!wasteFile) return
+    setWasteBusy(true)
+    setWasteErr('')
+    setWasteResult(null)
     try {
-      const json = await predictWaste(file)
-      setResult(json)
-      const probability = Number(json.organic_probability)
-      const confidence = json.predicted_label === 'organic' ? probability : 1 - probability
-      setHistory((currentHistory) => [
-        {
-          id: `${Date.now()}-${file.name}`,
-          fileName: file.name,
-          label: json.predicted_label,
-          confidence: confidence * 100,
-        },
-        ...currentHistory,
-      ])
+      setWasteResult(await predictWaste(wasteFile))
     } catch (e) {
-      setError(e?.response?.data?.detail || e?.message || 'Prediction failed')
+      setWasteErr(e?.response?.data?.detail || e?.message || 'Waste predict failed')
     } finally {
-      setBusy(false)
+      setWasteBusy(false)
     }
   }
 
-  return (
-    <main className="min-h-screen overflow-hidden bg-slate-950 text-slate-100">
-      <div className="pointer-events-none fixed inset-0">
-        <div className="absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-400/20 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
+  async function runAnimal() {
+    if (!animalFile) return
+    setAnimalBusy(true)
+    setAnimalErr('')
+    setAnimalResult(null)
+    try {
+      setAnimalResult(await predictAnimal(animalFile))
+    } catch (e) {
+      setAnimalErr(e?.response?.data?.detail || e?.message || 'Animal predict failed')
+    } finally {
+      setAnimalBusy(false)
+    }
+  }
 
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-black/30 backdrop-blur-xl lg:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="mb-4 inline-flex rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.26em] text-emerald-200">
-                AI + IoT Smart Waste Monitoring
+  const cardStyle = {
+    border: '1px solid #cbd5e1',
+    borderRadius: 12,
+    padding: 16,
+    background: '#fff',
+  }
+
+  return (
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: 24, fontFamily: 'system-ui, sans-serif', color: '#0f172a' }}>
+      <h1 style={{ marginTop: 0 }}>R26-IT-084 — Models check</h1>
+      <p style={{ color: '#475569', marginTop: 0 }}>
+        Training metrics + quick inference for waste classification (MobileNetV2) and animal detection (YOLOv8).
+      </p>
+
+      <section style={{ ...cardStyle, marginBottom: 20 }}>
+        <h2 style={{ marginTop: 0, fontSize: 18 }}>Reported accuracy (from training)</h2>
+        {metricsErr ? (
+          <p style={{ color: '#b91c1c' }}>{metricsErr}</p>
+        ) : !metrics ? (
+          <p style={{ color: '#64748b' }}>Loading…</p>
+        ) : (
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div>
+              <strong>Waste (test accuracy)</strong>
+              <div style={{ fontSize: 28, fontWeight: 700 }}>
+                {metrics.waste?.test_accuracy_percent ?? '—'}%
               </div>
-              <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Vision-Based Waste Classification
-              </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                Organic vs Non-Organic Waste Detection for hygienic risk prediction and
-                animal-deterrence research workflows.
-              </p>
+              <div style={{ fontSize: 12, color: '#64748b' }}>{metrics.waste?.note}</div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 lg:w-[32rem]">
-              <StatCard label="Mode" value="Live" detail="FastAPI inference" tone="emerald" />
-              <StatCard label="Classes" value="2" detail="Waste categories" tone="cyan" />
-              <StatCard label="Risk engine" value="AI" detail="Hygiene analytics" tone="amber" />
+            <div>
+              <strong>Animal (val mAP@50)</strong>
+              {metrics.animal ? (
+                <>
+                  <div style={{ fontSize: 28, fontWeight: 700 }}>
+                    {(metrics.animal.map50 * 100).toFixed(2)}%
+                  </div>
+                  <div style={{ fontSize: 13, color: '#475569' }}>
+                    P {(metrics.animal.precision * 100).toFixed(1)}% · R{' '}
+                    {(metrics.animal.recall * 100).toFixed(1)}% · mAP@50–95{' '}
+                    {(metrics.animal.map50_95 * 100).toFixed(1)}%
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    Epoch {metrics.animal.epoch} · {metrics.animal.source}
+                  </div>
+                </>
+              ) : (
+                <p style={{ color: '#b45309' }}>
+                  No results.csv found — train animal_detection or check path.
+                </p>
+              )}
             </div>
           </div>
-        </header>
+        )}
+      </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1fr_0.95fr]">
-          <UploadPanel
-            file={file}
-            previewUrl={previewUrl}
-            busy={busy}
-            onSelectFile={onSelectFile}
-            onPredict={onPredict}
-          />
-          <ResultPanel result={result} confidence={confidencePct} error={error} busy={busy} />
+      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+        <section style={cardStyle}>
+          <h3 style={{ marginTop: 0 }}>1. Waste classification</h3>
+          <input type="file" accept="image/*" onChange={(e) => pickWaste(e.target.files?.[0])} />
+          {wastePreview ? (
+            <img alt="" src={wastePreview} style={{ width: '100%', maxHeight: 220, objectFit: 'contain', marginTop: 10 }} />
+          ) : null}
+          <button
+            type="button"
+            disabled={!wasteFile || wasteBusy}
+            onClick={runWaste}
+            style={{ marginTop: 10, padding: '8px 14px', width: '100%', cursor: wasteFile && !wasteBusy ? 'pointer' : 'not-allowed' }}
+          >
+            {wasteBusy ? 'Running…' : 'Run waste model'}
+          </button>
+          {wasteErr ? <p style={{ color: '#b91c1c', fontSize: 14 }}>{wasteErr}</p> : null}
+          {wasteResult ? (
+            <div style={{ marginTop: 10, fontSize: 14 }}>
+              <div>
+                <strong>Label:</strong> {wasteResult.predicted_label}
+              </div>
+              <div>
+                <strong>Organic probability:</strong> {Number(wasteResult.organic_probability).toFixed(4)}
+              </div>
+              <div>
+                <strong>Confidence:</strong> {wasteConfidencePct}%
+              </div>
+            </div>
+          ) : null}
         </section>
 
-        <SystemInfoPanel />
-        <AnalyticsPanel history={history} />
+        <section style={cardStyle}>
+          <h3 style={{ marginTop: 0 }}>2. Animal detection</h3>
+          <input type="file" accept="image/*" onChange={(e) => pickAnimal(e.target.files?.[0])} />
+          {animalPreview ? (
+            <img alt="" src={animalPreview} style={{ width: '100%', maxHeight: 160, objectFit: 'contain', marginTop: 10 }} />
+          ) : null}
+          <button
+            type="button"
+            disabled={!animalFile || animalBusy}
+            onClick={runAnimal}
+            style={{ marginTop: 10, padding: '8px 14px', width: '100%', cursor: animalFile && !animalBusy ? 'pointer' : 'not-allowed' }}
+          >
+            {animalBusy ? 'Running…' : 'Run animal model'}
+          </button>
+          {animalErr ? <p style={{ color: '#b91c1c', fontSize: 14 }}>{animalErr}</p> : null}
+          {animalResult ? (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 14, marginBottom: 8 }}>
+                <strong>Detections:</strong> {animalResult.detection_count}
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, maxHeight: 120, overflow: 'auto' }}>
+                {animalResult.detections?.map((d, i) => (
+                  <li key={`${d.class_name}-${i}`}>
+                    {d.class_name} · {(d.confidence * 100).toFixed(1)}%
+                  </li>
+                ))}
+              </ul>
+              {animalResult.annotated_image_base64 ? (
+                <img
+                  alt="YOLO output"
+                  src={`data:image/jpeg;base64,${animalResult.annotated_image_base64}`}
+                  style={{ width: '100%', marginTop: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </section>
       </div>
-    </main>
+
+      <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 24 }}>
+        API proxied from Vite as <code>/api/*</code>. Start backend:{' '}
+        <code>uvicorn api:app --host 127.0.0.1 --port 8000</code> from <code>backend/</code>.
+      </p>
+    </div>
   )
 }
 

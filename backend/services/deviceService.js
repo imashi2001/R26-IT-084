@@ -46,14 +46,29 @@ async function updateDevice(id, patch) {
   return row.toJSON();
 }
 
-async function findDeviceIdByEsp32Id(esp32Id) {
+async function findDeviceIdForPredict(esp32Id, incomingBridgeRaw) {
   const models = ensureModels();
   if (!models || !esp32Id) return null;
+
   const { Device } = models;
   const row = await Device.findOne({
     where: { esp32_id: esp32Id },
   });
-  return row ? row.id : null;
+  if (!row) return null;
+
+  const incoming = incomingBridgeRaw
+    ? String(incomingBridgeRaw).trim()
+    : "";
+  const bound = row.bridge_instance_id
+    ? String(row.bridge_instance_id).trim()
+    : "";
+
+  // Bin locked to a laptop: incoming bridge must match.
+  if (bound && bound !== incoming) {
+    return null;
+  }
+
+  return row.id;
 }
 
 async function getLatestCaptureForDevice(deviceId) {
@@ -95,7 +110,7 @@ module.exports = {
   getDeviceById,
   createDevice,
   updateDevice,
-  findDeviceIdByEsp32Id,
+  findDeviceIdForPredict,
   getLatestCaptureForDevice,
   listDevicesWithCoordinates,
 };

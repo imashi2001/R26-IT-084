@@ -69,6 +69,16 @@ export default function BinDetailPage() {
                 <dt>ESP32 ID</dt>
                 <dd>{data.device.esp32_id || "—"}</dd>
               </div>
+              <div>
+                <dt>Bridge / Laptop ID</dt>
+                <dd>
+                  {data.device.bridge_instance_id ? (
+                    <code>{data.device.bridge_instance_id}</code>
+                  ) : (
+                    "— (any bridge with matching ESP32 ID may attach)"
+                  )}
+                </dd>
+              </div>
             </dl>
           </header>
 

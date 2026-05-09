@@ -15,7 +15,8 @@ router.get("/", (_req, res) => {
     service: "VisionWaste-api",
     health: "/health",
     auth: "POST /auth/register, POST /auth/login",
-    predict: "POST /predict (multipart field: image)",
+    predict:
+      "POST /predict (multipart: image, bridge_instance_id, optional esp32_id)",
     captures: "GET /captures",
     devices:
       "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest",

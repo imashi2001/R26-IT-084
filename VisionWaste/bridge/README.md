@@ -55,19 +55,28 @@ python bridge.py
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `DEVICE_ESP32_ID` | (empty) | Sent as multipart `esp32_id` with each prediction — **must match** the bin row created in Admin (`devices.esp32_id`) |
+| `VISIONWASTE_BRIDGE_ID` | (auto) | Override persisted laptop ID; otherwise stored in `.bridge_id` |
+| `DEVICE_ESP32_ID` | (empty) | Sent as multipart `esp32_id` — **must match** Admin `devices.esp32_id` |
 | `POLL_INTERVAL_SEC` | `60` | Seconds between capture cycles |
 | `ESP32_TIMEOUT` | `10` | GET snapshot timeout (seconds) |
 | `BACKEND_TIMEOUT` | `120` | POST /predict timeout (YOLO can be slow) |
 | `BACKEND_MAX_RETRIES` | `3` | Retries if backend returns 5xx or network error |
 | `BACKEND_RETRY_DELAY_SEC` | `2` | Pause between retries |
 
+(JPEG files under `captures/` are gitignored; **`.bridge_id`** is gitignored — stable laptop bridge UUID.)
+
+## Laptop bridge ID (`bridge_instance_id`)
+
+On first run the bridge creates **`BRIDGE_<hex>`** in **`.bridge_id`** next to `bridge.py` and sends it as **`bridge_instance_id`** on every **`POST /predict`**.
+
+Override with env **`VISIONWASTE_BRIDGE_ID`** (e.g. shared CI token).
+
+Paste this value into **Admin → Bridge / Laptop ID** on a bin so only that laptop can attach **`device_id`** to captures (same **`esp32_id`** still required).
+
 ## Output files
 
 - `captures/latest.jpg` — overwritten each cycle
 - `captures/snapshot_YYYYMMDD_HHMMSS.jpg` — archive per fetch
-
-(JPEG files under `captures/` are gitignored.)
 
 ## Console messages
 
@@ -85,7 +94,8 @@ This repo gateway expects:
 - **Path:** `/predict`
 - **Body:** `multipart/form-data`
   - **`image`** — JPEG file (required)
-  - **`esp32_id`** — optional text field; must match `devices.esp32_id` in Postgres so captures attach to the correct bin (see `DEVICE_ESP32_ID` env var)
+  - **`bridge_instance_id`** — required from VisionWaste bridge (stable per laptop, see `.bridge_id`)
+  - **`esp32_id`** — optional; must match `devices.esp32_id` for bin linkage
   - **`device_id`** — optional numeric alternative to `esp32_id`
 
 Response: JSON **array** of detections, e.g.

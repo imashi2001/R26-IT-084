@@ -90,6 +90,10 @@ async function create(req, res, next) {
         body.longitude === undefined || body.longitude === ""
           ? null
           : Number(body.longitude),
+      bridge_instance_id:
+        body.bridge_instance_id != null
+          ? String(body.bridge_instance_id).trim() || null
+          : null,
     };
 
     if (
@@ -167,6 +171,12 @@ async function patch(req, res, next) {
         body.user_id === "" || body.user_id === null
           ? null
           : parseInt(body.user_id, 10);
+    }
+    if (body.bridge_instance_id !== undefined) {
+      patch.bridge_instance_id =
+        body.bridge_instance_id == null || body.bridge_instance_id === ""
+          ? null
+          : String(body.bridge_instance_id).trim();
     }
 
     if (

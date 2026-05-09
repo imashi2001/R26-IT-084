@@ -5,7 +5,20 @@ const latestState = require("../services/latestState");
 const deviceService = require("../services/deviceService");
 const { deriveFillLevel } = require("../utils/fillLevel");
 
+function trimBridgeInstanceId(body) {
+  if (
+    !body ||
+    body.bridge_instance_id === undefined ||
+    body.bridge_instance_id === null
+  ) {
+    return "";
+  }
+  return String(body.bridge_instance_id).trim();
+}
+
 async function resolveDeviceId(body) {
+  const bridgeRaw = trimBridgeInstanceId(body);
+
   const rawEsp =
     body &&
     body.esp32_id !== undefined &&
@@ -21,12 +34,22 @@ async function resolveDeviceId(body) {
     String(rawDid).trim() !== ""
   ) {
     const id = parseInt(rawDid, 10);
-    return Number.isFinite(id) ? id : null;
+    if (!Number.isFinite(id)) return null;
+
+    const device = await deviceService.getDeviceById(id);
+    if (!device) return null;
+
+    const bound = device.bridge_instance_id
+      ? String(device.bridge_instance_id).trim()
+      : "";
+    if (bound && bound !== bridgeRaw) {
+      return null;
+    }
+    return id;
   }
 
   if (rawEsp) {
-    const id = await deviceService.findDeviceIdByEsp32Id(rawEsp);
-    return id;
+    return deviceService.findDeviceIdForPredict(rawEsp, bridgeRaw || null);
   }
 
   return null;
@@ -45,8 +68,14 @@ async function predict(req, res, next) {
       return res.status(400).json({ error: "Empty image received." });
     }
 
-    const modelName = (req.body.model || DEFAULT_MODEL).toString();
-    const conf = req.body.conf || "0.25";
+    const body = req.body || {};
+    const bridgeInstanceId =
+      trimBridgeInstanceId(body) !== ""
+        ? trimBridgeInstanceId(body)
+        : null;
+
+    const modelName = (body.model || DEFAULT_MODEL).toString();
+    const conf = body.conf || "0.25";
 
     const predictions = await modelClient.infer({
       modelName,
@@ -58,7 +87,7 @@ async function predict(req, res, next) {
 
     const fillLevel = deriveFillLevel(predictions);
 
-    const deviceId = await resolveDeviceId(req.body || {});
+    const deviceId = await resolveDeviceId(body);
 
     try {
       latestState.setLatest({
@@ -82,6 +111,7 @@ async function predict(req, res, next) {
         fillLevel,
         userId: null,
         deviceId,
+        bridgeInstanceId,
         predictions,
       });
       if (capture) res.set("X-Capture-Id", String(capture.id));

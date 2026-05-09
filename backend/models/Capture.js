@@ -17,6 +17,10 @@ module.exports = (sequelize) =>
         type: DataTypes.INTEGER,
         allowNull: true,
       },
+      bridge_instance_id: {
+        type: DataTypes.STRING(120),
+        allowNull: true,
+      },
       image_url: {
         type: DataTypes.TEXT,
         allowNull: true,

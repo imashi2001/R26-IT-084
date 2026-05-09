@@ -72,7 +72,7 @@ The backend works both **with** and **without** a database:
 | GET | /health | Gateway + model + DB |
 | POST | /auth/register | JSON `{ name, email, password, adminInvite? }` — optional invite creates admin |
 | POST | /auth/login | JSON `{ email, password }` → JWT |
-| POST | /predict | multipart `image`, optional `esp32_id` / `device_id`, `model`, `conf` |
+| POST | /predict | multipart `image`, **`bridge_instance_id`**, optional `esp32_id` / `device_id`, `model`, `conf` |
 | GET | /captures | Query pagination |
 | GET | /captures/:id | Capture metadata + predictions (image blob omitted) |
 | GET | /devices | All bins |
@@ -96,13 +96,25 @@ The backend works both **with** and **without** a database:
 
 `POST /predict` adds a response header `X-Capture-Id` whenever the row was saved.
 
+After adding columns in production, set **`DB_SYNC_ALTER=true`** once, redeploy, then **`false`** again.
+
+---
+
+### Bridge ↔ bin binding
+
+- Each **`POST /predict`** should include **`bridge_instance_id`** (VisionWaste laptop bridge).
+- If **`devices.bridge_instance_id`** is **null**, matching is by **`esp32_id`** only.
+- If **`devices.bridge_instance_id`** is **set**, **`device_id`** is attached only when the incoming **`bridge_instance_id`** matches; captures still store **`bridge_instance_id`** for audit.
+
+---
+
 ## Database schema (Sequelize)
 
 | Table | Key columns |
 |-------|-------------|
 | users | id, name, email, password_hash, role (`user` \| `admin`), timestamps |
-| devices | id, user_id, name, esp32_id (unique), location, address, latitude, longitude, timestamps |
-| captures | id, user_id, device_id, image_url, image_buffer, image_mimetype, fill_level, model_name, captured_at, timestamps |
+| devices | id, user_id, name, esp32_id (unique), location, address, latitude, longitude, **bridge_instance_id** (optional laptop binding), timestamps |
+| captures | id, user_id, device_id, **bridge_instance_id**, image_url, image_buffer, image_mimetype, fill_level, model_name, captured_at, timestamps |
 | predictions | id, capture_id, label, confidence, box_x1..box_y2, timestamps |
 
 Associations:

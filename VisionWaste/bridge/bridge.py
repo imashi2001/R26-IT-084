@@ -5,7 +5,8 @@ VisionWaste bridge — ESP32-CAM snapshot → Express backend POST /predict
 Runs on a laptop on the same LAN as the ESP32. Railway cannot reach private IPs
 like 10.x.x.x; this script pulls JPEG bytes locally and uploads them over HTTPS.
 
-Backend contract (Express): POST multipart/form-data, field name "image".
+Backend contract (Express): POST multipart/form-data fields: image (required),
+bridge_instance_id (always), esp32_id (optional).
 Response: JSON array of detections [{ label, confidence, box }, ...].
 """
 
@@ -19,6 +20,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+
+from utils.bridge_id import get_bridge_instance_id
 
 # --- Configuration (override with environment variables) ---
 
@@ -56,6 +59,9 @@ BACKEND_RETRY_DELAY_SEC = float(os.environ.get("BACKEND_RETRY_DELAY_SEC", "2"))
 # Sent as multipart field alongside `image` so the backend can attach captures to a Device row.
 DEVICE_ESP32_ID = os.environ.get("DEVICE_ESP32_ID", "").strip()
 
+# Stable per-laptop ID (file .bridge_id or VISIONWASTE_BRIDGE_ID env).
+BRIDGE_INSTANCE_ID = get_bridge_instance_id()
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 CAPTURES_DIR = SCRIPT_DIR / "captures"
 LATEST_IMAGE_PATH = CAPTURES_DIR / "latest.jpg"
@@ -92,7 +98,7 @@ def save_latest_capture(image_bytes: bytes) -> None:
 def post_predict_with_retries(image_bytes: bytes) -> requests.Response:
     print("Sending image to backend...")
     files = {"image": ("capture.jpg", image_bytes, "image/jpeg")}
-    data = {}
+    data: dict[str, str] = {"bridge_instance_id": BRIDGE_INSTANCE_ID}
     if DEVICE_ESP32_ID:
         data["esp32_id"] = DEVICE_ESP32_ID
     last_exc: Exception | None = None
@@ -102,7 +108,7 @@ def post_predict_with_retries(image_bytes: bytes) -> requests.Response:
             resp = requests.post(
                 BACKEND_PREDICT_URL,
                 files=files,
-                data=data or None,
+                data=data,
                 timeout=BACKEND_TIMEOUT,
             )
             if resp.status_code >= 500:
@@ -148,6 +154,7 @@ def main() -> None:
     print("VisionWaste bridge started.")
     print(f"  ESP32:    {ESP32_CAPTURE_URL}")
     print(f"  Backend:  {BACKEND_PREDICT_URL}")
+    print(f"  Bridge:   bridge_instance_id={BRIDGE_INSTANCE_ID}")
     if DEVICE_ESP32_ID:
         print(f"  Device:   esp32_id={DEVICE_ESP32_ID}")
     print(f"  Interval: {POLL_INTERVAL_SEC}s")

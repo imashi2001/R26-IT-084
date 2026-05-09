@@ -40,9 +40,11 @@ export default function AdminPage() {
   const [address, setAddress] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
+  const [bridgeInstanceId, setBridgeInstanceId] = useState("");
   const [geoQuery, setGeoQuery] = useState("");
   const [formMsg, setFormMsg] = useState(null);
   const [formError, setFormError] = useState(null);
+  const [editingDeviceId, setEditingDeviceId] = useState(null);
 
   const mapCenter = useMemo(() => {
     const lat = Number(latitude);
@@ -114,6 +116,40 @@ export default function AdminPage() {
     }
   };
 
+  const resetForm = useCallback(() => {
+    setEditingDeviceId(null);
+    setName("");
+    setEsp32Id("");
+    setBridgeInstanceId("");
+    setLocationLabel("");
+    setAddress("");
+    setLatitude("");
+    setLongitude("");
+    setGeoQuery("");
+  }, []);
+
+  const startEdit = (d) => {
+    setEditingDeviceId(d.id);
+    setName(d.name || "");
+    setEsp32Id(d.esp32_id || "");
+    setBridgeInstanceId(d.bridge_instance_id || "");
+    setLocationLabel(d.location || "");
+    setAddress(d.address || "");
+    setLatitude(
+      d.latitude != null && Number.isFinite(Number(d.latitude))
+        ? String(d.latitude)
+        : ""
+    );
+    setLongitude(
+      d.longitude != null && Number.isFinite(Number(d.longitude))
+        ? String(d.longitude)
+        : ""
+    );
+    setFormError(null);
+    setFormMsg(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const onGeocode = async () => {
     setFormError(null);
     setFormMsg(null);
@@ -137,7 +173,7 @@ export default function AdminPage() {
     }
   };
 
-  const onCreateDevice = async (e) => {
+  const onSaveDevice = async (e) => {
     e.preventDefault();
     setFormError(null);
     setFormMsg(null);
@@ -157,30 +193,34 @@ export default function AdminPage() {
       return;
     }
 
+    const payload = {
+      name: name.trim(),
+      esp32_id: esp32Id.trim() || null,
+      bridge_instance_id: bridgeInstanceId.trim() || null,
+      location: locationLabel.trim() || null,
+      address: address.trim() || null,
+      latitude: lat,
+      longitude: lng,
+    };
+
     try {
-      const res = await authFetch("/devices", {
-        method: "POST",
-        body: JSON.stringify({
-          name: name.trim(),
-          esp32_id: esp32Id.trim() || null,
-          location: locationLabel.trim() || null,
-          address: address.trim() || null,
-          latitude: lat,
-          longitude: lng,
-        }),
+      const path = editingDeviceId ? `/devices/${editingDeviceId}` : "/devices";
+      const method = editingDeviceId ? "PATCH" : "POST";
+      const res = await authFetch(path, {
+        method,
+        body: JSON.stringify(payload),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      setFormMsg(`Created bin #${body.id}`);
-      setName("");
-      setEsp32Id("");
-      setLocationLabel("");
-      setAddress("");
-      setLatitude("");
-      setLongitude("");
+      if (editingDeviceId) {
+        setFormMsg(`Updated bin #${editingDeviceId}`);
+      } else {
+        setFormMsg(`Created bin #${body.id}`);
+      }
+      resetForm();
       loadDevices();
     } catch (err) {
-      setFormError(err.message || "Create failed.");
+      setFormError(err.message || "Save failed.");
     }
   };
 
@@ -192,7 +232,8 @@ export default function AdminPage() {
         <h1>Admin — bins & locations</h1>
         <p className="subtitle">
           Create bins, set coordinates by clicking the map or searching an address.
-          Match <code>esp32_id</code> with the laptop bridge <code>DEVICE_ESP32_ID</code>.
+          Match <code>esp32_id</code> with bridge <code>DEVICE_ESP32_ID</code>.
+          Optionally paste <strong>Bridge / Laptop ID</strong> from bridge startup logs to bind bins to one laptop.
         </p>
       </header>
 
@@ -301,15 +342,42 @@ export default function AdminPage() {
 
           <section className="admin-grid">
             <div className="admin-card">
-              <h2>Add bin</h2>
-              <form className="admin-form" onSubmit={onCreateDevice}>
+              <h2>{editingDeviceId ? `Edit bin #${editingDeviceId}` : "Add bin"}</h2>
+              {editingDeviceId && (
+                <p className="subtitle">
+                  Updating existing bin — or{" "}
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ display: "inline", padding: "4px 10px", marginLeft: 8 }}
+                    onClick={resetForm}
+                  >
+                    Cancel edit
+                  </button>
+                </p>
+              )}
+              <form className="admin-form" onSubmit={onSaveDevice}>
                 <label>
                   Name
                   <input value={name} onChange={(e) => setName(e.target.value)} required />
                 </label>
                 <label>
-                  ESP32 ID (matches bridge)
+                  ESP32 ID (matches bridge <code>DEVICE_ESP32_ID</code>)
                   <input value={esp32Id} onChange={(e) => setEsp32Id(e.target.value)} />
+                </label>
+                <label>
+                  Bridge / Laptop ID{" "}
+                  <span className="field-hint">(optional)</span>
+                  <input
+                    value={bridgeInstanceId}
+                    onChange={(e) => setBridgeInstanceId(e.target.value)}
+                    placeholder="BRIDGE_xxxxxxxxxxxx"
+                    autoComplete="off"
+                  />
+                  <span className="field-helper">
+                    Paste the bridge ID shown in bridge startup logs or in the{" "}
+                    <code>.bridge_id</code> file. When set, only that laptop can attach captures to this bin.
+                  </span>
                 </label>
                 <label>
                   Location label
@@ -354,7 +422,7 @@ export default function AdminPage() {
                 {formError && <div className="error-banner">{formError}</div>}
                 {formMsg && <div className="info-banner">{formMsg}</div>}
                 <button type="submit" className="btn btn-primary">
-                  Save bin
+                  {editingDeviceId ? "Update bin" : "Save bin"}
                 </button>
               </form>
             </div>
@@ -401,15 +469,31 @@ export default function AdminPage() {
             <ul className="device-admin-list">
               {devices.map((d) => (
                 <li key={d.id}>
-                  <strong>{d.name}</strong> (#{d.id})
-                  {d.esp32_id && (
-                    <>
-                      {" "}
-                      <code>{d.esp32_id}</code>
-                    </>
-                  )}
-                  <div className="device-admin-meta">
-                    lat {d.latitude ?? "—"}, lng {d.longitude ?? "—"}
+                  <div className="device-admin-row">
+                    <div>
+                      <strong>{d.name}</strong> (#{d.id})
+                      {d.esp32_id && (
+                        <>
+                          {" "}
+                          <code>{d.esp32_id}</code>
+                        </>
+                      )}
+                      {d.bridge_instance_id && (
+                        <div className="device-admin-meta">
+                          Bridge ID: <code>{d.bridge_instance_id}</code>
+                        </div>
+                      )}
+                      <div className="device-admin-meta">
+                        lat {d.latitude ?? "—"}, lng {d.longitude ?? "—"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => startEdit(d)}
+                    >
+                      Edit
+                    </button>
                   </div>
                 </li>
               ))}

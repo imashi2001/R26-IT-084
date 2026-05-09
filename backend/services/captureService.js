@@ -24,6 +24,7 @@ function ensureModels() {
  * @param {string|null} payload.fillLevel  (Empty | Half | Overflow)
  * @param {number|null} payload.userId
  * @param {number|null} payload.deviceId
+ * @param {string|null} payload.bridgeInstanceId laptop bridge UUID (audit + device binding)
  * @param {Array<{label:string, confidence:number, box:number[]}>} payload.predictions
  *
  * @returns {Promise<object|null>} the created Capture (with predictions) or null
@@ -36,6 +37,7 @@ async function saveCaptureWithPredictions({
   fillLevel = null,
   userId = null,
   deviceId = null,
+  bridgeInstanceId = null,
   predictions = [],
 }) {
   const models = ensureModels();
@@ -48,6 +50,7 @@ async function saveCaptureWithPredictions({
       {
         user_id: userId,
         device_id: deviceId,
+        bridge_instance_id: bridgeInstanceId,
         image_url: imageUrl,
         image_buffer: imageBuffer,
         image_mimetype: imageMimetype,

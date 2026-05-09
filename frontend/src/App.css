@@ -486,6 +486,32 @@
   margin-top: 8px;
 }
 
+.device-admin-list li {
+  margin-bottom: 12px;
+}
+
+.device-admin-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.field-hint {
+  font-weight: 400;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.field-helper {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
 .popup-link:hover {
   text-decoration: underline;
 }

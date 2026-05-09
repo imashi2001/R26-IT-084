@@ -232,3 +232,42 @@
 .esp32-btn {
   flex-shrink: 0;
 }
+
+/* Live ESP32 view (from backend /latest) */
+.live-esp32 {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #334155;
+  width: 100%;
+  max-width: 760px;
+}
+
+.live-esp32-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.live-esp32-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.live-esp32-meta {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.live-esp32-empty {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.live-esp32-canvas {
+  margin-top: 12px;
+}

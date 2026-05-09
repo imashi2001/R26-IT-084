@@ -3,6 +3,7 @@ import "./App.css";
 import ImageCanvas from "./components/ImageCanvas";
 import PredictionList from "./components/PredictionList";
 import Esp32Panel from "./components/Esp32Panel";
+import LiveEsp32View from "./components/LiveEsp32View";
 import {
   getApiBaseUrl,
   getPredictUrl,
@@ -214,6 +215,8 @@ export default function App() {
               loading={esp32Loading}
               mixedContentBlocked={mixedContentBlocked}
             />
+
+            <LiveEsp32View />
 
             {error && !imageUrl && (
               <div className="error-banner" style={{ marginTop: "16px" }}>

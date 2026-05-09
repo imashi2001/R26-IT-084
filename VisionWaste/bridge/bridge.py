@@ -32,7 +32,7 @@ BACKEND_PREDICT_URL = os.environ.get(
     "https://YOUR-BACKEND.up.railway.app/predict",
 )
 
-POLL_INTERVAL_SEC = float(os.environ.get("POLL_INTERVAL_SEC", "5"))
+POLL_INTERVAL_SEC = float(os.environ.get("POLL_INTERVAL_SEC", "60"))
 
 ESP32_TIMEOUT = float(os.environ.get("ESP32_TIMEOUT", "10"))
 BACKEND_TIMEOUT = float(os.environ.get("BACKEND_TIMEOUT", "120"))

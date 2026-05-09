@@ -53,7 +53,7 @@ python bridge.py
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `POLL_INTERVAL_SEC` | `5` | Seconds between capture cycles |
+| `POLL_INTERVAL_SEC` | `60` | Seconds between capture cycles |
 | `ESP32_TIMEOUT` | `10` | GET snapshot timeout (seconds) |
 | `BACKEND_TIMEOUT` | `120` | POST /predict timeout (YOLO can be slow) |
 | `BACKEND_MAX_RETRIES` | `3` | Retries if backend returns 5xx or network error |

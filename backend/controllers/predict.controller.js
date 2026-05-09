@@ -1,6 +1,7 @@
 const { DEFAULT_MODEL } = require("../config/env");
 const modelClient = require("../services/modelClient");
 const captureService = require("../services/captureService");
+const latestState = require("../services/latestState");
 
 async function predict(req, res, next) {
   try {
@@ -25,6 +26,20 @@ async function predict(req, res, next) {
       mimetype: req.file.mimetype,
       conf,
     });
+
+    // Always update in-memory "latest" snapshot for the frontend.
+    // This enables showing the most recent ESP32 capture on HTTPS deployed UI.
+    try {
+      latestState.setLatest({
+        imageBuffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        filename: req.file.originalname,
+        modelName,
+        predictions,
+      });
+    } catch (e) {
+      console.error("[predict] failed to set latest state:", e.message);
+    }
 
     try {
       const capture = await captureService.saveCaptureWithPredictions({

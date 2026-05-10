@@ -23,6 +23,27 @@ function normalizeFill(level) {
   return (level || "").trim().toLowerCase();
 }
 
+/**
+ * Pin colors and % bands stay aligned: <40 → empty, <70 → half, else overflow.
+ * When the backend only stores risk-derived fill_percentage, latest_fill_level may be empty.
+ */
+function tierFromFillPercentage(pct) {
+  const p = Number(pct);
+  if (!Number.isFinite(p)) return null;
+  if (p < 40) return "empty";
+  if (p < 70) return "half";
+  return "overflow";
+}
+
+/** Single source of truth for badges, eligibility, and marker tint fallbacks. */
+function effectiveFillTier(b) {
+  const lvl = normalizeFill(b.latest_fill_level);
+  if (lvl === "empty" || lvl === "half" || lvl === "overflow") return lvl;
+  const inferred = tierFromFillPercentage(b.latest_fill_percentage);
+  if (inferred) return inferred;
+  return lvl || "unknown";
+}
+
 function fillLabel(level) {
   const k = normalizeFill(level);
   if (!k) return "Unknown";
@@ -66,14 +87,9 @@ function fillColor(level) {
 }
 
 function markerFillFromBin(b) {
-  const pct = b.latest_fill_percentage;
-  if (pct != null && Number.isFinite(Number(pct))) {
-    const p = Number(pct);
-    if (p < 40) return "#34d399";
-    if (p < 70) return "#fbbf24";
-    return "#f87171";
-  }
-  return fillColor(b.latest_fill_level);
+  const tier = effectiveFillTier(b);
+  if (tier !== "unknown") return fillColor(tier);
+  return "#818cf8";
 }
 
 function IconRefresh() {
@@ -194,13 +210,13 @@ export default function MapPage() {
             return;
           }
           const eligible = results.filter((r) =>
-            NEAREST_FILL_LEVELS.has(normalizeFill(r.latest_fill_level))
+            NEAREST_FILL_LEVELS.has(effectiveFillTier(r))
           );
           if (!eligible.length) {
             setToast({
               tone: "warn",
               message:
-                "No bins with latest level empty or half yet. Send captures from the bridge, then try again.",
+                "No bins with available capacity nearby (empty / half, or a low fill estimate under 70%). Try another area or check bins reporting higher fullness.",
             });
             setUserLatLng(me);
             return;
@@ -215,7 +231,8 @@ export default function MapPage() {
           setRouteSummary({
             name: top.name,
             distanceM: top.distance_meters,
-            fill: top.latest_fill_level,
+            fillTier: effectiveFillTier(top),
+            fillPct: top.latest_fill_percentage,
             approximate,
             mapsUrl,
           });
@@ -244,8 +261,9 @@ export default function MapPage() {
           <h1>Map &amp; navigation</h1>
           <p className="map-hero-desc">
             Voyager base map with fill-colored pins. Find the closest bin that
-            reports <strong>empty</strong> or <strong>half</strong>, preview the
-            walking path, then open turn-by-turn directions.
+            has <strong>capacity</strong> (level empty/half, or fill estimate
+            under 70%), preview the walking path, then open turn-by-turn
+            directions.
           </p>
         </div>
       </header>
@@ -283,7 +301,7 @@ export default function MapPage() {
             onClick={onNearest}
           >
             <IconNavigate />
-            Nearest empty / half
+            Nearest with space
           </button>
         </div>
 
@@ -334,7 +352,10 @@ export default function MapPage() {
                 </Popup>
               </CircleMarker>
             ) : null}
-            {bins.map((b) => (
+            {bins.map((b) => {
+              const tier = effectiveFillTier(b);
+              const tierKey = normalizeFill(tier) || "unknown";
+              return (
               <CircleMarker
                 key={b.id}
                 center={[b.latitude, b.longitude]}
@@ -356,8 +377,8 @@ export default function MapPage() {
                       />
                     ) : null}
                     <strong className="map-popup-title">{b.name}</strong>
-                    <span className={`map-fill-badge map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}>
-                      {fillLabel(b.latest_fill_level)}
+                    <span className={`map-fill-badge map-fill-badge--${tierKey}`}>
+                      {fillLabel(tier === "unknown" ? "" : tier)}
                     </span>
                     {b.latest_fill_percentage != null &&
                     Number.isFinite(Number(b.latest_fill_percentage)) ? (
@@ -379,7 +400,8 @@ export default function MapPage() {
                   </div>
                 </Popup>
               </CircleMarker>
-            ))}
+              );
+            })}
           </MapContainer>
 
           {routeSummary ? (
@@ -394,11 +416,21 @@ export default function MapPage() {
                   ~{routeSummary.distanceM} m
                 </span>
                 <span
-                  className={`map-fill-badge map-fill-badge--${normalizeFill(routeSummary.fill) || "unknown"}`}
+                  className={`map-fill-badge map-fill-badge--${normalizeFill(routeSummary.fillTier) || "unknown"}`}
                 >
-                  {fillLabel(routeSummary.fill)}
+                  {fillLabel(
+                    routeSummary.fillTier === "unknown"
+                      ? ""
+                      : routeSummary.fillTier
+                  )}
                 </span>
               </div>
+              {routeSummary.fillPct != null &&
+              Number.isFinite(Number(routeSummary.fillPct)) ? (
+                <p className="map-route-sheet-fillpct">
+                  Fill estimate: {Math.round(Number(routeSummary.fillPct))}%
+                </p>
+              ) : null}
               {routeSummary.approximate ? (
                 <p className="map-route-sheet-hint">
                   Straight-line preview — enable routing or open Maps for paths on streets.
@@ -427,15 +459,18 @@ export default function MapPage() {
           <span className="map-list-count">{bins.length}</span>
         </div>
         <ul className="bin-chip-list">
-          {bins.map((b) => (
+          {bins.map((b) => {
+            const tier = effectiveFillTier(b);
+            const tierKey = normalizeFill(tier) || "unknown";
+            return (
             <li key={b.id}>
               <Link className="bin-chip" to={`/bins/${b.id}`}>
                 <div className="bin-chip-row">
                   <span className="bin-chip-name">{b.name}</span>
                   <span
-                    className={`map-fill-badge map-fill-badge--sm map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}
+                    className={`map-fill-badge map-fill-badge--sm map-fill-badge--${tierKey}`}
                   >
-                    {fillLabel(b.latest_fill_level)}
+                    {fillLabel(tier === "unknown" ? "" : tier)}
                   </span>
                 </div>
                 <span className="bin-chip-meta">
@@ -448,7 +483,8 @@ export default function MapPage() {
                 </span>
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
     </div>

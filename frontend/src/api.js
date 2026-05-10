@@ -25,6 +25,17 @@ export async function fetchAnalyzeHistory() {
   return data
 }
 
+export async function fetchForecast(binId, hours = 24) {
+  if (binId) {
+    const { data } = await axios.get(
+      `/api/forecast/${encodeURIComponent(binId)}?hours=${hours}`,
+    )
+    return data
+  }
+  const { data } = await axios.get(`/api/forecast?hours=${hours}`)
+  return data
+}
+
 export async function analyzeCapture(file, opts = {}) {
   const form = new FormData()
   form.append('file', file)

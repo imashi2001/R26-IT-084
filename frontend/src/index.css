@@ -1,3 +1,15 @@
+/*
+ * Tailwind directives.
+ *
+ * `preflight` is disabled in tailwind.config.js so these directives only emit
+ * `components` (none) + JIT-compiled `utilities`. That means existing pages
+ * (HomePage, MapPage, etc.) and App.css see no visual change; new dashboard
+ * components can use utilities like `bg-ink-900`, `text-risk-low`, etc.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 *, *::before, *::after {
   box-sizing: border-box;
 }

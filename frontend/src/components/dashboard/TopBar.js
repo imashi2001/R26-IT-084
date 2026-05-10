@@ -21,9 +21,10 @@ import { useAuth } from "../../context/AuthContext";
  * Top bar for the system dashboard.
  *
  * - Date + time tick every second (cheap; only re-renders header).
- * - Weather chips pull from GET /latest's `extras.temp_c / humidity_pct /
- *   weather_condition`. If the backend has no captures yet (or DB is off),
- *   we show "—" rather than crashing.
+ * - Weather chips pull from GET /weather (current temp / humidity / condition).
+ *   This endpoint always returns data — live from OpenWeather when the backend
+ *   has OPENWEATHER_API_KEY, otherwise a deterministic stub. We do NOT depend
+ *   on /latest here, so chips populate even before the first capture.
  * - Bell badge reserved for PR 5 (Recent Alerts feed); shows a static "0" now.
  * - Profile shows AuthContext.user (or "Guest") so admins see their email.
  */
@@ -43,36 +44,51 @@ function StatChip({ icon: Icon, label, value, sub }) {
   );
 }
 
-function useLatestWeather(intervalMs = 60_000) {
+function useCurrentWeather(intervalMs = 60_000) {
   const [w, setW] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function poll() {
+    async function pollWeather() {
       try {
-        const { data } = await axios.get(apiUrl("/latest"), { timeout: 5000 });
-        if (cancelled) return;
-        const extras = data?.extras || data?.latest?.extras || data || {};
-        if (
-          extras &&
-          (extras.temp_c != null ||
-            extras.humidity_pct != null ||
-            extras.weather_condition != null)
-        ) {
-          setW({
-            temp_c: extras.temp_c ?? null,
-            humidity_pct: extras.humidity_pct ?? null,
-            condition: extras.weather_condition ?? null,
-          });
-        }
+        const { data } = await axios.get(apiUrl("/weather"), { timeout: 5000 });
+        if (cancelled || !data) return;
+        setW({
+          temp_c: data.temp_c ?? null,
+          humidity_pct: data.humidity_pct ?? null,
+          condition: data.condition ?? null,
+          source: data.source ?? null,
+        });
       } catch {
-        /* keep prior value; sidebar shows the actual outage */
+        // If /weather is unreachable, try the latest-capture extras as a
+        // last-resort fallback so we still show something.
+        try {
+          const { data: latest } = await axios.get(apiUrl("/latest"), {
+            timeout: 5000,
+          });
+          if (cancelled) return;
+          const extras = latest?.extras || {};
+          if (
+            extras.temp_c != null ||
+            extras.humidity_pct != null ||
+            extras.weather_condition != null
+          ) {
+            setW({
+              temp_c: extras.temp_c ?? null,
+              humidity_pct: extras.humidity_pct ?? null,
+              condition: extras.weather_condition ?? null,
+              source: "latest-capture",
+            });
+          }
+        } catch {
+          /* keep prior value */
+        }
       }
     }
 
-    poll();
-    const t = setInterval(poll, intervalMs);
+    pollWeather();
+    const t = setInterval(pollWeather, intervalMs);
     return () => {
       cancelled = true;
       clearInterval(t);
@@ -128,7 +144,7 @@ export default function TopBar({ onToggleSidebar }) {
     user?.municipalCouncil ||
     (user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Administrator");
 
-  const weather = useLatestWeather();
+  const weather = useCurrentWeather();
 
   const dateText = now.toLocaleDateString([], {
     month: "long",

@@ -29,12 +29,12 @@ import "./App.css";
  *   /dashboard            -> SystemDashboardPage      (dashboard shell)
  *   /system               -> redirects to /dashboard  (legacy alias)
  *   /live-monitoring      -> LiveMonitoringPage       (dashboard shell, map)
+ *   /hygienic-risk        -> HygienicRiskDashboardPage(dashboard shell)
  *   /bin-level-detector   -> HomePage                 (LegacyShell, upload UI;
  *                                                      formerly mounted at
  *                                                      /live-monitoring before
  *                                                      the rename)
  *   /bin-fill             -> redirects to /bin-level-detector (back-compat)
- *   /hygienic-risk        -> HygienicRiskDashboardPage          (LegacyShell)
  *   /map, /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
  *   /animals, /forecast, /alerts, /reports, /history,
  *   /devices, /bins                                             (StubPage)
@@ -106,11 +106,13 @@ export default function App() {
             element={<Navigate to="/bin-level-detector" replace />}
           />
 
-          {/* ---- Legacy pages (top NavBar) ---- */}
+          {/* ---- Risk Dashboard (dashboard shell, redesigned) ---- */}
           <Route
             path="/hygienic-risk"
-            element={legacyProtected(HygienicRiskDashboardPage)}
+            element={protectedShell(<HygienicRiskDashboardPage />)}
           />
+
+          {/* ---- Legacy pages (top NavBar) ---- */}
           <Route
             path="/mobile-report"
             element={legacyProtected(MobileReportPage)}

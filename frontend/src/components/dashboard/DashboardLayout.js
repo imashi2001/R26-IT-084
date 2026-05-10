@@ -14,11 +14,12 @@ import TopBar from "./TopBar";
  *
  * - Sidebar collapses on mobile via the menu button in TopBar (state held here
  *   so children don't have to thread a prop).
- * - Light backdrop (`bg-slate-50`) chosen to match the mockup; the dark slate
- *   theme is reserved for the existing /hygienic-risk page so visuals stay
- *   distinct between Imashi's risk dashboard and the system dashboard.
+ * - Light backdrop (`bg-slate-50`) chosen to match the mockup. The new
+ *   risk dashboard, live monitoring map, and stub pages all opt into this
+ *   shell so the whole admin surface looks consistent.
  * - Layout intentionally does NOT render the legacy `<NavBar />`. Pages that
- *   want NavBar should not use this component.
+ *   want NavBar should not use this component (only the Bin Level Detector
+ *   upload UI and a couple of teammate-owned pages still rely on it).
  */
 
 export default function DashboardLayout({ children }) {

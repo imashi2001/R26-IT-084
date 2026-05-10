@@ -11,6 +11,12 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { apiUrl } from "../utils/apiBase";
+import {
+  normalizeFill,
+  effectiveFillTier,
+  fillLabel,
+  markerFillFromBin,
+} from "../utils/fillTier";
 
 const NEAREST_FILL_LEVELS = new Set(["empty", "half"]);
 
@@ -18,37 +24,6 @@ const TILE_URL =
   "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const TILE_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
-
-function normalizeFill(level) {
-  return (level || "").trim().toLowerCase();
-}
-
-/**
- * Pin colors and % bands stay aligned: <40 → empty, <70 → half, else overflow.
- * When the backend only stores risk-derived fill_percentage, latest_fill_level may be empty.
- */
-function tierFromFillPercentage(pct) {
-  const p = Number(pct);
-  if (!Number.isFinite(p)) return null;
-  if (p < 40) return "empty";
-  if (p < 70) return "half";
-  return "overflow";
-}
-
-/** Single source of truth for badges, eligibility, and marker tint fallbacks. */
-function effectiveFillTier(b) {
-  const lvl = normalizeFill(b.latest_fill_level);
-  if (lvl === "empty" || lvl === "half" || lvl === "overflow") return lvl;
-  const inferred = tierFromFillPercentage(b.latest_fill_percentage);
-  if (inferred) return inferred;
-  return lvl || "unknown";
-}
-
-function fillLabel(level) {
-  const k = normalizeFill(level);
-  if (!k) return "Unknown";
-  return k.charAt(0).toUpperCase() + k.slice(1);
-}
 
 async function fetchWalkingRoute(from, to) {
   const [lat1, lng1] = from;
@@ -76,20 +51,6 @@ async function fetchWalkingRoute(from, to) {
   } catch {
     return straight();
   }
-}
-
-function fillColor(level) {
-  const key = (level || "").toLowerCase();
-  if (key === "overflow") return "#f87171";
-  if (key === "half") return "#fbbf24";
-  if (key === "empty") return "#34d399";
-  return "#818cf8";
-}
-
-function markerFillFromBin(b) {
-  const tier = effectiveFillTier(b);
-  if (tier !== "unknown") return fillColor(tier);
-  return "#818cf8";
 }
 
 function IconRefresh() {

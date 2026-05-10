@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import ImageCanvas from "../components/ImageCanvas";
 import PredictionList from "../components/PredictionList";
@@ -8,7 +8,9 @@ import {
   getApiBaseUrl,
   getPredictUrl,
   isApiUrlPointingAtFrontend,
+  apiUrl,
 } from "../utils/apiBase";
+import { normalizeFill, effectiveFillTier, fillLabel } from "../utils/fillTier";
 
 function predictionsFromPredictResponse(data) {
   if (Array.isArray(data)) return data;
@@ -56,6 +58,55 @@ export default function HomePage() {
   const [dragOver, setDragOver] = useState(false);
   const [esp32Url, setEsp32Url] = useState(DEFAULT_ESP32_URL);
   const fileInputRef = useRef(null);
+
+  const [binsSnapshot, setBinsSnapshot] = useState([]);
+  const [binsSnapLoading, setBinsSnapLoading] = useState(false);
+  const [binsSnapError, setBinsSnapError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBinsFill() {
+      setBinsSnapLoading(true);
+      setBinsSnapError(null);
+      try {
+        let url;
+        try {
+          url = apiUrl("/devices/map");
+        } catch {
+          if (!cancelled) {
+            setBinsSnapshot([]);
+            setBinsSnapError(null);
+          }
+          return;
+        }
+        const res = await fetch(url);
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (!cancelled) {
+            setBinsSnapError(body.error || `HTTP ${res.status}`);
+            setBinsSnapshot([]);
+          }
+          return;
+        }
+        if (!cancelled) {
+          setBinsSnapshot(Array.isArray(body.bins) ? body.bins : []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setBinsSnapError(e.message || "Could not load bins.");
+          setBinsSnapshot([]);
+        }
+      } finally {
+        if (!cancelled) setBinsSnapLoading(false);
+      }
+    }
+
+    loadBinsFill();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const mixedContentBlocked =
     typeof window !== "undefined" &&
@@ -225,8 +276,55 @@ export default function HomePage() {
         </p>
       </header>
 
-      <main className="main">
-        {!imageUrl ? (
+      <main className="main home-main">
+        <div className="home-main-column">
+          <section className="home-bins-overview" aria-label="Bins latest fill">
+          <div className="home-bins-overview-head">
+            <h2 className="home-bins-overview-title">Bins — latest fill</h2>
+            <Link to="/map" className="home-bins-overview-maplink">
+              Map →
+            </Link>
+          </div>
+          {binsSnapLoading ? (
+            <p className="home-bins-overview-muted">Loading bins…</p>
+          ) : null}
+          {binsSnapError ? (
+            <p className="home-bins-overview-warn">{binsSnapError}</p>
+          ) : null}
+          {!binsSnapLoading && !binsSnapError && binsSnapshot.length === 0 ? (
+            <p className="home-bins-overview-muted">
+              No bins on the map yet. Add bins in Admin or check the backend connection.
+            </p>
+          ) : null}
+          {binsSnapshot.length > 0 ? (
+            <ul className="home-bins-overview-list">
+              {binsSnapshot.map((b) => {
+                const tier = effectiveFillTier(b);
+                const tierKey = normalizeFill(tier) || "unknown";
+                const pct =
+                  b.latest_fill_percentage != null &&
+                  Number.isFinite(Number(b.latest_fill_percentage))
+                    ? `${Math.round(Number(b.latest_fill_percentage))}%`
+                    : "—";
+                return (
+                  <li key={b.id}>
+                    <Link to={`/bins/${b.id}`} className="home-bins-overview-row">
+                      <span className="home-bins-overview-name">{b.name}</span>
+                      <span
+                        className={`map-fill-badge map-fill-badge--sm map-fill-badge--${tierKey}`}
+                      >
+                        {fillLabel(tier === "unknown" ? "" : tier)}
+                      </span>
+                      <span className="home-bins-overview-pct">{pct}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </section>
+
+          {!imageUrl ? (
           <div className="drop-zone-wrapper">
             <div
               className={`drop-zone ${dragOver ? "drag-over" : ""}`}
@@ -295,6 +393,7 @@ export default function HomePage() {
             )}
           </div>
         )}
+        </div>
       </main>
     </div>
   );

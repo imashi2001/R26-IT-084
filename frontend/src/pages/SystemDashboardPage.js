@@ -5,16 +5,26 @@ import LatestCaptureCard from "../components/dashboard/cards/LatestCaptureCard";
 import BinFillLevelCard from "../components/dashboard/cards/BinFillLevelCard";
 import WasteClassificationCard from "../components/dashboard/cards/WasteClassificationCard";
 import AnimalDetectionCard from "../components/dashboard/cards/AnimalDetectionCard";
+import HygienicRiskLevelCard from "../components/dashboard/cards/HygienicRiskLevelCard";
+import RottingPredictionCard from "../components/dashboard/cards/RottingPredictionCard";
+import EnvironmentalConditionsCard from "../components/dashboard/cards/EnvironmentalConditionsCard";
+import NextCollectionCard from "../components/dashboard/cards/NextCollectionCard";
+import LiveBinMapCard from "../components/dashboard/cards/LiveBinMapCard";
+import RecentAlertsCard from "../components/dashboard/cards/RecentAlertsCard";
+import RiskTrend7dCard from "../components/dashboard/cards/RiskTrend7dCard";
 import useSystemSnapshot from "../hooks/useSystemSnapshot";
+import useCaptureHistory from "../hooks/useCaptureHistory";
 
 /*
  * System dashboard layout (currently mounted at /system; promoted to / in PR 6).
  *
- * Row 1 is built. Rows 2-3 land in PR 4-5; left as a placeholder strip so the
- * page renders at full height with a clear roadmap.
+ * All 11 cards wired. PR 6 will swap routes so this page lives at `/` and the
+ * old upload UI moves to `/live-monitoring`, plus add stub pages for the
+ * sidebar items that currently 404.
  */
 export default function SystemDashboardPage() {
   const { data: snapshot, loading, error, stale, refresh } = useSystemSnapshot();
+  const history = useCaptureHistory();
 
   const banner = useMemo(() => {
     if (loading) return null;
@@ -73,10 +83,31 @@ export default function SystemDashboardPage() {
         <AnimalDetectionCard snapshot={snapshot} />
       </div>
 
-      {/* Row 2 + 3 placeholders */}
-      <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-ink-500">
-        Row 2 (Risk Level · Rotting · Environmental · Next Collection) lands in
-        PR 4. Row 3 (Live Bin Map · Recent Alerts · Risk Trend) lands in PR 5.
+      {/* Row 2 - Risk + environment */}
+      <div className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+        <HygienicRiskLevelCard snapshot={snapshot} />
+        <RottingPredictionCard snapshot={snapshot} />
+        <EnvironmentalConditionsCard
+          snapshot={snapshot}
+          history={history.last24h}
+          dbDisabled={history.dbDisabled}
+        />
+        <NextCollectionCard snapshot={snapshot} />
+      </div>
+
+      {/* Row 3 - Fleet view (map spans 2 cols on lg+) */}
+      <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="lg:col-span-2 xl:col-span-2">
+          <LiveBinMapCard />
+        </div>
+        <RecentAlertsCard
+          history={history.captures}
+          dbDisabled={history.dbDisabled}
+        />
+        <RiskTrend7dCard
+          history={history.last7d}
+          dbDisabled={history.dbDisabled}
+        />
       </div>
     </DashboardLayout>
   );

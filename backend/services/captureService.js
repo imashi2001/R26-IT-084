@@ -66,7 +66,12 @@ async function saveCaptureWithPredictions({
   });
 }
 
-async function listCaptures({ limit = 20, offset = 0, userId = null } = {}) {
+async function listCaptures({
+  limit = 20,
+  offset = 0,
+  userId = null,
+  deviceId = null,
+} = {}) {
   const models = ensureModels();
   if (!models) return [];
 
@@ -74,6 +79,9 @@ async function listCaptures({ limit = 20, offset = 0, userId = null } = {}) {
 
   const where = {};
   if (userId !== null) where.user_id = userId;
+  if (deviceId !== null && Number.isFinite(Number(deviceId))) {
+    where.device_id = Number(deviceId);
+  }
 
   const rows = await Capture.findAll({
     where,

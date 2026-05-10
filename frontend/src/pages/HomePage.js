@@ -211,10 +211,17 @@ export default function HomePage() {
         <p className="subtitle">
           Upload an image for waste + animal analysis (YOLO-style overlays below).
         </p>
-        <p className="subtitle dashboard-shortcut">
+        <p className="subtitle dashboard-shortcut-row">
           <Link to="/hygienic-risk" className="dashboard-shortcut-link">
-            Open hygienic risk dashboard →
+            Hygienic risk dashboard →
           </Link>
+          <span className="dashboard-shortcut-sep">·</span>
+          <Link to="/mobile-report" className="dashboard-shortcut-link">
+            Phone camera report →
+          </Link>
+        </p>
+        <p className="subtitle esp32-status-note">
+          Primary monitoring: ESP32-CAM + laptop bridge (same backend). Manual fallback: phone report link above.
         </p>
       </header>
 

@@ -17,6 +17,9 @@ export default function NavBar() {
         <NavLink className="nav-link" to="/hygienic-risk">
           Risk dashboard
         </NavLink>
+        <NavLink className="nav-link" to="/mobile-report">
+          Phone camera
+        </NavLink>
         <NavLink className="nav-link" to="/map">
           Map
         </NavLink>

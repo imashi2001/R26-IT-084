@@ -12,7 +12,8 @@
  *   model                  (string, optional)       "waste" | "animal" — when set,
  *                                                   call only that one service
  *                                                   (back-compat with single-model clients)
- *   lat / lon              (number, optional)       override weather location
+ *   lat / lon              (number, optional)       weather + stored on capture
+ *   source_type            (string, optional)       esp32 | mobile | admin
  *
  * Response (when both models run):
  *   {
@@ -36,6 +37,11 @@ const latestState = require("../services/latestState");
 const deviceService = require("../services/deviceService");
 const weatherService = require("../services/weatherService");
 const { computeRisk } = require("../services/riskEngine");
+const {
+  inferSourceType,
+  deriveFillPercentage,
+  derivePredictionClass,
+} = require("../utils/predictCaptureMeta");
 
 function trimBridgeInstanceId(body) {
   if (
@@ -48,7 +54,7 @@ function trimBridgeInstanceId(body) {
   return String(body.bridge_instance_id).trim();
 }
 
-async function resolveDeviceId(body) {
+async function resolveDeviceId(body, { bypassBridgeCheck = false } = {}) {
   const bridgeRaw = trimBridgeInstanceId(body);
 
   const rawEsp =
@@ -74,7 +80,7 @@ async function resolveDeviceId(body) {
     const bound = device.bridge_instance_id
       ? String(device.bridge_instance_id).trim()
       : "";
-    if (bound && bound !== bridgeRaw) {
+    if (bound && bound !== bridgeRaw && !bypassBridgeCheck) {
       return null;
     }
     return id;
@@ -150,10 +156,19 @@ async function predict(req, res, next) {
     }
 
     const body = req.body || {};
+    const sourceType = inferSourceType(body);
+    const bypassBridge =
+      sourceType === "mobile" || sourceType === "admin";
+
     const bridgeInstanceId =
       trimBridgeInstanceId(body) !== ""
         ? trimBridgeInstanceId(body)
         : null;
+
+    const reportLat = Number(body.lat);
+    const reportLon = Number(body.lon);
+    const captureLat = Number.isFinite(reportLat) ? reportLat : null;
+    const captureLon = Number.isFinite(reportLon) ? reportLon : null;
 
     // Allow back-compat: model=waste|animal calls just one service.
     const requestedModel = (body.model || "").toString().trim().toLowerCase();
@@ -196,7 +211,9 @@ async function predict(req, res, next) {
       });
     }
 
-    const deviceId = await resolveDeviceId(body);
+    const deviceId = await resolveDeviceId(body, {
+      bypassBridgeCheck: bypassBridge,
+    });
     const device = deviceId ? await deviceService.getDeviceById(deviceId) : null;
 
     const { lat, lon, source: locationSource } = pickWeatherLocation(
@@ -242,6 +259,15 @@ async function predict(req, res, next) {
       temp_c: weather?.temp_c ?? null,
       humidity_pct: weather?.humidity_pct ?? null,
       weather_condition: weather?.condition ?? null,
+      source_type: sourceType,
+      latitude: captureLat,
+      longitude: captureLon,
+      fill_percentage: deriveFillPercentage(risk),
+      prediction_class: derivePredictionClass(
+        waste,
+        animalsForEngine.length,
+        risk
+      ),
     };
 
     const predictionsToStore = predictionsToPersist(animal);
@@ -295,6 +321,7 @@ async function predict(req, res, next) {
           }
         : null,
       bridge_instance_id: bridgeInstanceId,
+      source_type: sourceType,
     });
   } catch (err) {
     return next(err);

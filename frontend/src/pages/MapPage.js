@@ -65,6 +65,17 @@ function fillColor(level) {
   return "#818cf8";
 }
 
+function markerFillFromBin(b) {
+  const pct = b.latest_fill_percentage;
+  if (pct != null && Number.isFinite(Number(pct))) {
+    const p = Number(pct);
+    if (p < 40) return "#34d399";
+    if (p < 70) return "#fbbf24";
+    return "#f87171";
+  }
+  return fillColor(b.latest_fill_level);
+}
+
 function IconRefresh() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
@@ -331,16 +342,34 @@ export default function MapPage() {
                 pathOptions={{
                   color: "rgba(255,255,255,0.95)",
                   weight: 2,
-                  fillColor: fillColor(b.latest_fill_level),
+                  fillColor: markerFillFromBin(b),
                   fillOpacity: 0.95,
                 }}
               >
                 <Popup className="map-popup-root">
                   <div className="map-popup-card">
+                    {b.latest_image_url ? (
+                      <img
+                        className="map-popup-thumb"
+                        src={b.latest_image_url}
+                        alt=""
+                      />
+                    ) : null}
                     <strong className="map-popup-title">{b.name}</strong>
                     <span className={`map-fill-badge map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}>
                       {fillLabel(b.latest_fill_level)}
                     </span>
+                    {b.latest_fill_percentage != null &&
+                    Number.isFinite(Number(b.latest_fill_percentage)) ? (
+                      <span className="map-popup-muted">
+                        Fill estimate: {Math.round(Number(b.latest_fill_percentage))}%
+                      </span>
+                    ) : null}
+                    {b.latest_source_type ? (
+                      <span className="map-popup-muted">
+                        Source: {b.latest_source_type}
+                      </span>
+                    ) : null}
                     {b.latest_captured_at ? (
                       <span className="map-popup-muted">{b.latest_captured_at}</span>
                     ) : null}
@@ -401,11 +430,21 @@ export default function MapPage() {
           {bins.map((b) => (
             <li key={b.id}>
               <Link className="bin-chip" to={`/bins/${b.id}`}>
-                <span className="bin-chip-name">{b.name}</span>
-                <span
-                  className={`map-fill-badge map-fill-badge--sm map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}
-                >
-                  {fillLabel(b.latest_fill_level)}
+                <div className="bin-chip-row">
+                  <span className="bin-chip-name">{b.name}</span>
+                  <span
+                    className={`map-fill-badge map-fill-badge--sm map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}
+                  >
+                    {fillLabel(b.latest_fill_level)}
+                  </span>
+                </div>
+                <span className="bin-chip-meta">
+                  {b.latest_fill_percentage != null &&
+                  Number.isFinite(Number(b.latest_fill_percentage))
+                    ? `${Math.round(Number(b.latest_fill_percentage))}%`
+                    : "—"}
+                  {" · "}
+                  {b.latest_source_type || "—"}
                 </span>
               </Link>
             </li>

@@ -42,6 +42,11 @@ module.exports = (sequelize) =>
         type: DataTypes.STRING(120),
         allowNull: true,
       },
+      status: {
+        type: DataTypes.STRING(24),
+        allowNull: false,
+        defaultValue: "active",
+      },
     },
     {
       tableName: "devices",

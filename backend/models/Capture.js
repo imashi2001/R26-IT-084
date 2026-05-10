@@ -87,6 +87,27 @@ module.exports = (sequelize) =>
         type: DataTypes.STRING(80),
         allowNull: true,
       },
+
+      source_type: {
+        type: DataTypes.STRING(16),
+        allowNull: true,
+      },
+      latitude: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+      },
+      longitude: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+      },
+      fill_percentage: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+      },
+      prediction_class: {
+        type: DataTypes.STRING(160),
+        allowNull: true,
+      },
     },
     {
       tableName: "captures",

@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const deviceService = require("../services/deviceService");
+const captureService = require("../services/captureService");
 const latestState = require("../services/latestState");
 const { deriveFillLevel } = require("../utils/fillLevel");
 const { haversineMeters } = require("../utils/geo");
@@ -56,6 +57,18 @@ function normalizePredictionsForApi(rows) {
   return rows.map(predictionToApiShape);
 }
 
+function normalizeDeviceStatus(raw) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (["active", "inactive", "maintenance"].includes(s)) return s;
+  return null;
+}
+
+function clampIntQuery(value, min, max, fallback) {
+  const n = parseInt(value, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 async function list(req, res, next) {
   try {
     if (!dbRequired(res)) return;
@@ -94,6 +107,7 @@ async function create(req, res, next) {
         body.bridge_instance_id != null
           ? String(body.bridge_instance_id).trim() || null
           : null,
+      status: normalizeDeviceStatus(body.status) || "active",
     };
 
     if (
@@ -178,6 +192,15 @@ async function patch(req, res, next) {
           ? null
           : String(body.bridge_instance_id).trim();
     }
+    if (body.status !== undefined) {
+      const st = normalizeDeviceStatus(body.status);
+      if (!st) {
+        return res.status(400).json({
+          error: "status must be active, inactive, or maintenance",
+        });
+      }
+      patch.status = st;
+    }
 
     if (
       patch.latitude != null &&
@@ -236,6 +259,7 @@ async function mapPins(req, res, next) {
 
     for (const d of devices) {
       const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
+      const mem = latestState.getLatestForDevice(d.id);
 
       const fill = latestCap?.fill_level || null;
       const capturedAt = latestCap?.captured_at || null;
@@ -244,12 +268,9 @@ async function mapPins(req, res, next) {
       if (latestCap?.image_buffer) {
         const ts = encodeURIComponent(capturedAt || "");
         latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
-      } else {
-        const mem = latestState.getLatestForDevice(d.id);
-        if (mem?.timestamp) {
-          const ts = encodeURIComponent(mem.timestamp);
-          latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
-        }
+      } else if (mem?.timestamp) {
+        const ts = encodeURIComponent(mem.timestamp);
+        latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
       }
 
       bins.push({
@@ -265,6 +286,11 @@ async function mapPins(req, res, next) {
         latest_image_url,
         latest_risk_level: latestCap?.risk_level || null,
         latest_waste_label: latestCap?.waste_label || null,
+        latest_source_type: latestCap?.source_type || mem?.extras?.source_type || null,
+        latest_fill_percentage:
+          latestCap?.fill_percentage != null
+            ? latestCap.fill_percentage
+            : mem?.extras?.fill_percentage ?? null,
       });
     }
 
@@ -326,6 +352,11 @@ async function nearest(req, res, next) {
           latest_captured_at: capturedAt,
           latest_image_url,
           latest_risk_level: latestCap?.risk_level || null,
+          latest_source_type: latestCap?.source_type || null,
+          latest_fill_percentage:
+            latestCap?.fill_percentage != null
+              ? latestCap.fill_percentage
+              : null,
         };
       })
     );
@@ -333,6 +364,55 @@ async function nearest(req, res, next) {
     scored.sort((a, b) => a.distance_meters - b.distance_meters);
 
     return res.json({ results: scored.slice(0, limit) });
+  } catch (e) {
+    return next(e);
+  }
+}
+
+async function listCapturesForDevice(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "Invalid device id" });
+    }
+
+    const dev = await deviceService.getDeviceById(id);
+    if (!dev) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    const limit = clampIntQuery(req.query.limit, 1, 100, 30);
+    const offset = clampIntQuery(req.query.offset, 0, 1_000_000, 0);
+
+    const rows = await captureService.listCaptures({
+      deviceId: id,
+      limit,
+      offset,
+    });
+
+    const sanitized = rows.map((c) => {
+      const buf = c.image_buffer;
+      const has_image = Boolean(
+        buf &&
+          (Buffer.isBuffer(buf)
+            ? buf.length > 0
+            : typeof buf === "string"
+              ? buf.length > 0
+              : ArrayBuffer.isView(buf) && buf.byteLength > 0)
+      );
+      const { image_buffer: _ib, ...rest } = c;
+      return { ...rest, has_image };
+    });
+
+    return res.json({
+      device_id: id,
+      count: sanitized.length,
+      limit,
+      offset,
+      captures: sanitized,
+    });
   } catch (e) {
     return next(e);
   }
@@ -376,6 +456,11 @@ async function latestDetail(req, res, next) {
         temp_c: capture.temp_c,
         humidity_pct: capture.humidity_pct,
         weather_condition: capture.weather_condition,
+        source_type: capture.source_type,
+        capture_latitude: capture.latitude,
+        capture_longitude: capture.longitude,
+        fill_percentage: capture.fill_percentage,
+        prediction_class: capture.prediction_class,
       };
     }
 
@@ -457,6 +542,7 @@ module.exports = {
   getOne,
   mapPins,
   nearest,
+  listCapturesForDevice,
   latestDetail,
   latestImage,
 };

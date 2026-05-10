@@ -17,12 +17,12 @@ router.get("/", (_req, res) => {
     health: "/health",
     auth: "POST /auth/register, POST /auth/login",
     predict:
-      "POST /predict (multipart: image, bridge_instance_id, optional esp32_id, optional model=waste|animal)",
+      "POST /predict (multipart: image, bridge_instance_id, optional esp32_id/device_id, source_type, lat/lon, optional model=waste|animal)",
     forecast:
       "GET /forecast?lat=&lon=&hours=24, GET /forecast/:deviceId?hours=24",
-    captures: "GET /captures",
+    captures: "GET /captures, GET /captures/:id, GET /captures/:id/image",
     devices:
-      "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest",
+      "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures",
     geo: "GET /geo/search?q=",
     latest: "GET /latest (JSON) and GET /latest/image (jpeg)",
   });

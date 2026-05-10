@@ -15,3 +15,8 @@ animal_detection/yolov8n.pt
 # Per-host stable device id (laptop bridge / dyno)
 backend/.device_id
 .bridge_id
+
+# Allow the two deployable copies under services/ even though *.h5 / *.pt
+# are otherwise globally ignored. Keep a single weight per service folder.
+!services/waste-api/model/waste_classification_model.h5
+!services/animal-api/model/best.pt

@@ -1,16 +1,44 @@
-# React + Vite
+# frontend (React, CRA)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Single-page dashboard for the **Vision-Based Hygienic Risk Prediction and
+Animal Deterrence System**. Built on **Create React App** (`react-scripts`)
+to mirror the `test` branch's layout so a future merge stays clean.
 
-Currently, two official plugins are available:
+## Folder structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```
+frontend/
+├── package.json            CRA + axios + leaflet + react-router
+├── public/
+│   └── index.html          CRA template (no <script> tag - injected at build)
+├── src/
+│   ├── index.js            entry (ReactDOM.createRoot)
+│   ├── index.css           global styles
+│   ├── App.js              the main dashboard (single page, inline styles)
+│   ├── App.css             stub (App.js uses inline styles)
+│   ├── components/         reusable UI pieces
+│   ├── context/            placeholder for AuthContext etc.
+│   ├── pages/              placeholder for multi-page router
+│   └── utils/
+│       └── apiBase.js      backend URL helpers + axios fetchers
+└── README.md
+```
 
-## React Compiler
+## Run
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+cd frontend
+npm install
+npm start          # CRA dev server on http://localhost:3000
+```
 
-## Expanding the ESLint configuration
+CRA's `package.json` proxy is set to `http://localhost:5000` so any unmatched
+request (e.g. `/predict`, `/forecast`) is forwarded to the Express backend
+during development. For production builds set `REACT_APP_API_URL` to the
+deployed backend URL — `src/utils/apiBase.js` resolves it automatically.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Build
+
+```powershell
+npm run build      # static bundle in build/
+```

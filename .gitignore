@@ -16,6 +16,12 @@ animal_detection/yolov8n.pt
 backend/.device_id
 .bridge_id
 
+# Node.js (Express backend)
+node_modules/
+backend/.env
+*.log
+npm-debug.log*
+
 # Allow the two deployable copies under services/ even though *.h5 / *.pt
 # are otherwise globally ignored. Keep a single weight per service folder.
 !services/waste-api/model/waste_classification_model.h5

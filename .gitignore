@@ -11,3 +11,7 @@ runs/
 animal_detection/runs/
 animal_detection/models/
 animal_detection/yolov8n.pt
+
+# Per-host stable device id (laptop bridge / dyno)
+backend/.device_id
+.bridge_id

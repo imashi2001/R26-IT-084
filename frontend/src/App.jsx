@@ -1,214 +1,502 @@
-import { useEffect, useMemo, useState } from 'react'
-import { fetchMetrics, predictAnimal, predictWaste } from './api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  analyzeCapture,
+  fetchAnalyzeHistory,
+  fetchBins,
+  fetchMetrics,
+} from './api'
+
+const RISK_THEMES = {
+  LOW: { bg: '#dcfce7', fg: '#166534', border: '#86efac', label: 'LOW' },
+  MEDIUM: { bg: '#fef3c7', fg: '#92400e', border: '#fcd34d', label: 'MEDIUM' },
+  HIGH: { bg: '#ffedd5', fg: '#9a3412', border: '#fdba74', label: 'HIGH' },
+  CRITICAL: { bg: '#fee2e2', fg: '#991b1b', border: '#fca5a5', label: 'CRITICAL' },
+}
+
+const card = {
+  border: '1px solid #1f2937',
+  background: '#0f172a',
+  color: '#e2e8f0',
+  borderRadius: 14,
+  padding: 16,
+}
+
+const subtle = { color: '#94a3b8' }
+
+function formatDateTime(iso) {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    return d.toLocaleString()
+  } catch {
+    return iso
+  }
+}
 
 function App() {
+  const [bins, setBins] = useState([])
+  const [binId, setBinId] = useState('')
   const [metrics, setMetrics] = useState(null)
-  const [metricsErr, setMetricsErr] = useState('')
+  const [now, setNow] = useState(new Date())
 
-  const [wasteFile, setWasteFile] = useState(null)
-  const [wastePreview, setWastePreview] = useState('')
-  const [wasteBusy, setWasteBusy] = useState(false)
-  const [wasteResult, setWasteResult] = useState(null)
-  const [wasteErr, setWasteErr] = useState('')
-
-  const [animalFile, setAnimalFile] = useState(null)
-  const [animalPreview, setAnimalPreview] = useState('')
-  const [animalBusy, setAnimalBusy] = useState(false)
-  const [animalResult, setAnimalResult] = useState(null)
-  const [animalErr, setAnimalErr] = useState('')
+  const [file, setFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+  const [history, setHistory] = useState([])
+  const previewRef = useRef('')
 
   useEffect(() => {
-    fetchMetrics()
-      .then(setMetrics)
-      .catch((e) => setMetricsErr(e?.message || 'Failed to load metrics'))
+    const t = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(t)
   }, [])
 
-  const wasteConfidencePct = useMemo(() => {
-    if (!wasteResult) return null
-    const p = wasteResult.organic_probability
-    const conf = wasteResult.predicted_label === 'organic' ? p : 1 - p
-    return (conf * 100).toFixed(1)
-  }, [wasteResult])
+  useEffect(() => {
+    fetchBins().then((d) => setBins(d.bins || [])).catch(() => setBins([]))
+    fetchMetrics().then(setMetrics).catch(() => setMetrics(null))
+    fetchAnalyzeHistory()
+      .then((d) => setHistory(d.history || []))
+      .catch(() => setHistory([]))
+  }, [])
 
-  function pickWaste(f) {
+  function pickFile(f) {
     if (!f) return
-    setWasteFile(f)
-    setWasteResult(null)
-    setWasteErr('')
-    setWastePreview((u) => {
-      if (u) URL.revokeObjectURL(u)
-      return URL.createObjectURL(f)
-    })
+    setFile(f)
+    setResult(null)
+    setError('')
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+    const url = URL.createObjectURL(f)
+    previewRef.current = url
+    setPreviewUrl(url)
   }
 
-  function pickAnimal(f) {
-    if (!f) return
-    setAnimalFile(f)
-    setAnimalResult(null)
-    setAnimalErr('')
-    setAnimalPreview((u) => {
-      if (u) URL.revokeObjectURL(u)
-      return URL.createObjectURL(f)
-    })
-  }
-
-  async function runWaste() {
-    if (!wasteFile) return
-    setWasteBusy(true)
-    setWasteErr('')
-    setWasteResult(null)
+  async function runAnalyze() {
+    if (!file) return
+    setBusy(true)
+    setError('')
     try {
-      setWasteResult(await predictWaste(wasteFile))
+      const res = await analyzeCapture(file, { binId: binId || undefined })
+      setResult(res)
+      const next = await fetchAnalyzeHistory().catch(() => null)
+      if (next?.history) setHistory(next.history)
     } catch (e) {
-      setWasteErr(e?.response?.data?.detail || e?.message || 'Waste predict failed')
+      setError(e?.response?.data?.detail || e?.message || 'Analyze failed')
     } finally {
-      setWasteBusy(false)
+      setBusy(false)
     }
   }
 
-  async function runAnimal() {
-    if (!animalFile) return
-    setAnimalBusy(true)
-    setAnimalErr('')
-    setAnimalResult(null)
-    try {
-      setAnimalResult(await predictAnimal(animalFile))
-    } catch (e) {
-      setAnimalErr(e?.response?.data?.detail || e?.message || 'Animal predict failed')
-    } finally {
-      setAnimalBusy(false)
-    }
-  }
+  const weather = result?.weather
+  const risk = result?.risk
+  const waste = result?.waste
+  const animals = result?.animals
+  const theme = risk ? RISK_THEMES[risk.level] || RISK_THEMES.LOW : null
 
-  const cardStyle = {
-    border: '1px solid #cbd5e1',
-    borderRadius: 12,
-    padding: 16,
-    background: '#fff',
-  }
+  const dateText = useMemo(() => now.toLocaleDateString(), [now])
+  const timeText = useMemo(
+    () => now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    [now],
+  )
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: 24, fontFamily: 'system-ui, sans-serif', color: '#0f172a' }}>
-      <h1 style={{ marginTop: 0 }}>R26-IT-084 — Models check</h1>
-      <p style={{ color: '#475569', marginTop: 0 }}>
-        Training metrics + quick inference for waste classification (MobileNetV2) and animal detection (YOLOv8).
-      </p>
-
-      <section style={{ ...cardStyle, marginBottom: 20 }}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>Reported accuracy (from training)</h2>
-        {metricsErr ? (
-          <p style={{ color: '#b91c1c' }}>{metricsErr}</p>
-        ) : !metrics ? (
-          <p style={{ color: '#64748b' }}>Loading…</p>
-        ) : (
-          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div>
-              <strong>Waste (test accuracy)</strong>
-              <div style={{ fontSize: 28, fontWeight: 700 }}>
-                {metrics.waste?.test_accuracy_percent ?? '—'}%
-              </div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>{metrics.waste?.note}</div>
-            </div>
-            <div>
-              <strong>Animal (val mAP@50)</strong>
-              {metrics.animal ? (
-                <>
-                  <div style={{ fontSize: 28, fontWeight: 700 }}>
-                    {(metrics.animal.map50 * 100).toFixed(2)}%
-                  </div>
-                  <div style={{ fontSize: 13, color: '#475569' }}>
-                    P {(metrics.animal.precision * 100).toFixed(1)}% · R{' '}
-                    {(metrics.animal.recall * 100).toFixed(1)}% · mAP@50–95{' '}
-                    {(metrics.animal.map50_95 * 100).toFixed(1)}%
-                  </div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>
-                    Epoch {metrics.animal.epoch} · {metrics.animal.source}
-                  </div>
-                </>
-              ) : (
-                <p style={{ color: '#b45309' }}>
-                  No results.csv found — train animal_detection or check path.
-                </p>
-              )}
-            </div>
+    <div
+      style={{
+        maxWidth: 1180,
+        margin: '0 auto',
+        padding: '24px 20px 48px',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        color: '#e2e8f0',
+      }}
+    >
+      <header
+        style={{
+          ...card,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <div style={{ ...subtle, fontSize: 12, letterSpacing: 1 }}>R26-IT-084</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>
+            Smart Waste &amp; Hygienic Risk Monitor
           </div>
+          <div style={{ ...subtle, fontSize: 12, marginTop: 4 }}>
+            ESP32-CAM &rarr; Laptop bridge &rarr; FastAPI on Railway
+          </div>
+        </div>
+        <div>
+          <div style={{ ...subtle, fontSize: 12 }}>Date / Time</div>
+          <div style={{ fontSize: 18, fontWeight: 600 }}>{dateText}</div>
+          <div style={{ ...subtle }}>{timeText}</div>
+        </div>
+        <div>
+          <div style={{ ...subtle, fontSize: 12 }}>Temperature</div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>
+            {weather ? `${weather.temp_c}°C` : '—'}
+          </div>
+          <div style={{ ...subtle, fontSize: 12 }}>
+            {weather?.source === 'openweather'
+              ? 'live (OpenWeather)'
+              : weather
+              ? 'stub fallback'
+              : 'no reading yet'}
+          </div>
+        </div>
+        <div>
+          <div style={{ ...subtle, fontSize: 12 }}>Humidity</div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>
+            {weather ? `${Math.round(weather.humidity_pct)}%` : '—'}
+          </div>
+          <div style={{ ...subtle, fontSize: 12 }}>{weather?.condition || '—'}</div>
+        </div>
+        <div>
+          <div style={{ ...subtle, fontSize: 12 }}>Device (PC ID)</div>
+          <div style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-all' }}>
+            {result?.device_id || '—'}
+          </div>
+          <div style={{ ...subtle, fontSize: 12 }}>
+            {result?.esp32_id ? `ESP32: ${result.esp32_id}` : 'ESP32: —'}
+          </div>
+        </div>
+      </header>
+
+      <section
+        style={{
+          ...card,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(280px, 1fr) minmax(220px, auto) auto',
+          gap: 12,
+          alignItems: 'end',
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <div style={{ ...subtle, fontSize: 12, marginBottom: 6 }}>
+            ESP32-CAM image (or upload manually)
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => pickFile(e.target.files?.[0])}
+            style={{ color: '#e2e8f0' }}
+          />
+        </div>
+        <div>
+          <div style={{ ...subtle, fontSize: 12, marginBottom: 6 }}>Bin (optional)</div>
+          <select
+            value={binId}
+            onChange={(e) => setBinId(e.target.value)}
+            style={{
+              padding: '8px 10px',
+              minWidth: 220,
+              background: '#020617',
+              color: '#e2e8f0',
+              border: '1px solid #334155',
+              borderRadius: 8,
+            }}
+          >
+            <option value="">— use default location —</option>
+            {bins.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.id} · {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={runAnalyze}
+          disabled={!file || busy}
+          style={{
+            padding: '10px 18px',
+            background: !file || busy ? '#334155' : '#22c55e',
+            color: '#0b1220',
+            border: 'none',
+            borderRadius: 10,
+            fontWeight: 700,
+            cursor: !file || busy ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {busy ? 'Analyzing…' : 'Analyze'}
+        </button>
+      </section>
+
+      {error ? (
+        <section style={{ ...card, marginBottom: 16, color: '#fecaca' }}>{error}</section>
+      ) : null}
+
+      <section
+        style={{
+          display: 'grid',
+          gap: 16,
+          gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1fr)',
+          marginBottom: 16,
+        }}
+      >
+        <div style={card}>
+          <div style={{ ...subtle, fontSize: 12, marginBottom: 8 }}>Captured image</div>
+          {previewUrl ? (
+            <img
+              alt="capture"
+              src={previewUrl}
+              style={{
+                width: '100%',
+                maxHeight: 320,
+                objectFit: 'contain',
+                borderRadius: 10,
+                background: '#020617',
+              }}
+            />
+          ) : (
+            <div style={{ ...subtle, padding: 32, textAlign: 'center' }}>
+              No image yet — pick a file and click Analyze.
+            </div>
+          )}
+          {result?.server_time ? (
+            <div style={{ ...subtle, fontSize: 12, marginTop: 8 }}>
+              Server time: {formatDateTime(result.server_time)}
+            </div>
+          ) : null}
+        </div>
+
+        <div style={card}>
+          <div style={{ ...subtle, fontSize: 12, marginBottom: 8 }}>
+            Animal detection output
+          </div>
+          {animals?.annotated_image_base64 ? (
+            <img
+              alt="annotated"
+              src={`data:image/jpeg;base64,${animals.annotated_image_base64}`}
+              style={{
+                width: '100%',
+                maxHeight: 320,
+                objectFit: 'contain',
+                borderRadius: 10,
+                background: '#020617',
+              }}
+            />
+          ) : (
+            <div style={{ ...subtle, padding: 32, textAlign: 'center' }}>
+              YOLO output will show after Analyze.
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section
+        style={{
+          display: 'grid',
+          gap: 16,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          marginBottom: 16,
+        }}
+      >
+        <div style={card}>
+          <div style={{ ...subtle, fontSize: 12 }}>Waste detection</div>
+          {waste ? (
+            <>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+                {waste.label === 'organic' ? 'Organic waste' : 'Non-organic waste'}
+              </div>
+              <div style={{ ...subtle, fontSize: 13, marginTop: 4 }}>
+                Confidence {waste.confidence_percent}% (organic prob{' '}
+                {Number(waste.organic_probability).toFixed(2)})
+              </div>
+            </>
+          ) : (
+            <div style={{ ...subtle, marginTop: 4 }}>—</div>
+          )}
+        </div>
+
+        <div style={card}>
+          <div style={{ ...subtle, fontSize: 12 }}>Animal detection</div>
+          {animals ? (
+            animals.no_animal_attacks ? (
+              <>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    marginTop: 4,
+                    color: '#86efac',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  NO ANIMAL ATTACKS DETECTED
+                </div>
+                <div style={{ ...subtle, fontSize: 12, marginTop: 4 }}>
+                  YOLO scanned at imgsz {animals.inference_imgsz}, conf ≥{' '}
+                  {animals.conf_threshold}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+                  {animals.detection_count} animal
+                  {animals.detection_count > 1 ? 's' : ''}
+                </div>
+                <ul style={{ margin: '6px 0 0 16px', padding: 0, fontSize: 13 }}>
+                  {animals.detections.map((d, i) => (
+                    <li key={`${d.class_name}-${i}`}>
+                      {d.class_name} · {(d.confidence * 100).toFixed(1)}%
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )
+          ) : (
+            <div style={{ ...subtle, marginTop: 4 }}>—</div>
+          )}
+        </div>
+
+        <div
+          style={{
+            ...card,
+            ...(theme && {
+              background: theme.bg,
+              color: theme.fg,
+              border: `1px solid ${theme.border}`,
+            }),
+          }}
+        >
+          <div style={{ fontSize: 12, opacity: 0.7 }}>Hygienic risk</div>
+          {risk ? (
+            <>
+              <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>
+                {risk.level}
+              </div>
+              <div style={{ fontSize: 13, marginTop: 4 }}>{risk.message}</div>
+              <div style={{ fontSize: 12, marginTop: 6, opacity: 0.7 }}>
+                Case: {risk.case}
+              </div>
+            </>
+          ) : (
+            <div style={{ ...subtle, marginTop: 4 }}>—</div>
+          )}
+        </div>
+
+        <div style={card}>
+          <div style={{ ...subtle, fontSize: 12 }}>Rotting prediction</div>
+          <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
+            {risk?.rotting_summary || '—'}
+          </div>
+          {risk?.thresholds ? (
+            <div style={{ ...subtle, fontSize: 12, marginTop: 6 }}>
+              MEDIUM thresholds: {risk.thresholds.HIGH_TEMP_C}°C,{' '}
+              {risk.thresholds.HIGH_HUMIDITY_PCT}% RH
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <section style={{ ...card, marginBottom: 16 }}>
+        <div style={{ ...subtle, fontSize: 12, marginBottom: 6 }}>
+          Alerts and recommendations
+        </div>
+        {risk ? (
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            <li style={{ marginBottom: 4 }}>{risk.alert}</li>
+            <li style={{ marginBottom: 4 }}>{risk.message}</li>
+            {risk.no_animal_attacks ? (
+              <li style={{ marginBottom: 4 }}>NO ANIMAL ATTACKS DETECTED</li>
+            ) : null}
+            {risk.rules_fired?.length ? (
+              <li>
+                Rules fired:{' '}
+                <code style={{ color: '#cbd5e1' }}>
+                  {risk.rules_fired.join(', ')}
+                </code>
+              </li>
+            ) : null}
+          </ul>
+        ) : (
+          <div style={subtle}>Run Analyze to see alerts.</div>
         )}
       </section>
 
-      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-        <section style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>1. Waste classification</h3>
-          <input type="file" accept="image/*" onChange={(e) => pickWaste(e.target.files?.[0])} />
-          {wastePreview ? (
-            <img alt="" src={wastePreview} style={{ width: '100%', maxHeight: 220, objectFit: 'contain', marginTop: 10 }} />
-          ) : null}
-          <button
-            type="button"
-            disabled={!wasteFile || wasteBusy}
-            onClick={runWaste}
-            style={{ marginTop: 10, padding: '8px 14px', width: '100%', cursor: wasteFile && !wasteBusy ? 'pointer' : 'not-allowed' }}
-          >
-            {wasteBusy ? 'Running…' : 'Run waste model'}
-          </button>
-          {wasteErr ? <p style={{ color: '#b91c1c', fontSize: 14 }}>{wasteErr}</p> : null}
-          {wasteResult ? (
-            <div style={{ marginTop: 10, fontSize: 14 }}>
-              <div>
-                <strong>Label:</strong> {wasteResult.predicted_label}
-              </div>
-              <div>
-                <strong>Organic probability:</strong> {Number(wasteResult.organic_probability).toFixed(4)}
-              </div>
-              <div>
-                <strong>Confidence:</strong> {wasteConfidencePct}%
-              </div>
-            </div>
-          ) : null}
-        </section>
+      <section style={{ ...card, marginBottom: 16 }}>
+        <div style={{ ...subtle, fontSize: 12, marginBottom: 6 }}>Risk history</div>
+        {history.length ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: '#94a3b8' }}>
+                  <th style={{ padding: '6px 8px' }}>Time</th>
+                  <th style={{ padding: '6px 8px' }}>Risk</th>
+                  <th style={{ padding: '6px 8px' }}>Case</th>
+                  <th style={{ padding: '6px 8px' }}>Waste</th>
+                  <th style={{ padding: '6px 8px' }}>Animals</th>
+                  <th style={{ padding: '6px 8px' }}>Temp</th>
+                  <th style={{ padding: '6px 8px' }}>Hum</th>
+                  <th style={{ padding: '6px 8px' }}>Bin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h, i) => {
+                  const t = RISK_THEMES[h.level] || RISK_THEMES.LOW
+                  return (
+                    <tr key={`${h.ts}-${i}`} style={{ borderTop: '1px solid #1e293b' }}>
+                      <td style={{ padding: '6px 8px' }}>{formatDateTime(h.ts)}</td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <span
+                          style={{
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            background: t.bg,
+                            color: t.fg,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {h.level}
+                        </span>
+                      </td>
+                      <td style={{ padding: '6px 8px', color: '#cbd5e1' }}>{h.case}</td>
+                      <td style={{ padding: '6px 8px' }}>{h.waste_label}</td>
+                      <td style={{ padding: '6px 8px' }}>{h.animal_count}</td>
+                      <td style={{ padding: '6px 8px' }}>
+                        {h.temp_c != null ? `${h.temp_c}°C` : '—'}
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        {h.humidity_pct != null ? `${Math.round(h.humidity_pct)}%` : '—'}
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>{h.bin_id || '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={subtle}>No analyses yet.</div>
+        )}
+      </section>
 
-        <section style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>2. Animal detection</h3>
-          <input type="file" accept="image/*" onChange={(e) => pickAnimal(e.target.files?.[0])} />
-          {animalPreview ? (
-            <img alt="" src={animalPreview} style={{ width: '100%', maxHeight: 160, objectFit: 'contain', marginTop: 10 }} />
-          ) : null}
-          <button
-            type="button"
-            disabled={!animalFile || animalBusy}
-            onClick={runAnimal}
-            style={{ marginTop: 10, padding: '8px 14px', width: '100%', cursor: animalFile && !animalBusy ? 'pointer' : 'not-allowed' }}
-          >
-            {animalBusy ? 'Running…' : 'Run animal model'}
-          </button>
-          {animalErr ? <p style={{ color: '#b91c1c', fontSize: 14 }}>{animalErr}</p> : null}
-          {animalResult ? (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 14, marginBottom: 8 }}>
-                <strong>Detections:</strong> {animalResult.detection_count}
-              </div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, maxHeight: 120, overflow: 'auto' }}>
-                {animalResult.detections?.map((d, i) => (
-                  <li key={`${d.class_name}-${i}`}>
-                    {d.class_name} · {(d.confidence * 100).toFixed(1)}%
-                  </li>
-                ))}
-              </ul>
-              {animalResult.annotated_image_base64 ? (
-                <img
-                  alt="YOLO output"
-                  src={`data:image/jpeg;base64,${animalResult.annotated_image_base64}`}
-                  style={{ width: '100%', marginTop: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </section>
-      </div>
-
-      <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 24 }}>
-        API proxied from Vite as <code>/api/*</code>. Start backend:{' '}
-        <code>uvicorn api:app --host 127.0.0.1 --port 8000</code> from <code>backend/</code>.
-      </p>
+      {metrics ? (
+        <details
+          style={{
+            ...card,
+            background: '#0b1220',
+            color: '#94a3b8',
+            fontSize: 13,
+          }}
+        >
+          <summary style={{ cursor: 'pointer', color: '#e2e8f0' }}>
+            Model info
+          </summary>
+          <div style={{ marginTop: 8 }}>
+            Waste test accuracy: {metrics.waste?.test_accuracy_percent ?? '—'}%
+            {metrics.animal ? (
+              <>
+                {' · '}Animal val mAP@50:{' '}
+                {(metrics.animal.map50 * 100).toFixed(2)}% (epoch {metrics.animal.epoch})
+              </>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
     </div>
   )
 }

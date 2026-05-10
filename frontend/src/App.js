@@ -35,7 +35,8 @@ import "./App.css";
  *                                                      /live-monitoring before
  *                                                      the rename)
  *   /bin-fill             -> redirects to /bin-level-detector (back-compat)
- *   /map, /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
+ *   /map                  -> MapPage                  (dashboard shell, collection map)
+ *   /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
  *   /animals, /forecast, /alerts, /reports, /history,
  *   /devices, /bins                                             (StubPage)
  *
@@ -46,8 +47,8 @@ import "./App.css";
  *                    `App.css`; we keep them visually identical.
  *
  *   DashboardLayout (used by SystemDashboardPage, LiveMonitoringPage,
- *                    StubPage) - sidebar + topbar shell, Tailwind-only,
- *                    isolated from legacy CSS.
+ *                    MapPage, StubPage, HomePage at /bin-level-detector, etc.)
+ *                    — sidebar + topbar shell, Tailwind-only, isolated from legacy CSS.
  */
 function LegacyShell({ children }) {
   return (
@@ -117,7 +118,7 @@ export default function App() {
             path="/mobile-report"
             element={legacyProtected(MobileReportPage)}
           />
-          <Route path="/map" element={legacyProtected(MapPage)} />
+          <Route path="/map" element={protectedShell(<MapPage />)} />
           <Route
             path="/bins/:id"
             element={protectedShell(

@@ -3,6 +3,7 @@ import {
   analyzeCapture,
   fetchAnalyzeHistory,
   fetchBins,
+  fetchForecast,
   fetchMetrics,
 } from './api'
 
@@ -45,6 +46,8 @@ function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [history, setHistory] = useState([])
+  const [forecast, setForecast] = useState(null)
+  const [forecastBusy, setForecastBusy] = useState(false)
   const previewRef = useRef('')
 
   useEffect(() => {
@@ -80,12 +83,31 @@ function App() {
       setResult(res)
       const next = await fetchAnalyzeHistory().catch(() => null)
       if (next?.history) setHistory(next.history)
+      await loadForecast()
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || 'Analyze failed')
     } finally {
       setBusy(false)
     }
   }
+
+  async function loadForecast() {
+    setForecastBusy(true)
+    try {
+      const f = await fetchForecast(binId || null, 24)
+      setForecast(f)
+    } catch {
+      setForecast(null)
+    } finally {
+      setForecastBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    loadForecast()
+    // re-run when bin changes; safe to ignore exhaustive-deps for binId-only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [binId])
 
   const weather = result?.weather
   const risk = result?.risk
@@ -414,6 +436,104 @@ function App() {
           </ul>
         ) : (
           <div style={subtle}>Run Analyze to see alerts.</div>
+        )}
+      </section>
+
+      <section style={{ ...card, marginBottom: 16 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <div style={{ ...subtle, fontSize: 12 }}>
+            Risk forecast — next {forecast?.hours_ahead || 24} hours
+            {forecast?.forecast?.slots?.[0]?.source === 'stub' ||
+            forecast?.forecast?.slots?.[0]?.source === 'stub-fallback' ? (
+              <span style={{ color: '#fcd34d', marginLeft: 8 }}>
+                (stub forecast — set OPENWEATHER_API_KEY for live)
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={loadForecast}
+            disabled={forecastBusy}
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              background: '#1f2937',
+              color: '#e2e8f0',
+              border: '1px solid #334155',
+              borderRadius: 6,
+              cursor: forecastBusy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {forecastBusy ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+        {forecast?.forecast?.slots?.length ? (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridAutoFlow: 'column',
+                gridAutoColumns: 'minmax(110px, 1fr)',
+                gap: 6,
+                overflowX: 'auto',
+                paddingBottom: 6,
+              }}
+            >
+              {forecast.forecast.slots.map((s, i) => {
+                const t = RISK_THEMES[s.level] || RISK_THEMES.LOW
+                const dt = new Date(
+                  s.ts_unix ? s.ts_unix * 1000 : s.ts,
+                )
+                const hh = dt.toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+                const dd = dt.toLocaleDateString([], {
+                  month: 'short',
+                  day: 'numeric',
+                })
+                return (
+                  <div
+                    key={`${s.ts}-${i}`}
+                    title={s.message}
+                    style={{
+                      background: t.bg,
+                      color: t.fg,
+                      border: `1px solid ${t.border}`,
+                      borderRadius: 10,
+                      padding: '8px 10px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>{dd}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{hh}</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, marginTop: 4 }}>
+                      {s.level}
+                    </div>
+                    <div style={{ fontSize: 11, marginTop: 2 }}>
+                      {Math.round(s.temp_c)}°C · {Math.round(s.humidity_pct)}%
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {forecast.forecast.summary?.recommendation ? (
+              <div style={{ ...subtle, fontSize: 13, marginTop: 8 }}>
+                {forecast.forecast.summary.recommendation}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div style={subtle}>No forecast data.</div>
         )}
       </section>
 

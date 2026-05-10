@@ -19,8 +19,9 @@ from PIL import Image
 
 from bins import get_bin, list_bins
 from devices import resolve_device_id, server_device_id
+from forecast import forecast_risk
 from risk import compute_risk
-from weather import get_current_weather
+from weather import get_current_weather, get_forecast
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BACKEND_DIR.parent
@@ -305,6 +306,56 @@ def risk_for_bin(bin_id: str) -> dict[str, Any]:
     if not snapshot:
         raise HTTPException(status_code=404, detail=f"Unknown bin: {bin_id}")
     return snapshot
+
+
+@app.get("/forecast/{bin_id}")
+def forecast_for_bin(bin_id: str, hours: int = 24) -> dict[str, Any]:
+    bin_doc = get_bin(bin_id)
+    if not bin_doc:
+        raise HTTPException(status_code=404, detail=f"Unknown bin: {bin_id}")
+
+    slots = get_forecast(float(bin_doc["lat"]), float(bin_doc["lng"]), hours_ahead=hours)
+    waste_reading = LATEST_WASTE.get(bin_id)
+    animal_reading = LATEST_ANIMALS.get(bin_id)
+    animals = (animal_reading or {}).get("detections", []) if animal_reading else []
+
+    forecast = forecast_risk(
+        forecast_slots=slots,
+        waste=waste_reading,
+        animals=animals,
+        bin_doc=bin_doc,
+    )
+
+    return {
+        "bin": bin_doc,
+        "hours_ahead": hours,
+        "latest_waste": waste_reading,
+        "latest_animals": animal_reading,
+        "forecast": forecast,
+    }
+
+
+@app.get("/forecast")
+def forecast_at_location(
+    lat: float | None = None,
+    lon: float | None = None,
+    hours: int = 24,
+) -> dict[str, Any]:
+    """Forecast at arbitrary coordinates (no bin context)."""
+    use_lat = lat if lat is not None else DEFAULT_WEATHER_LAT
+    use_lon = lon if lon is not None else DEFAULT_WEATHER_LON
+    slots = get_forecast(use_lat, use_lon, hours_ahead=hours)
+    forecast = forecast_risk(
+        forecast_slots=slots,
+        waste=None,
+        animals=[],
+        bin_doc=None,
+    )
+    return {
+        "location": {"lat": use_lat, "lon": use_lon},
+        "hours_ahead": hours,
+        "forecast": forecast,
+    }
 
 
 @app.get("/analyze/history")

@@ -23,7 +23,10 @@ DATA_YAML = HERE / "dataset" / "data.yaml"
 PROJECT_DIR = HERE / "runs" / "detect"
 RUN_NAME = "train"
 MODELS_DIR = HERE / "models"
-PRETRAINED = "yolov8n.pt"
+# yolov8n.pt is fast on CPU; for fewer dog/monkey confusions use e.g.
+#   set YOLO_PRETRAINED=yolov8s.pt
+# and train longer (YOLO_EPOCHS=50+).
+PRETRAINED = os.environ.get("YOLO_PRETRAINED", "yolov8n.pt")
 
 # Fast first-presentation config (CPU-friendly).
 # Increase EPOCHS (e.g. 50) and IMG_SIZE (e.g. 640) once you have a GPU

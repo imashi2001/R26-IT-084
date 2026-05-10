@@ -57,6 +57,53 @@ function normalizePredictionsForApi(rows) {
   return rows.map(predictionToApiShape);
 }
 
+/** Same tier bands as the React map/home UI (<40 empty, <70 half). */
+function inferredFillLevelFromPercentage(pct) {
+  if (pct == null || !Number.isFinite(Number(pct))) return null;
+  const p = Number(pct);
+  if (p < 40) return "Empty";
+  if (p < 70) return "Half";
+  return "Overflow";
+}
+
+/**
+ * Persisted captures often have fill_level null (dual-model pipeline does not set it).
+ * Prefer predictions and risk-derived fill_percentage, then in-memory snapshot.
+ */
+function resolveLatestFillLevel({ latestCap, mem }) {
+  if (latestCap?.fill_level) return latestCap.fill_level;
+
+  const capPreds = latestCap?.predictions;
+  if (Array.isArray(capPreds) && capPreds.length > 0) {
+    const shaped = capPreds.map((p) => ({
+      label: p.label,
+      confidence: Number(p.confidence),
+    }));
+    const fromPred = deriveFillLevel(shaped);
+    if (fromPred) return fromPred;
+  }
+
+  const pct =
+    latestCap?.fill_percentage != null
+      ? latestCap.fill_percentage
+      : mem?.extras?.fill_percentage ?? null;
+  const fromPct = inferredFillLevelFromPercentage(pct);
+  if (fromPct) return fromPct;
+
+  if (mem?.predictions?.length) {
+    const fromMem = deriveFillLevel(mem.predictions);
+    if (fromMem) return fromMem;
+  }
+
+  return null;
+}
+
+function resolveLatestFillPercentage({ latestCap, mem }) {
+  if (latestCap?.fill_percentage != null) return latestCap.fill_percentage;
+  if (mem?.extras?.fill_percentage != null) return mem.extras.fill_percentage;
+  return null;
+}
+
 function normalizeDeviceStatus(raw) {
   const s = String(raw ?? "").trim().toLowerCase();
   if (["active", "inactive", "maintenance"].includes(s)) return s;
@@ -73,7 +120,33 @@ async function list(req, res, next) {
   try {
     if (!dbRequired(res)) return;
     const rows = await deviceService.listDevices();
-    return res.json({ devices: rows });
+    const wantLatest =
+      String(req.query.latest || "").trim() === "1" ||
+      String(req.query.latest || "").toLowerCase() === "true";
+    if (!wantLatest) {
+      return res.json({ devices: rows });
+    }
+
+    const devices = await Promise.all(
+      rows.map(async (d) => {
+        const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
+        const mem = latestState.getLatestForDevice(d.id);
+        return {
+          ...d,
+          latest_fill_level: resolveLatestFillLevel({ latestCap, mem }),
+          latest_fill_percentage: resolveLatestFillPercentage({
+            latestCap,
+            mem,
+          }),
+          latest_source_type:
+            latestCap?.source_type || mem?.extras?.source_type || null,
+          latest_captured_at:
+            latestCap?.captured_at || mem?.timestamp || null,
+        };
+      })
+    );
+
+    return res.json({ devices });
   } catch (e) {
     return next(e);
   }
@@ -261,8 +334,8 @@ async function mapPins(req, res, next) {
       const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
       const mem = latestState.getLatestForDevice(d.id);
 
-      const fill = latestCap?.fill_level || null;
-      const capturedAt = latestCap?.captured_at || null;
+      const fill = resolveLatestFillLevel({ latestCap, mem });
+      const capturedAt = latestCap?.captured_at || mem?.timestamp || null;
 
       let latest_image_url = null;
       if (latestCap?.image_buffer) {
@@ -287,10 +360,10 @@ async function mapPins(req, res, next) {
         latest_risk_level: latestCap?.risk_level || null,
         latest_waste_label: latestCap?.waste_label || null,
         latest_source_type: latestCap?.source_type || mem?.extras?.source_type || null,
-        latest_fill_percentage:
-          latestCap?.fill_percentage != null
-            ? latestCap.fill_percentage
-            : mem?.extras?.fill_percentage ?? null,
+        latest_fill_percentage: resolveLatestFillPercentage({
+          latestCap,
+          mem,
+        }),
       });
     }
 
@@ -323,20 +396,18 @@ async function nearest(req, res, next) {
       devices.map(async (d) => {
         const dist = haversineMeters(lat, lng, d.latitude, d.longitude);
         const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
+        const mem = latestState.getLatestForDevice(d.id);
         const baseUrl = getPublicBaseUrl(req);
 
         let latest_image_url = null;
-        const capturedAt = latestCap?.captured_at || null;
+        const capturedAt = latestCap?.captured_at || mem?.timestamp || null;
 
         if (latestCap?.image_buffer) {
           const ts = encodeURIComponent(capturedAt || "");
           latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
-        } else {
-          const mem = latestState.getLatestForDevice(d.id);
-          if (mem?.timestamp) {
-            const ts = encodeURIComponent(mem.timestamp);
-            latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
-          }
+        } else if (mem?.timestamp) {
+          const ts = encodeURIComponent(mem.timestamp);
+          latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
         }
 
         return {
@@ -348,15 +419,16 @@ async function nearest(req, res, next) {
           latitude: d.latitude,
           longitude: d.longitude,
           distance_meters: Math.round(dist * 10) / 10,
-          latest_fill_level: latestCap?.fill_level || null,
+          latest_fill_level: resolveLatestFillLevel({ latestCap, mem }),
           latest_captured_at: capturedAt,
           latest_image_url,
           latest_risk_level: latestCap?.risk_level || null,
-          latest_source_type: latestCap?.source_type || null,
-          latest_fill_percentage:
-            latestCap?.fill_percentage != null
-              ? latestCap.fill_percentage
-              : null,
+          latest_source_type:
+            latestCap?.source_type || mem?.extras?.source_type || null,
+          latest_fill_percentage: resolveLatestFillPercentage({
+            latestCap,
+            mem,
+          }),
         };
       })
     );

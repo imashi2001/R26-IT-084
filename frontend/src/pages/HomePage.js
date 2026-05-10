@@ -72,7 +72,7 @@ export default function HomePage() {
       try {
         let url;
         try {
-          url = apiUrl("/devices/map");
+          url = apiUrl("/devices?latest=1");
         } catch {
           if (!cancelled) {
             setBinsSnapshot([]);
@@ -90,7 +90,7 @@ export default function HomePage() {
           return;
         }
         if (!cancelled) {
-          setBinsSnapshot(Array.isArray(body.bins) ? body.bins : []);
+          setBinsSnapshot(Array.isArray(body.devices) ? body.devices : []);
         }
       } catch (e) {
         if (!cancelled) {
@@ -293,7 +293,7 @@ export default function HomePage() {
           ) : null}
           {!binsSnapLoading && !binsSnapError && binsSnapshot.length === 0 ? (
             <p className="home-bins-overview-muted">
-              No bins on the map yet. Add bins in Admin or check the backend connection.
+              No bins yet. Create bins in Admin, then send captures from the bridge or mobile report.
             </p>
           ) : null}
           {binsSnapshot.length > 0 ? (

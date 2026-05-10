@@ -237,12 +237,8 @@ async function mapPins(req, res, next) {
     for (const d of devices) {
       const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
 
-      const fill =
-        latestCap?.fill_level ||
-        null;
-
-      const capturedAt =
-        latestCap?.captured_at || null;
+      const fill = latestCap?.fill_level || null;
+      const capturedAt = latestCap?.captured_at || null;
 
       let latest_image_url = null;
       if (latestCap?.image_buffer) {
@@ -267,6 +263,8 @@ async function mapPins(req, res, next) {
         latest_fill_level: fill,
         latest_captured_at: capturedAt,
         latest_image_url,
+        latest_risk_level: latestCap?.risk_level || null,
+        latest_waste_label: latestCap?.waste_label || null,
       });
     }
 
@@ -327,6 +325,7 @@ async function nearest(req, res, next) {
           latest_fill_level: latestCap?.fill_level || null,
           latest_captured_at: capturedAt,
           latest_image_url,
+          latest_risk_level: latestCap?.risk_level || null,
         };
       })
     );
@@ -360,12 +359,24 @@ async function latestDetail(req, res, next) {
     let captured_at = null;
     let fill_level = null;
     let model_name = null;
+    let extras = null;
 
     if (capture) {
       predictions = normalizePredictionsForApi(capture.predictions || []);
       captured_at = capture.captured_at;
       fill_level = capture.fill_level;
       model_name = capture.model_name;
+      extras = {
+        waste_label: capture.waste_label,
+        waste_confidence: capture.waste_confidence,
+        animal_count: capture.animal_count,
+        risk_level: capture.risk_level,
+        risk_case: capture.risk_case,
+        rotting_hours: capture.rotting_hours,
+        temp_c: capture.temp_c,
+        humidity_pct: capture.humidity_pct,
+        weather_condition: capture.weather_condition,
+      };
     }
 
     const mem = latestState.getLatestForDevice(id);
@@ -382,6 +393,7 @@ async function latestDetail(req, res, next) {
       captured_at = mem.timestamp;
       model_name = mem.model;
       fill_level = deriveFillLevel(predictions);
+      extras = mem.extras || null;
     }
 
     return res.json({
@@ -391,6 +403,7 @@ async function latestDetail(req, res, next) {
         fill_level,
         model_name,
         predictions,
+        extras,
         image: {
           url: imageUrl,
         },

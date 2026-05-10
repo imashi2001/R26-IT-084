@@ -2,7 +2,7 @@
   "name": "garbage-detect-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "Express API gateway. Forwards image requests to model microservices.",
+  "description": "Express API: waste/animal models, hygienic risk engine, forecast, device map.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

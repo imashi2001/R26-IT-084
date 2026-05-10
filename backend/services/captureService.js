@@ -1,8 +1,5 @@
 /**
  * captureService - persistence helper for image captures and their predictions.
- *
- * All functions are no-ops if the DB is not enabled, so callers can stay
- * unconditional and the predict flow keeps working without Postgres.
  */
 
 const db = require("../config/db");
@@ -14,20 +11,9 @@ function ensureModels() {
 }
 
 /**
- * Save one capture (image + metadata) plus its predictions in a transaction.
- *
  * @param {object} payload
- * @param {string} payload.modelName
- * @param {string|null} payload.imageUrl  (external URL or null)
- * @param {Buffer|null} payload.imageBuffer  (persisted when DB enabled)
- * @param {string|null} payload.imageMimetype
- * @param {string|null} payload.fillLevel  (Empty | Half | Overflow)
- * @param {number|null} payload.userId
- * @param {number|null} payload.deviceId
  * @param {string|null} payload.bridgeInstanceId laptop bridge UUID (audit + device binding)
- * @param {Array<{label:string, confidence:number, box:number[]}>} payload.predictions
- *
- * @returns {Promise<object|null>} the created Capture (with predictions) or null
+ * @param {object|null} payload.extras optional Capture columns (waste/animal/risk/weather)
  */
 async function saveCaptureWithPredictions({
   modelName,
@@ -39,6 +25,7 @@ async function saveCaptureWithPredictions({
   deviceId = null,
   bridgeInstanceId = null,
   predictions = [],
+  extras = null,
 }) {
   const models = ensureModels();
   if (!models) return null;
@@ -57,6 +44,7 @@ async function saveCaptureWithPredictions({
         fill_level: fillLevel,
         model_name: modelName,
         captured_at: new Date(),
+        ...(extras || {}),
       },
       { transaction: t }
     );

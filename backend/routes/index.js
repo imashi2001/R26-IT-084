@@ -7,6 +7,7 @@ const latestRoutes = require("./latest.routes");
 const authRoutes = require("./auth.routes");
 const devicesRoutes = require("./devices.routes");
 const geoRoutes = require("./geo.routes");
+const forecastRoutes = require("./forecast.routes");
 
 const router = Router();
 
@@ -16,7 +17,9 @@ router.get("/", (_req, res) => {
     health: "/health",
     auth: "POST /auth/register, POST /auth/login",
     predict:
-      "POST /predict (multipart: image, bridge_instance_id, optional esp32_id)",
+      "POST /predict (multipart: image, bridge_instance_id, optional esp32_id, optional model=waste|animal)",
+    forecast:
+      "GET /forecast?lat=&lon=&hours=24, GET /forecast/:deviceId?hours=24",
     captures: "GET /captures",
     devices:
       "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest",
@@ -32,5 +35,6 @@ router.use("/geo", geoRoutes);
 router.use("/predict", predictRoutes);
 router.use("/captures", captureRoutes);
 router.use("/latest", latestRoutes);
+router.use("/forecast", forecastRoutes);
 
 module.exports = router;

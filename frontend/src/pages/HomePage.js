@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import ImageCanvas from "../components/ImageCanvas";
 import PredictionList from "../components/PredictionList";
 import Esp32Panel from "../components/Esp32Panel";
@@ -8,6 +9,38 @@ import {
   getPredictUrl,
   isApiUrlPointingAtFrontend,
 } from "../utils/apiBase";
+
+function predictionsFromPredictResponse(data) {
+  if (Array.isArray(data)) return data;
+  const preds = [];
+  const waste = data?.waste;
+  if (waste && !waste.error && waste.label) {
+    preds.push({
+      label: `${waste.label}`,
+      confidence: Number(waste.confidence) || 0,
+      box: [8, 8, 92, 92],
+    });
+  }
+  const animal = data?.animal;
+  if (animal && !animal.error && Array.isArray(animal.detections)) {
+    for (const det of animal.detections) {
+      preds.push({
+        label: det.label || "animal",
+        confidence: Number(det.confidence) || 0,
+        box: Array.isArray(det.box) ? det.box.map(Number) : [0, 0, 0, 0],
+      });
+    }
+  }
+  const risk = data?.risk;
+  if (risk?.level) {
+    preds.push({
+      label: `risk:${risk.level}`,
+      confidence: 1,
+      box: [0, 0, 0, 0],
+    });
+  }
+  return preds;
+}
 
 const DEFAULT_ESP32_URL =
   process.env.REACT_APP_ESP32_CAPTURE_URL ||
@@ -143,17 +176,12 @@ export default function HomePage() {
       }
 
       const data = await response.json();
-      if (!Array.isArray(data)) {
-        throw new Error(
-          "Unexpected API response. Expected a JSON array of detections."
-        );
-      }
+      const preds = predictionsFromPredictResponse(data);
+      setPredictions(preds);
 
-      setPredictions(data);
-
-      if (data.length === 0) {
+      if (preds.length === 0) {
         setError(
-          "No objects detected. Try a clearer image or lower confidence threshold."
+          "No waste/animal/risk outputs returned. Check model services and try another image."
         );
       }
     } catch (e) {
@@ -181,7 +209,12 @@ export default function HomePage() {
           <span className="icon">🗑️</span> Garbage Fill Level Detector
         </h1>
         <p className="subtitle">
-          Upload a garbage bin image to detect fill level using YOLOv8
+          Upload an image for waste + animal analysis (YOLO-style overlays below).
+        </p>
+        <p className="subtitle dashboard-shortcut">
+          <Link to="/hygienic-risk" className="dashboard-shortcut-link">
+            Open hygienic risk dashboard →
+          </Link>
         </p>
       </header>
 

@@ -15,6 +15,7 @@ function getLatest(req, res) {
     device_id: latest.deviceId,
     model: latest.model,
     predictions: latest.predictions,
+    extras: latest.extras || null,
     image: {
       bytes: latest.image.bytes,
       mimetype: latest.image.mimetype,

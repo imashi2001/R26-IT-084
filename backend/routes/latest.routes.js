@@ -7,4 +7,3 @@ router.get("/", getLatest);
 router.get("/image", getLatestImage);
 
 module.exports = router;
-

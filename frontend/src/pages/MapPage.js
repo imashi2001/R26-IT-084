@@ -14,8 +14,19 @@ import { apiUrl } from "../utils/apiBase";
 
 const NEAREST_FILL_LEVELS = new Set(["empty", "half"]);
 
+const TILE_URL =
+  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const TILE_ATTR =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
+
 function normalizeFill(level) {
   return (level || "").trim().toLowerCase();
+}
+
+function fillLabel(level) {
+  const k = normalizeFill(level);
+  if (!k) return "Unknown";
+  return k.charAt(0).toUpperCase() + k.slice(1);
 }
 
 async function fetchWalkingRoute(from, to) {
@@ -48,16 +59,38 @@ async function fetchWalkingRoute(from, to) {
 
 function fillColor(level) {
   const key = (level || "").toLowerCase();
-  if (key === "overflow") return "#e53935";
-  if (key === "half") return "#ffa726";
-  if (key === "empty") return "#43a047";
-  return "#5c6bc0";
+  if (key === "overflow") return "#f87171";
+  if (key === "half") return "#fbbf24";
+  if (key === "empty") return "#34d399";
+  return "#818cf8";
+}
+
+function IconRefresh() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+      />
+    </svg>
+  );
+}
+
+function IconNavigate() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2zm1 11.59l3.3 3.3-3.3-.82v-2.47zm-2 2.47v2.47l-3.3.82 3.3-3.3z"
+      />
+    </svg>
+  );
 }
 
 function FlyTo({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
-    if (center) map.flyTo(center, zoom ?? 15, { duration: 0.9 });
+    if (center) map.flyTo(center, zoom ?? 15, { duration: 0.85 });
   }, [map, center, zoom]);
   return null;
 }
@@ -67,7 +100,7 @@ function FitRouteBounds({ positions }) {
   useEffect(() => {
     if (!positions?.length) return;
     const b = L.latLngBounds(positions);
-    map.fitBounds(b, { padding: [56, 56], maxZoom: 16 });
+    map.fitBounds(b, { padding: [88, 88], maxZoom: 16 });
   }, [map, positions]);
   return null;
 }
@@ -76,22 +109,26 @@ export default function MapPage() {
   const [bins, setBins] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [nearestMsg, setNearestMsg] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [routeSummary, setRouteSummary] = useState(null);
   const [userLatLng, setUserLatLng] = useState(null);
   const [routePath, setRoutePath] = useState(null);
   const [routeApproximate, setRouteApproximate] = useState(false);
-  const [directionsUrl, setDirectionsUrl] = useState(null);
 
   const defaultCenter = useMemo(() => [7.8731, 80.7718], []);
+
+  const clearNavigationUi = useCallback(() => {
+    setToast(null);
+    setRouteSummary(null);
+    setUserLatLng(null);
+    setRoutePath(null);
+    setRouteApproximate(false);
+  }, []);
 
   const loadMap = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setNearestMsg(null);
-    setUserLatLng(null);
-    setRoutePath(null);
-    setRouteApproximate(false);
-    setDirectionsUrl(null);
+    clearNavigationUi();
     try {
       const res = await fetch(apiUrl("/devices/map"));
       if (!res.ok) {
@@ -106,20 +143,19 @@ export default function MapPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clearNavigationUi]);
 
   useEffect(() => {
     loadMap();
   }, [loadMap]);
 
   const onNearest = () => {
-    setNearestMsg(null);
-    setUserLatLng(null);
-    setRoutePath(null);
-    setRouteApproximate(false);
-    setDirectionsUrl(null);
+    clearNavigationUi();
     if (!navigator.geolocation) {
-      setNearestMsg("Geolocation is not supported in this browser.");
+      setToast({
+        tone: "error",
+        message: "Geolocation is not supported in this browser.",
+      });
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -140,16 +176,21 @@ export default function MapPage() {
           const data = await res.json();
           const results = Array.isArray(data.results) ? data.results : [];
           if (!results.length) {
-            setNearestMsg("No bins with coordinates found.");
+            setToast({
+              tone: "warn",
+              message: "No bins with coordinates found.",
+            });
             return;
           }
           const eligible = results.filter((r) =>
             NEAREST_FILL_LEVELS.has(normalizeFill(r.latest_fill_level))
           );
           if (!eligible.length) {
-            setNearestMsg(
-              "No bins with latest level empty or half (needs a recent capture). Try again after the bridge sends images."
-            );
+            setToast({
+              tone: "warn",
+              message:
+                "No bins with latest level empty or half yet. Send captures from the bridge, then try again.",
+            });
             setUserLatLng(me);
             return;
           }
@@ -159,148 +200,214 @@ export default function MapPage() {
           setUserLatLng(me);
           setRoutePath(path);
           setRouteApproximate(approximate);
-          const gmaps = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${lat},${lng}`)}&destination=${encodeURIComponent(`${top.latitude},${top.longitude}`)}&travelmode=walking`;
-          setDirectionsUrl(gmaps);
-          setNearestMsg(
-            `Nearest empty/half: ${top.name} (~${top.distance_meters} m) — fill: ${top.latest_fill_level}`
-          );
+          const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${lat},${lng}`)}&destination=${encodeURIComponent(`${top.latitude},${top.longitude}`)}&travelmode=walking`;
+          setRouteSummary({
+            name: top.name,
+            distanceM: top.distance_meters,
+            fill: top.latest_fill_level,
+            approximate,
+            mapsUrl,
+          });
         } catch (e) {
-          setNearestMsg(e.message || "Nearest lookup failed.");
+          setToast({
+            tone: "error",
+            message: e.message || "Nearest lookup failed.",
+          });
         }
       },
       () => {
-        setNearestMsg("Location permission denied or unavailable.");
+        setToast({
+          tone: "error",
+          message: "Location permission denied or unavailable.",
+        });
       },
       { enableHighAccuracy: true, timeout: 15000 }
     );
   };
 
   return (
-    <div className="page map-page">
-      <header className="page-header">
-        <h1>Bin map</h1>
-        <p className="subtitle">
-          OpenStreetMap tiles — markers show latest fill level when available.
-        </p>
-        <p className="subtitle map-page-hint">
-          “Find nearest” picks the closest bin whose latest level is{" "}
-          <strong>empty</strong> or <strong>half</strong>, draws a walking route on the map,
-          and can open Google Maps for turn-by-turn directions.
-        </p>
-        <div className="map-toolbar">
-          <button type="button" className="btn btn-primary" onClick={loadMap} disabled={loading}>
-            {loading ? "Loading…" : "Refresh"}
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={onNearest}>
-            Find nearest (empty / half)
-          </button>
+    <div className="page map-page map-page-modern">
+      <header className="map-page-hero">
+        <div className="map-hero-text">
+          <p className="map-hero-kicker">Live bins</p>
+          <h1>Map &amp; navigation</h1>
+          <p className="map-hero-desc">
+            Voyager base map with fill-colored pins. Find the closest bin that
+            reports <strong>empty</strong> or <strong>half</strong>, preview the
+            walking path, then open turn-by-turn directions.
+          </p>
         </div>
-        {nearestMsg && (
-          <div className="info-banner">
-            <div>{nearestMsg}</div>
-            {routeApproximate && routePath?.length ? (
-              <div className="map-route-note">
-                Showing a straight line — walking paths unavailable (offline routing).
-              </div>
-            ) : null}
-            {directionsUrl ? (
-              <div className="map-nav-actions">
-                <a
-                  className="map-nav-link"
-                  href={directionsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open walking directions in Google Maps
-                </a>
-              </div>
-            ) : null}
-          </div>
-        )}
-        {error && <div className="error-banner">{error}</div>}
       </header>
 
-      <div className="map-frame">
-        <MapContainer
-          center={defaultCenter}
-          zoom={7}
-          scrollWheelZoom
-          style={{ height: "480px", width: "100%", borderRadius: "12px" }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {userLatLng && !routePath?.length ? (
-            <FlyTo center={userLatLng} zoom={14} />
-          ) : null}
-          {routePath?.length ? (
-            <>
-              <Polyline
-                positions={routePath}
+      {error ? <div className="map-error-banner">{error}</div> : null}
+
+      <div className="map-shell-modern">
+        {toast ? (
+          <div className={`map-toast map-toast--${toast.tone}`} role="status">
+            <span>{toast.message}</span>
+            <button
+              type="button"
+              className="map-toast-dismiss"
+              onClick={() => setToast(null)}
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+
+        <div className="map-float-toolbar">
+          <button
+            type="button"
+            className="map-pill-btn map-pill-btn--ghost"
+            onClick={loadMap}
+            disabled={loading}
+          >
+            <IconRefresh />
+            {loading ? "Loading…" : "Refresh bins"}
+          </button>
+          <button
+            type="button"
+            className="map-pill-btn map-pill-btn--accent"
+            onClick={onNearest}
+          >
+            <IconNavigate />
+            Nearest empty / half
+          </button>
+        </div>
+
+        <div className="map-frame map-frame-modern">
+          <MapContainer
+            center={defaultCenter}
+            zoom={7}
+            scrollWheelZoom
+            className="map-canvas-modern"
+            style={{ height: "min(62vh, 560px)", width: "100%" }}
+          >
+            <TileLayer attribution={TILE_ATTR} url={TILE_URL} />
+            {userLatLng && !routePath?.length ? (
+              <FlyTo center={userLatLng} zoom={14} />
+            ) : null}
+            {routePath?.length ? (
+              <>
+                <Polyline
+                  positions={routePath}
+                  pathOptions={{
+                    color: "#22d3ee",
+                    weight: 6,
+                    opacity: routeApproximate ? 0.55 : 0.92,
+                    lineCap: "round",
+                    lineJoin: "round",
+                    dashArray: routeApproximate ? "10 14" : undefined,
+                  }}
+                />
+                <FitRouteBounds positions={routePath} />
+              </>
+            ) : null}
+            {userLatLng ? (
+              <CircleMarker
+                center={userLatLng}
+                radius={13}
                 pathOptions={{
-                  color: "#38bdf8",
-                  weight: 5,
-                  opacity: routeApproximate ? 0.65 : 0.92,
-                  dashArray: routeApproximate ? "8 10" : undefined,
+                  color: "#fff",
+                  weight: 3,
+                  fillColor: "#0ea5e9",
+                  fillOpacity: 1,
                 }}
-              />
-              <FitRouteBounds positions={routePath} />
-            </>
+              >
+                <Popup className="map-popup-root">
+                  <div className="map-popup-card map-popup-card--compact">
+                    <span className="map-popup-title">You</span>
+                    <span className="map-popup-muted">Current location</span>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            ) : null}
+            {bins.map((b) => (
+              <CircleMarker
+                key={b.id}
+                center={[b.latitude, b.longitude]}
+                radius={12}
+                pathOptions={{
+                  color: "rgba(255,255,255,0.95)",
+                  weight: 2,
+                  fillColor: fillColor(b.latest_fill_level),
+                  fillOpacity: 0.95,
+                }}
+              >
+                <Popup className="map-popup-root">
+                  <div className="map-popup-card">
+                    <strong className="map-popup-title">{b.name}</strong>
+                    <span className={`map-fill-badge map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}>
+                      {fillLabel(b.latest_fill_level)}
+                    </span>
+                    {b.latest_captured_at ? (
+                      <span className="map-popup-muted">{b.latest_captured_at}</span>
+                    ) : null}
+                    <Link className="map-popup-cta" to={`/bins/${b.id}`}>
+                      Bin details
+                    </Link>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            ))}
+          </MapContainer>
+
+          {routeSummary ? (
+            <aside className="map-route-sheet" aria-live="polite">
+              <div className="map-route-sheet-header">
+                <span className="map-route-sheet-label">Suggested bin</span>
+                <span className="map-route-sheet-ready">Ready</span>
+              </div>
+              <h2 className="map-route-sheet-title">{routeSummary.name}</h2>
+              <div className="map-route-sheet-meta">
+                <span className="map-route-chip">
+                  ~{routeSummary.distanceM} m
+                </span>
+                <span
+                  className={`map-fill-badge map-fill-badge--${normalizeFill(routeSummary.fill) || "unknown"}`}
+                >
+                  {fillLabel(routeSummary.fill)}
+                </span>
+              </div>
+              {routeSummary.approximate ? (
+                <p className="map-route-sheet-hint">
+                  Straight-line preview — enable routing or open Maps for paths on streets.
+                </p>
+              ) : (
+                <p className="map-route-sheet-hint map-route-sheet-hint--ok">
+                  Walking route preview on map (OpenStreetMap roads).
+                </p>
+              )}
+              <a
+                className="map-route-primary-btn"
+                href={routeSummary.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Start navigation in Google Maps
+              </a>
+            </aside>
           ) : null}
-          {userLatLng ? (
-            <CircleMarker
-              center={userLatLng}
-              radius={12}
-              pathOptions={{
-                color: "#e0f2fe",
-                weight: 3,
-                fillColor: "#0284c7",
-                fillOpacity: 1,
-              }}
-            >
-              <Popup>Your location</Popup>
-            </CircleMarker>
-          ) : null}
-          {bins.map((b) => (
-            <CircleMarker
-              key={b.id}
-              center={[b.latitude, b.longitude]}
-              radius={11}
-              pathOptions={{
-                color: "#fff",
-                weight: 2,
-                fillColor: fillColor(b.latest_fill_level),
-                fillOpacity: 0.9,
-              }}
-            >
-              <Popup>
-                <strong>{b.name}</strong>
-                <div>Level: {b.latest_fill_level || "—"}</div>
-                {b.latest_captured_at && (
-                  <div className="popup-muted">{b.latest_captured_at}</div>
-                )}
-                <div style={{ marginTop: 8 }}>
-                  <Link className="popup-link" to={`/bins/${b.id}`}>
-                    Open bin detail
-                  </Link>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        </MapContainer>
+        </div>
       </div>
 
-      <section className="map-list">
-        <h2>Bins on map ({bins.length})</h2>
-        <ul className="bin-list">
+      <section className="map-list map-list-modern">
+        <div className="map-list-header">
+          <h2>Bins on map</h2>
+          <span className="map-list-count">{bins.length}</span>
+        </div>
+        <ul className="bin-chip-list">
           {bins.map((b) => (
             <li key={b.id}>
-              <Link to={`/bins/${b.id}`}>{b.name}</Link>
-              <span className="bin-meta">
-                {" "}
-                — {b.latest_fill_level || "unknown"}
-              </span>
+              <Link className="bin-chip" to={`/bins/${b.id}`}>
+                <span className="bin-chip-name">{b.name}</span>
+                <span
+                  className={`map-fill-badge map-fill-badge--sm map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}
+                >
+                  {fillLabel(b.latest_fill_level)}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>

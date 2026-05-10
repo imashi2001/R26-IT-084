@@ -41,6 +41,7 @@ export default function AdminPage() {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [bridgeInstanceId, setBridgeInstanceId] = useState("");
+  const [status, setStatus] = useState("active");
   const [geoQuery, setGeoQuery] = useState("");
   const [formMsg, setFormMsg] = useState(null);
   const [formError, setFormError] = useState(null);
@@ -121,6 +122,7 @@ export default function AdminPage() {
     setName("");
     setEsp32Id("");
     setBridgeInstanceId("");
+    setStatus("active");
     setLocationLabel("");
     setAddress("");
     setLatitude("");
@@ -133,6 +135,7 @@ export default function AdminPage() {
     setName(d.name || "");
     setEsp32Id(d.esp32_id || "");
     setBridgeInstanceId(d.bridge_instance_id || "");
+    setStatus(d.status || "active");
     setLocationLabel(d.location || "");
     setAddress(d.address || "");
     setLatitude(
@@ -189,12 +192,13 @@ export default function AdminPage() {
     }
 
     if (!name.trim()) {
-      setFormError("Name is required.");
+      setFormError("Bin name is required.");
       return;
     }
 
     const payload = {
       name: name.trim(),
+      status,
       esp32_id: esp32Id.trim() || null,
       bridge_instance_id: bridgeInstanceId.trim() || null,
       location: locationLabel.trim() || null,
@@ -358,8 +362,16 @@ export default function AdminPage() {
               )}
               <form className="admin-form" onSubmit={onSaveDevice}>
                 <label>
-                  Name
+                  Bin name
                   <input value={name} onChange={(e) => setName(e.target.value)} required />
+                </label>
+                <label>
+                  Status
+                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                    <option value="active">active</option>
+                    <option value="inactive">inactive</option>
+                    <option value="maintenance">maintenance</option>
+                  </select>
                 </label>
                 <label>
                   ESP32 ID (matches bridge <code>DEVICE_ESP32_ID</code>)
@@ -380,7 +392,7 @@ export default function AdminPage() {
                   </span>
                 </label>
                 <label>
-                  Location label
+                  Location name
                   <input
                     value={locationLabel}
                     onChange={(e) => setLocationLabel(e.target.value)}
@@ -472,6 +484,12 @@ export default function AdminPage() {
                   <div className="device-admin-row">
                     <div>
                       <strong>{d.name}</strong> (#{d.id})
+                      {d.status && (
+                        <>
+                          {" "}
+                          <span className="device-status-chip">{d.status}</span>
+                        </>
+                      )}
                       {d.esp32_id && (
                         <>
                           {" "}

@@ -6,8 +6,9 @@ Runs on a laptop on the same LAN as the ESP32. Railway cannot reach private IPs
 like 10.x.x.x; this script pulls JPEG bytes locally and uploads them over HTTPS.
 
 Backend contract (Express): POST multipart/form-data fields: image (required),
-bridge_instance_id (always), esp32_id (optional).
-Response: JSON array of detections [{ label, confidence, box }, ...].
+bridge_instance_id (always), esp32_id (optional), source_type=esp32 (recommended).
+
+Poll interval: POLL_INTERVAL_SEC or VISIONWASTE_POLL_SECONDS (minimum 60s).
 """
 
 from __future__ import annotations
@@ -35,7 +36,9 @@ BACKEND_PREDICT_URL = os.environ.get(
     "https://YOUR-BACKEND.up.railway.app/predict",
 )
 
-_poll_raw = os.environ.get("POLL_INTERVAL_SEC", "60")
+_poll_raw = os.environ.get("VISIONWASTE_POLL_SECONDS") or os.environ.get(
+    "POLL_INTERVAL_SEC", "60"
+)
 try:
     POLL_INTERVAL_SEC = float(_poll_raw)
 except ValueError:
@@ -98,7 +101,10 @@ def save_latest_capture(image_bytes: bytes) -> None:
 def post_predict_with_retries(image_bytes: bytes) -> requests.Response:
     print("Sending image to backend...")
     files = {"image": ("capture.jpg", image_bytes, "image/jpeg")}
-    data: dict[str, str] = {"bridge_instance_id": BRIDGE_INSTANCE_ID}
+    data: dict[str, str] = {
+        "bridge_instance_id": BRIDGE_INSTANCE_ID,
+        "source_type": "esp32",
+    }
     if DEVICE_ESP32_ID:
         data["esp32_id"] = DEVICE_ESP32_ID
     last_exc: Exception | None = None

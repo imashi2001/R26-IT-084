@@ -21,13 +21,11 @@ animal_detection/runs/
 waste_classification/runs/
 
 # Dataset images & splits (large — use Roboflow / local scripts to restore)
-# NOTE: Previously only `dataset/test/` at repo root was ignored; YOLO data lives
-# under `animal_detection/dataset/...` and similar, so those paths must be listed.
+# Nested under animal_detection/, waste_classification/, etc.; globs cover future layouts.
 **/dataset/train/
 **/dataset/valid/
 **/dataset/test/
 
-# Explicit module paths (same intent as globs above; helps tooling / older Git)
 dataset/train/
 dataset/valid/
 dataset/test/
@@ -44,9 +42,15 @@ waste_classification/dataset/test/
 **/data_set/valid/
 waste_classification/data_set/
 
-# Trained checkpoints (large — regenerate with train.py / pull from artifact storage)
-animal_detection/models/*.pt
-waste_classification/*.h5
+# Copy of base weights sometimes dropped next to training scripts
+animal_detection/yolov8n.pt
+
+# Local checkpoints — broad ignore; deployable copies under services/ stay tracked (see below)
+animal_detection/models/
+*.h5
+*.pt
+!services/waste-api/model/waste_classification_model.h5
+!services/animal-api/model/best.pt
 
 # Local ML housekeeping (optional export from training scripts)
 skipped_samples.tsv
@@ -54,6 +58,13 @@ skipped_samples.tsv
 # React / Node
 node_modules/
 frontend/build/
+
+# Backend local
+backend/.env
+backend/.device_id
+.bridge_id
+*.log
+npm-debug.log*
 
 # OS
 .DS_Store

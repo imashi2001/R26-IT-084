@@ -11,6 +11,12 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { apiUrl } from "../utils/apiBase";
+import {
+  normalizeFill,
+  effectiveFillTier,
+  fillLabel,
+  markerFillFromBin,
+} from "../utils/fillTier";
 
 const NEAREST_FILL_LEVELS = new Set(["empty", "half"]);
 
@@ -18,16 +24,6 @@ const TILE_URL =
   "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const TILE_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
-
-function normalizeFill(level) {
-  return (level || "").trim().toLowerCase();
-}
-
-function fillLabel(level) {
-  const k = normalizeFill(level);
-  if (!k) return "Unknown";
-  return k.charAt(0).toUpperCase() + k.slice(1);
-}
 
 async function fetchWalkingRoute(from, to) {
   const [lat1, lng1] = from;
@@ -55,14 +51,6 @@ async function fetchWalkingRoute(from, to) {
   } catch {
     return straight();
   }
-}
-
-function fillColor(level) {
-  const key = (level || "").toLowerCase();
-  if (key === "overflow") return "#f87171";
-  if (key === "half") return "#fbbf24";
-  if (key === "empty") return "#34d399";
-  return "#818cf8";
 }
 
 function IconRefresh() {
@@ -183,13 +171,13 @@ export default function MapPage() {
             return;
           }
           const eligible = results.filter((r) =>
-            NEAREST_FILL_LEVELS.has(normalizeFill(r.latest_fill_level))
+            NEAREST_FILL_LEVELS.has(effectiveFillTier(r))
           );
           if (!eligible.length) {
             setToast({
               tone: "warn",
               message:
-                "No bins with latest level empty or half yet. Send captures from the bridge, then try again.",
+                "No bins with available capacity nearby (empty / half, or a low fill estimate under 70%). Try another area or check bins reporting higher fullness.",
             });
             setUserLatLng(me);
             return;
@@ -204,7 +192,8 @@ export default function MapPage() {
           setRouteSummary({
             name: top.name,
             distanceM: top.distance_meters,
-            fill: top.latest_fill_level,
+            fillTier: effectiveFillTier(top),
+            fillPct: top.latest_fill_percentage,
             approximate,
             mapsUrl,
           });
@@ -233,8 +222,9 @@ export default function MapPage() {
           <h1>Map &amp; navigation</h1>
           <p className="map-hero-desc">
             Voyager base map with fill-colored pins. Find the closest bin that
-            reports <strong>empty</strong> or <strong>half</strong>, preview the
-            walking path, then open turn-by-turn directions.
+            has <strong>capacity</strong> (level empty/half, or fill estimate
+            under 70%), preview the walking path, then open turn-by-turn
+            directions.
           </p>
         </div>
       </header>
@@ -272,7 +262,7 @@ export default function MapPage() {
             onClick={onNearest}
           >
             <IconNavigate />
-            Nearest empty / half
+            Nearest with space
           </button>
         </div>
 
@@ -323,7 +313,10 @@ export default function MapPage() {
                 </Popup>
               </CircleMarker>
             ) : null}
-            {bins.map((b) => (
+            {bins.map((b) => {
+              const tier = effectiveFillTier(b);
+              const tierKey = normalizeFill(tier) || "unknown";
+              return (
               <CircleMarker
                 key={b.id}
                 center={[b.latitude, b.longitude]}
@@ -331,16 +324,34 @@ export default function MapPage() {
                 pathOptions={{
                   color: "rgba(255,255,255,0.95)",
                   weight: 2,
-                  fillColor: fillColor(b.latest_fill_level),
+                  fillColor: markerFillFromBin(b),
                   fillOpacity: 0.95,
                 }}
               >
                 <Popup className="map-popup-root">
                   <div className="map-popup-card">
+                    {b.latest_image_url ? (
+                      <img
+                        className="map-popup-thumb"
+                        src={b.latest_image_url}
+                        alt=""
+                      />
+                    ) : null}
                     <strong className="map-popup-title">{b.name}</strong>
-                    <span className={`map-fill-badge map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}>
-                      {fillLabel(b.latest_fill_level)}
+                    <span className={`map-fill-badge map-fill-badge--${tierKey}`}>
+                      {fillLabel(tier === "unknown" ? "" : tier)}
                     </span>
+                    {b.latest_fill_percentage != null &&
+                    Number.isFinite(Number(b.latest_fill_percentage)) ? (
+                      <span className="map-popup-muted">
+                        Fill estimate: {Math.round(Number(b.latest_fill_percentage))}%
+                      </span>
+                    ) : null}
+                    {b.latest_source_type ? (
+                      <span className="map-popup-muted">
+                        Source: {b.latest_source_type}
+                      </span>
+                    ) : null}
                     {b.latest_captured_at ? (
                       <span className="map-popup-muted">{b.latest_captured_at}</span>
                     ) : null}
@@ -350,7 +361,8 @@ export default function MapPage() {
                   </div>
                 </Popup>
               </CircleMarker>
-            ))}
+              );
+            })}
           </MapContainer>
 
           {routeSummary ? (
@@ -365,11 +377,21 @@ export default function MapPage() {
                   ~{routeSummary.distanceM} m
                 </span>
                 <span
-                  className={`map-fill-badge map-fill-badge--${normalizeFill(routeSummary.fill) || "unknown"}`}
+                  className={`map-fill-badge map-fill-badge--${normalizeFill(routeSummary.fillTier) || "unknown"}`}
                 >
-                  {fillLabel(routeSummary.fill)}
+                  {fillLabel(
+                    routeSummary.fillTier === "unknown"
+                      ? ""
+                      : routeSummary.fillTier
+                  )}
                 </span>
               </div>
+              {routeSummary.fillPct != null &&
+              Number.isFinite(Number(routeSummary.fillPct)) ? (
+                <p className="map-route-sheet-fillpct">
+                  Fill estimate: {Math.round(Number(routeSummary.fillPct))}%
+                </p>
+              ) : null}
               {routeSummary.approximate ? (
                 <p className="map-route-sheet-hint">
                   Straight-line preview — enable routing or open Maps for paths on streets.
@@ -398,18 +420,32 @@ export default function MapPage() {
           <span className="map-list-count">{bins.length}</span>
         </div>
         <ul className="bin-chip-list">
-          {bins.map((b) => (
+          {bins.map((b) => {
+            const tier = effectiveFillTier(b);
+            const tierKey = normalizeFill(tier) || "unknown";
+            return (
             <li key={b.id}>
               <Link className="bin-chip" to={`/bins/${b.id}`}>
-                <span className="bin-chip-name">{b.name}</span>
-                <span
-                  className={`map-fill-badge map-fill-badge--sm map-fill-badge--${normalizeFill(b.latest_fill_level) || "unknown"}`}
-                >
-                  {fillLabel(b.latest_fill_level)}
+                <div className="bin-chip-row">
+                  <span className="bin-chip-name">{b.name}</span>
+                  <span
+                    className={`map-fill-badge map-fill-badge--sm map-fill-badge--${tierKey}`}
+                  >
+                    {fillLabel(tier === "unknown" ? "" : tier)}
+                  </span>
+                </div>
+                <span className="bin-chip-meta">
+                  {b.latest_fill_percentage != null &&
+                  Number.isFinite(Number(b.latest_fill_percentage))
+                    ? `${Math.round(Number(b.latest_fill_percentage))}%`
+                    : "—"}
+                  {" · "}
+                  {b.latest_source_type || "—"}
                 </span>
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
     </div>

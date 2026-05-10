@@ -6,6 +6,8 @@ import HomePage from "./pages/HomePage";
 import MapPage from "./pages/MapPage";
 import BinDetailPage from "./pages/BinDetailPage";
 import AdminPage from "./pages/AdminPage";
+import HygienicRiskDashboardPage from "./pages/HygienicRiskDashboardPage";
+import MobileReportPage from "./pages/MobileReportPage";
 import "./App.css";
 
 export default function App() {
@@ -15,6 +17,8 @@ export default function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/hygienic-risk" element={<HygienicRiskDashboardPage />} />
+          <Route path="/mobile-report" element={<MobileReportPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/bins/:id" element={<BinDetailPage />} />
           <Route path="/admin" element={<AdminPage />} />

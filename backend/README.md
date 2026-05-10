@@ -72,18 +72,24 @@ The backend works both **with** and **without** a database:
 | GET | /health | Gateway + model + DB |
 | POST | /auth/register | JSON `{ name, email, password, adminInvite? }` — optional invite creates admin |
 | POST | /auth/login | JSON `{ email, password }` → JWT |
-| POST | /predict | multipart `image`, **`bridge_instance_id`**, optional `esp32_id` / `device_id`, `model`, `conf` |
-| GET | /captures | Query pagination |
-| GET | /captures/:id | Capture metadata + predictions (image blob omitted) |
-| GET | /devices | All bins |
-| GET | /devices/map | Bins with coordinates + latest fill + image URL |
+| POST | /predict | multipart `image`, **`bridge_instance_id`** (ESP32 bridge), optional **`esp32_id`** / **`device_id`**, optional **`source_type`** (`esp32` \| `mobile` \| `admin`), **`lat`** / **`lon`** (weather + stored on capture when DB enabled), optional **`model`**, **`conf`** |
+| GET | /captures | Query `limit`, `offset`, optional **`device_id`** |
+| GET | /captures/:id | Capture metadata + predictions (`has_image` when JPEG stored; image blob omitted) |
+| GET | /captures/:id/image | Raw JPEG bytes for that capture row |
+| GET | /devices | All bins; add **`?latest=1`** for each bin’s resolved **`latest_fill_level`** / **`latest_fill_percentage`** (for dashboards without map coords) |
+| GET | /devices/map | Bins with coordinates + latest fill + image URL + latest source / fill % |
 | GET | /devices/nearest | Query `lat`, `lng`, `limit` |
 | GET | /devices/:id | Bin metadata |
-| GET | /devices/:id/latest | Latest snapshot JSON (+ predictions + signed URL style image link) |
+| GET | /devices/:id/latest | Latest snapshot JSON (+ predictions + image link) |
+| GET | /devices/:id/captures | Paginated capture history for the bin (`limit`, `offset`) |
 | GET | /devices/:id/image/latest | Raw JPEG bytes (DB or in-memory fallback) |
 | POST | /devices | **Admin JWT** — create bin |
 | PATCH | /devices/:id | **Admin JWT** — update bin |
 | GET | /geo/search?q= | Nominatim proxy for admin UI |
+
+**`POST /predict` response — `animal`:** Each item in **`detections`** includes **`label`**, **`confidence`**, and **`box`** `[x1,y1,x2,y2]` (the gateway normalizes **`box_xyxy`** / **`class_name`** from the animal microservice). **`annotated_image_base64`** is a JPEG with bounding boxes rendered server-side (YOLO plot).
+
+**`POST /predict` response — `bin_fill`:** Present when **`MODEL_YOLO_URL`** is set on the gateway (optional Flask **`model-yolo`** service). Same JSON shape as the bin-fill microservice: **`predictions`** / **`detections`**, optional **`annotated_image_base64`**. Top-level **`bin_fill_level`** is **`Empty`** \| **`Half`** \| **`Overflow`** when at least one prediction has label **`empty`** \| **`half`** \| **`overflow`** (case-insensitive); otherwise **`null`**.
 
 ## Railway Postgres (first deploy)
 
@@ -102,9 +108,19 @@ After adding columns in production, set **`DB_SYNC=true`** and **`DB_SYNC_ALTER=
 
 ### Bridge ↔ bin binding
 
-- Each **`POST /predict`** should include **`bridge_instance_id`** (VisionWaste laptop bridge).
-- If **`devices.bridge_instance_id`** is **null**, matching is by **`esp32_id`** only.
-- If **`devices.bridge_instance_id`** is **set**, **`device_id`** is attached only when the incoming **`bridge_instance_id`** matches; captures still store **`bridge_instance_id`** for audit.
+- **`POST /predict`** should include **`bridge_instance_id`** (VisionWaste laptop bridge) for ESP32-origin uploads.
+- If **`devices.bridge_instance_id`** is **null**, matching is by **`esp32_id`** (and **`device_id`** when sent).
+- If **`devices.bridge_instance_id`** is **set**, **`device_id`** is attached when the incoming **`bridge_instance_id`** matches **or** when the client sets **`source_type`** to **`mobile`** or **`admin`** and sends a valid **`device_id`** (phone / trusted tooling).
+
+### Mobile camera upload (`source_type=mobile`)
+
+Multipart fields typical for the React **`/mobile-report`** flow:
+
+- **`image`** (required) — JPEG/PNG file  
+- **`device_id`** — target bin id  
+- **`source_type`** = `mobile`  
+- **`lat`**, **`lon`** — optional capture GPS (also used for weather)  
+- Omit **`bridge_instance_id`** when reporting from a phone (unless you intentionally emulate the laptop bridge).
 
 ---
 
@@ -113,8 +129,8 @@ After adding columns in production, set **`DB_SYNC=true`** and **`DB_SYNC_ALTER=
 | Table | Key columns |
 |-------|-------------|
 | users | id, name, email, password_hash, role (`user` \| `admin`), timestamps |
-| devices | id, user_id, name, esp32_id (unique), location, address, latitude, longitude, **bridge_instance_id** (optional laptop binding), timestamps |
-| captures | id, user_id, device_id, **bridge_instance_id**, image_url, image_buffer, image_mimetype, fill_level, model_name, captured_at, timestamps |
+| devices | id, user_id, **name** (display “Bin name”), **esp32_id** (unique), **location** (“Location name”), address, latitude, longitude, **status** (`active` \| `inactive` \| `maintenance`), **bridge_instance_id** (optional laptop binding), timestamps |
+| captures | id, user_id, device_id, **bridge_instance_id**, image_url, image_buffer, image_mimetype, fill_level, model_name, captured_at, **source_type**, **latitude**, **longitude**, **fill_percentage**, **prediction_class**, waste_*, risk_*, weather fields, timestamps |
 | predictions | id, capture_id, label, confidence, box_x1..box_y2, timestamps |
 
 Associations:
@@ -125,18 +141,35 @@ Associations:
 
 Index on `(device_id, captured_at)` for latest-per-bin queries.
 
+Appendix — additive columns if you manage schema manually (Postgres):
+
+```sql
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS status VARCHAR(255) DEFAULT 'active';
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS source_type VARCHAR(16);
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS fill_percentage DOUBLE PRECISION;
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS prediction_class VARCHAR(160);
+```
+
+(Adjust lengths/types to match `backend/models`. Use **`DB_SYNC=true`** + **`DB_SYNC_ALTER=true`** once on Railway instead if preferred.)
+
+---
+
 ## Environment variables
 
 See `.env.example`:
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `MODEL_YOLO_URL` | `http://localhost:6000` | Model microservice base URL; `https://` added automatically if you omit the scheme (except localhost). Use full Railway URLs in production |
+| `MODEL_WASTE_URL` | `http://localhost:8001` | Waste classifier microservice; scheme added if omitted (except localhost) |
+| `MODEL_ANIMAL_URL` | `http://localhost:8002` | Animal / detection microservice |
+| `MODEL_YOLO_URL` | (empty) | Optional **`model-yolo`** bin-fill service (`POST /infer`, multipart **`image`**). When empty, **`bin_fill`** is omitted from **`inferAll`** |
 | `CORS_ORIGIN` | (empty) | Comma-separated allowed frontend origins; empty keeps permissive CORS |
 | `JWT_SECRET` | (empty) | Required for auth routes (min 8 chars recommended) |
 | `JWT_EXPIRES_IN` | `7d` | JWT expiry passed to `jsonwebtoken` |
 | `ADMIN_INVITE_SECRET` | (empty) | Optional invite code for admin registration |
-| `DEFAULT_MODEL` | `yolo` | Default model when client doesn't pick one |
+| `DEFAULT_MODEL` | `waste` | Default when client picks a single model |
 | `INFER_TIMEOUT_SECONDS` | `60` | Max wait per model inference |
 | `MAX_UPLOAD_MB` | `25` | Max upload size |
 | `PORT` | `5000` | Listening port (Railway sets this automatically) |
@@ -144,6 +177,9 @@ See `.env.example`:
 | `DB_SYNC` | `false` | Auto-create tables on boot (dev / first deploy only) |
 | `DB_SYNC_ALTER` | `false` | If syncing, also alter columns to match models |
 | `DB_LOGGING` | `false` | Echo SQL to stdout |
+| `OPENWEATHER_API_KEY` | (empty) | Optional real weather; stub otherwise |
+
+---
 
 ## Run locally
 
@@ -153,16 +189,17 @@ npm install
 npm start
 ```
 
-The model service must already be running (`../model-yolo/`).
+Start the **waste** and **animal** FastAPI services (see repo `services/waste-api` and `services/animal-api`), optional **`model-yolo`** Flask service for bin fill, or point **`MODEL_*_URL`** variables at deployed URLs.
 
 ## Deploy on Railway
 
 - Root directory: `backend`
 - Start command: `npm start`
 - Variables:
-  - `MODEL_YOLO_URL` → public URL of the deployed model service
+  - **`MODEL_WASTE_URL`**, **`MODEL_ANIMAL_URL`**, optional **`MODEL_YOLO_URL`** → public URLs of the deployed model services
   - `DATABASE_URL` → referenced from Railway Postgres plugin
   - `JWT_SECRET` → random secret string
   - `DB_SYNC=true` only on first deploy to create tables; turn off afterwards
+  - **`OPENWEATHER_API_KEY`** (optional)
   - `CORS_ORIGIN` → your frontend URL(s)
 - Railway auto-detects Node and runs `npm install`.

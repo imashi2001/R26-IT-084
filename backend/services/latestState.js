@@ -18,6 +18,7 @@ function buildSnapshot({
   filename,
   modelName,
   predictions,
+  extras,
 }) {
   return {
     timestamp: new Date().toISOString(),
@@ -30,18 +31,10 @@ function buildSnapshot({
     },
     model: modelName,
     predictions: Array.isArray(predictions) ? predictions : [],
+    extras: extras || null,
   };
 }
 
-/**
- * @param {object} payload
- * @param {number|string|null} [payload.deviceId]
- * @param {Buffer} payload.imageBuffer
- * @param {string} payload.mimetype
- * @param {string} payload.filename
- * @param {string} payload.modelName
- * @param {Array} payload.predictions
- */
 function setLatest({
   deviceId = null,
   imageBuffer,
@@ -49,6 +42,7 @@ function setLatest({
   filename,
   modelName,
   predictions,
+  extras = null,
 }) {
   const snapshot = buildSnapshot({
     deviceId,
@@ -57,6 +51,7 @@ function setLatest({
     filename,
     modelName,
     predictions,
+    extras,
   });
 
   globalLatest = snapshot;
@@ -70,7 +65,6 @@ function setLatest({
   }
 }
 
-/** Legacy: last prediction globally (any device). */
 function getLatest() {
   return globalLatest;
 }

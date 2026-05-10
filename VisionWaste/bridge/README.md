@@ -58,6 +58,7 @@ python bridge.py
 | `VISIONWASTE_BRIDGE_ID` | (auto) | Override persisted laptop ID; otherwise stored in `.bridge_id` |
 | `DEVICE_ESP32_ID` | (empty) | Sent as multipart `esp32_id` — **must match** Admin `devices.esp32_id` |
 | `POLL_INTERVAL_SEC` | `60` | Seconds between capture cycles |
+| `VISIONWASTE_POLL_SECONDS` | (same as above) | Alias for `POLL_INTERVAL_SEC` if set |
 | `ESP32_TIMEOUT` | `10` | GET snapshot timeout (seconds) |
 | `BACKEND_TIMEOUT` | `120` | POST /predict timeout (YOLO can be slow) |
 | `BACKEND_MAX_RETRIES` | `3` | Retries if backend returns 5xx or network error |
@@ -96,6 +97,7 @@ This repo gateway expects:
   - **`image`** — JPEG file (required)
   - **`bridge_instance_id`** — required from VisionWaste bridge (stable per laptop, see `.bridge_id`)
   - **`esp32_id`** — optional; must match `devices.esp32_id` for bin linkage
+  - **`source_type`** — bridge sends `esp32` explicitly (backend also infers from context when omitted)
   - **`device_id`** — optional numeric alternative to `esp32_id`
 
 Response: JSON **array** of detections, e.g.

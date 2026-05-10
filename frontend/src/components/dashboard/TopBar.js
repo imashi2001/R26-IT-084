@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Clock,
-  Cloud,
   CloudSun,
   Droplets,
   Bell,
   Menu,
   ChevronDown,
   Thermometer,
+  LogOut,
+  User as UserIcon,
+  Building2,
 } from "lucide-react";
 import axios from "axios";
 import { apiUrl } from "../../utils/apiBase";
@@ -88,6 +91,42 @@ export default function TopBar({ onToggleSidebar }) {
 
   const auth = useAuth?.();
   const user = auth?.user || null;
+  const logout = auth?.logout;
+  const navigate = useNavigate();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
+  function handleLogout() {
+    setMenuOpen(false);
+    if (logout) logout();
+    navigate("/login", { replace: true });
+  }
+
+  const displayName =
+    user?.adminName ||
+    user?.name ||
+    (user?.email ? user.email.split("@")[0] : "Admin");
+  const initials = (displayName || "A")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0].toUpperCase())
+    .join("") || "A";
+  const subtitle =
+    user?.municipalCouncil ||
+    (user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Administrator");
 
   const weather = useLatestWeather();
 
@@ -134,21 +173,91 @@ export default function TopBar({ onToggleSidebar }) {
           </span>
         </button>
 
-        <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-2 py-1.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">
-            {(user?.email || "A")[0].toUpperCase()}
-          </div>
-          <div className="leading-tight pr-1">
-            <div className="text-sm font-semibold text-ink-900">
-              {user?.email ? user.email.split("@")[0] : "Admin"}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className="flex items-center gap-2 rounded-lg bg-slate-50 px-2 py-1.5 hover:bg-slate-100 transition"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">
+              {initials}
             </div>
-            <div className="text-[11px] text-ink-400">
-              {user?.role || "Administrator"}
+            <div className="leading-tight pr-1 text-left">
+              <div className="text-sm font-semibold text-ink-900 max-w-[10rem] truncate">
+                {displayName}
+              </div>
+              <div className="text-[11px] text-ink-400 max-w-[10rem] truncate">
+                {subtitle}
+              </div>
             </div>
-          </div>
-          <ChevronDown className="h-4 w-4 text-ink-400" />
+            <ChevronDown
+              className={`h-4 w-4 text-ink-400 transition-transform ${
+                menuOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {menuOpen ? (
+            <div
+              role="menu"
+              className="absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden z-40"
+            >
+              <div className="px-4 py-3 border-b border-slate-100">
+                <div className="text-sm font-semibold text-ink-900 truncate">
+                  {displayName}
+                </div>
+                {user?.email ? (
+                  <div className="text-xs text-ink-500 truncate">{user.email}</div>
+                ) : null}
+              </div>
+
+              {(user?.municipalCouncil || user?.coveredArea || user?.role) ? (
+                <div className="px-4 py-3 space-y-2 border-b border-slate-100">
+                  {user?.municipalCouncil ? (
+                    <ProfileRow icon={Building2} label="Council" value={user.municipalCouncil} />
+                  ) : null}
+                  {user?.coveredArea ? (
+                    <ProfileRow icon={UserIcon} label="Area" value={user.coveredArea} />
+                  ) : null}
+                  {user?.role ? (
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="inline-flex rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-700 uppercase tracking-wider">
+                        {user.role}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition"
+                role="menuitem"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </header>
+  );
+}
+
+function ProfileRow({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <Icon className="h-3.5 w-3.5 text-ink-400 mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-ink-400">
+          {label}
+        </div>
+        <div className="text-ink-700 truncate">{value}</div>
+      </div>
+    </div>
   );
 }

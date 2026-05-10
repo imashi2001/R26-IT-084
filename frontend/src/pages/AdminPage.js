@@ -9,6 +9,16 @@ import "leaflet/dist/leaflet.css";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../utils/apiBase";
 
+/*
+ * AdminPage assumes the visitor is authenticated. The /login and /register
+ * flow lives at dedicated pages (`LoginPage` / `RegisterPage`) and this
+ * route is wrapped in `ProtectedRoute` in `App.js`, so we no longer render
+ * the inline auth forms here.
+ *
+ * If a non-admin somehow lands here we still surface a small banner with
+ * a logout button — but registration now creates `role: "admin"` for
+ * everyone, so in practice this banner is unreachable.
+ */
 function MapClickHandler({ onPick }) {
   useMapEvents({
     click(e) {
@@ -19,17 +29,7 @@ function MapClickHandler({ onPick }) {
 }
 
 export default function AdminPage() {
-  const { token, user, login, logout, authFetch } = useAuth();
-
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState(null);
-
-  const [regName, setRegName] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPassword, setRegPassword] = useState("");
-  const [regInvite, setRegInvite] = useState("");
-  const [regError, setRegError] = useState(null);
+  const { user, logout, authFetch } = useAuth();
 
   const [devices, setDevices] = useState([]);
   const [devicesError, setDevicesError] = useState(null);
@@ -68,54 +68,8 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (token && user?.role === "admin") loadDevices();
-  }, [token, user, loadDevices]);
-
-  const onLogin = async (e) => {
-    e.preventDefault();
-    setLoginError(null);
-    try {
-      const res = await fetch(apiUrl("/auth/login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: loginEmail.trim(),
-          password: loginPassword,
-        }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      login(body.token, body.user);
-      setLoginPassword("");
-    } catch (err) {
-      setLoginError(err.message || "Login failed.");
-    }
-  };
-
-  const onRegister = async (e) => {
-    e.preventDefault();
-    setRegError(null);
-    try {
-      const payload = {
-        name: regName.trim(),
-        email: regEmail.trim(),
-        password: regPassword,
-      };
-      if (regInvite.trim()) payload.adminInvite = regInvite.trim();
-
-      const res = await fetch(apiUrl("/auth/register"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      login(body.token, body.user);
-      setRegPassword("");
-    } catch (err) {
-      setRegError(err.message || "Registration failed.");
-    }
-  };
+    if (user?.role === "admin") loadDevices();
+  }, [user, loadDevices]);
 
   const resetForm = useCallback(() => {
     setEditingDeviceId(null);
@@ -241,85 +195,7 @@ export default function AdminPage() {
         </p>
       </header>
 
-      {!token && (
-        <section className="admin-card">
-          <h2>Sign in</h2>
-          <form className="admin-form" onSubmit={onLogin}>
-            <label>
-              Email
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                autoComplete="username"
-                required
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            {loginError && <div className="error-banner">{loginError}</div>}
-            <button type="submit" className="btn btn-primary">
-              Log in
-            </button>
-          </form>
-
-          <h2 style={{ marginTop: 24 }}>Register</h2>
-          <p className="subtitle">
-            Include admin invite code from backend <code>ADMIN_INVITE_SECRET</code> to register as admin.
-          </p>
-          <form className="admin-form" onSubmit={onRegister}>
-            <label>
-              Name
-              <input
-                value={regName}
-                onChange={(e) => setRegName(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Email
-              <input
-                type="email"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Password (min 6)
-              <input
-                type="password"
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-                minLength={6}
-                required
-              />
-            </label>
-            <label>
-              Admin invite (optional)
-              <input
-                value={regInvite}
-                onChange={(e) => setRegInvite(e.target.value)}
-                placeholder="ADMIN_INVITE_SECRET value"
-              />
-            </label>
-            {regError && <div className="error-banner">{regError}</div>}
-            <button type="submit" className="btn btn-secondary">
-              Register
-            </button>
-          </form>
-        </section>
-      )}
-
-      {token && !isAdmin && (
+      {!isAdmin && (
         <div className="error-banner">
           Signed in as <strong>{user?.email}</strong> (role: {user?.role}). Admin role required to manage bins.{" "}
           <button type="button" className="btn btn-secondary" onClick={logout}>
@@ -328,7 +204,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {token && isAdmin && (
+      {isAdmin && (
         <>
           <div className="admin-toolbar">
             <span>

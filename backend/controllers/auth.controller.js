@@ -1,11 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const {
-  JWT_SECRET,
-  JWT_EXPIRES_IN,
-  ADMIN_INVITE_SECRET,
-} = require("../config/env");
+const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/env");
 const db = require("../config/db");
 const modelsRegistry = require("../models");
 const { assertJwtConfigured } = require("../middleware/auth");
@@ -17,6 +13,9 @@ function ensureModels() {
 
 function signToken(userRow) {
   assertJwtConfigured();
+  // Keep the JWT payload small. Profile fields are returned alongside the
+  // token in the response body and hydrated into the client's AuthContext;
+  // the token only needs to identify the principal and their role.
   const payload = {
     sub: userRow.id,
     email: userRow.email,
@@ -25,6 +24,27 @@ function signToken(userRow) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
+function publicUser(userRow) {
+  return {
+    id: userRow.id,
+    email: userRow.email,
+    role: userRow.role,
+    adminName: userRow.admin_name || userRow.name || null,
+    name: userRow.name || userRow.admin_name || null,
+    municipalCouncil: userRow.municipal_council || null,
+    coveredArea: userRow.covered_area || null,
+  };
+}
+
+/**
+ * POST /auth/register
+ *
+ * Registers a municipal admin. All five profile fields are required:
+ *   adminName, email, municipalCouncil, coveredArea, password
+ *
+ * Every registration is created with `role = "admin"`. There is no public
+ * (non-admin) signup in this product; the dashboard is admin-only.
+ */
 async function register(req, res, next) {
   try {
     const models = ensureModels();
@@ -36,13 +56,29 @@ async function register(req, res, next) {
     }
     assertJwtConfigured();
 
-    const { name, email, password, adminInvite } = req.body || {};
-    const trimmedEmail = (email || "").trim().toLowerCase();
-    const trimmedName = (name || "").trim();
+    const {
+      adminName,
+      email,
+      password,
+      municipalCouncil,
+      coveredArea,
+    } = req.body || {};
 
-    if (!trimmedName || !trimmedEmail || !password) {
+    const trimmedEmail = (email || "").trim().toLowerCase();
+    const trimmedName = (adminName || "").trim();
+    const trimmedCouncil = (municipalCouncil || "").trim();
+    const trimmedArea = (coveredArea || "").trim();
+
+    if (
+      !trimmedName ||
+      !trimmedEmail ||
+      !trimmedCouncil ||
+      !trimmedArea ||
+      !password
+    ) {
       return res.status(400).json({
-        error: "name, email, and password are required",
+        error:
+          "adminName, email, municipalCouncil, coveredArea, and password are required.",
       });
     }
 
@@ -50,15 +86,6 @@ async function register(req, res, next) {
       return res
         .status(400)
         .json({ error: "password must be at least 6 characters" });
-    }
-
-    let role = "user";
-    if (
-      ADMIN_INVITE_SECRET &&
-      adminInvite &&
-      adminInvite === ADMIN_INVITE_SECRET
-    ) {
-      role = "admin";
     }
 
     const { User } = models;
@@ -71,28 +98,28 @@ async function register(req, res, next) {
     const password_hash = await bcrypt.hash(password, 10);
 
     const user = await User.create({
+      // `name` stays populated for back-compat with any code (associations,
+      // older controllers) that still reads the legacy column.
       name: trimmedName,
+      admin_name: trimmedName,
       email: trimmedEmail,
       password_hash,
-      role,
+      role: "admin",
+      municipal_council: trimmedCouncil,
+      covered_area: trimmedArea,
     });
 
     const token = signToken(user);
-
-    return res.status(201).json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
+    return res.status(201).json({ token, user: publicUser(user) });
   } catch (err) {
     return next(err);
   }
 }
 
+/**
+ * POST /auth/login
+ * Body: { email, password }
+ */
 async function login(req, res, next) {
   try {
     const models = ensureModels();
@@ -124,19 +151,43 @@ async function login(req, res, next) {
     }
 
     const token = signToken(user);
-
-    return res.json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
+    return res.json({ token, user: publicUser(user) });
   } catch (err) {
     return next(err);
   }
 }
 
-module.exports = { register, login };
+/**
+ * GET /auth/me  (requires Bearer JWT)
+ *
+ * Returns the authenticated admin's profile. Useful for re-hydrating the
+ * AuthContext after a page refresh or for refreshing the user's council/
+ * area after editing their profile in the future.
+ */
+async function me(req, res, next) {
+  try {
+    const models = ensureModels();
+    if (!models) {
+      return res.status(503).json({
+        error:
+          "Database not configured. Set DATABASE_URL on the backend service.",
+      });
+    }
+
+    const userId = req.user && req.user.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const { User } = models;
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.json({ user: publicUser(user) });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { register, login, me };

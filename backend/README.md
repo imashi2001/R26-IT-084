@@ -87,6 +87,8 @@ The backend works both **with** and **without** a database:
 | PATCH | /devices/:id | **Admin JWT** — update bin |
 | GET | /geo/search?q= | Nominatim proxy for admin UI |
 
+**`POST /predict` response — `animal`:** Each item in **`detections`** includes **`label`**, **`confidence`**, and **`box`** `[x1,y1,x2,y2]` (the gateway normalizes **`box_xyxy`** / **`class_name`** from the animal microservice). **`annotated_image_base64`** is a JPEG with bounding boxes rendered server-side (YOLO plot).
+
 ## Railway Postgres (first deploy)
 
 1. Add **PostgreSQL** plugin to your Railway project.

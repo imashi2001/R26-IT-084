@@ -287,7 +287,51 @@
   align-items: center;
   gap: 20px;
   width: 100%;
-  max-width: 800px;
+  max-width: 960px;
+}
+
+.home-detection-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  width: 100%;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .home-detection-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-detection-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.home-detection-panel-label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.home-yolo-annotated-img {
+  width: 100%;
+  max-height: min(420px, 55vh);
+  object-fit: contain;
+  border-radius: 12px;
+  background: #020617;
+  border: 1px solid #334155;
+}
+
+.home-detection-panel-meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
 }
 
 .canvas-section {

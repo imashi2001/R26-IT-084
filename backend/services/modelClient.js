@@ -20,9 +20,10 @@ const { MODEL_REGISTRY, INFER_TIMEOUT_MS } = require("../config/env");
  *             POST /predict (multipart "file") -> {
  *               model: "animal_detection",
  *               detections: [{ label, confidence, box: [x1,y1,x2,y2] }],
+ *               (service may send box_xyxy/class_name; gateway normalizes)
  *               detection_count: number,
  *               annotated_image_base64: string,
- *               annotated_image_mime: "image/jpeg"
+ *               ...
  *             }
  *
  * The shapes are intentionally different because the use cases differ:
@@ -64,6 +65,38 @@ function buildForm(fileBuffer, filename, mimetype) {
     contentType: mimetype || "image/jpeg",
   });
   return form;
+}
+
+/**
+ * Animal microservice returns `box_xyxy` + `class_name`; gateway normalizes to `box` + `label`
+ * for persistence, risk engine, and frontend overlays.
+ */
+function normalizeAnimalPayload(raw) {
+  if (!raw || typeof raw !== "object" || raw.error) return raw;
+  const detections = Array.isArray(raw.detections)
+    ? raw.detections.map((d) => {
+        const boxFrom =
+          Array.isArray(d.box) && d.box.length >= 4
+            ? d.box
+            : Array.isArray(d.box_xyxy) && d.box_xyxy.length >= 4
+              ? d.box_xyxy
+              : null;
+        const box = boxFrom
+          ? boxFrom.slice(0, 4).map((x) => Number(x))
+          : [0, 0, 0, 0];
+        const label =
+          (d.label != null && String(d.label).trim()) ||
+          (d.class_name != null && String(d.class_name).trim()) ||
+          "animal";
+        return {
+          ...d,
+          label,
+          confidence: Number(d.confidence) || 0,
+          box,
+        };
+      })
+    : [];
+  return { ...raw, detections };
 }
 
 async function postToService(modelName, fileBuffer, filename, mimetype) {
@@ -110,7 +143,8 @@ async function inferWaste({ fileBuffer, filename, mimetype }) {
 }
 
 async function inferAnimal({ fileBuffer, filename, mimetype }) {
-  return postToService("animal", fileBuffer, filename, mimetype);
+  const data = await postToService("animal", fileBuffer, filename, mimetype);
+  return normalizeAnimalPayload(data);
 }
 
 /**
@@ -142,7 +176,9 @@ async function inferAll({ fileBuffer, filename, mimetype }) {
  * return the raw service payload because the two services don't share a shape.
  */
 async function infer({ modelName, fileBuffer, filename, mimetype }) {
-  return postToService(modelName, fileBuffer, filename, mimetype);
+  const data = await postToService(modelName, fileBuffer, filename, mimetype);
+  if (modelName === "animal") return normalizeAnimalPayload(data);
+  return data;
 }
 
 module.exports = {
@@ -153,4 +189,5 @@ module.exports = {
   inferAnimal,
   inferAll,
   infer,
+  normalizeAnimalPayload,
 };

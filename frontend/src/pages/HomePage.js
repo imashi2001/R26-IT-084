@@ -12,6 +12,23 @@ import {
 } from "../utils/apiBase";
 import { normalizeFill, effectiveFillTier, fillLabel } from "../utils/fillTier";
 
+function detectionLabel(det) {
+  if (det.label != null && String(det.label).trim()) return String(det.label).trim();
+  if (det.class_name != null && String(det.class_name).trim())
+    return String(det.class_name).trim();
+  return "animal";
+}
+
+function detectionBox(det) {
+  if (Array.isArray(det.box) && det.box.length >= 4) {
+    return det.box.slice(0, 4).map((x) => Number(x));
+  }
+  if (Array.isArray(det.box_xyxy) && det.box_xyxy.length >= 4) {
+    return det.box_xyxy.slice(0, 4).map((x) => Number(x));
+  }
+  return [0, 0, 0, 0];
+}
+
 function predictionsFromPredictResponse(data) {
   if (Array.isArray(data)) return data;
   const preds = [];
@@ -27,9 +44,9 @@ function predictionsFromPredictResponse(data) {
   if (animal && !animal.error && Array.isArray(animal.detections)) {
     for (const det of animal.detections) {
       preds.push({
-        label: det.label || "animal",
+        label: detectionLabel(det),
         confidence: Number(det.confidence) || 0,
-        box: Array.isArray(det.box) ? det.box.map(Number) : [0, 0, 0, 0],
+        box: detectionBox(det),
       });
     }
   }
@@ -52,6 +69,7 @@ export default function HomePage() {
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
   const [predictions, setPredictions] = useState([]);
+  const [lastPredict, setLastPredict] = useState(null);
   const [loading, setLoading] = useState(false);
   const [esp32Loading, setEsp32Loading] = useState(false);
   const [error, setError] = useState(null);
@@ -124,6 +142,7 @@ export default function HomePage() {
       return URL.createObjectURL(file);
     });
     setPredictions([]);
+    setLastPredict(null);
     setError(null);
   }, []);
 
@@ -199,6 +218,7 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     setPredictions([]);
+    setLastPredict(null);
 
     const formData = new FormData();
     formData.append("image", imageFile);
@@ -227,6 +247,7 @@ export default function HomePage() {
       }
 
       const data = await response.json();
+      setLastPredict(data);
       const preds = predictionsFromPredictResponse(data);
       setPredictions(preds);
 
@@ -249,6 +270,7 @@ export default function HomePage() {
       return null;
     });
     setPredictions([]);
+    setLastPredict(null);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -363,8 +385,38 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="workspace">
-            <div className="canvas-section">
-              <ImageCanvas imageUrl={imageUrl} predictions={predictions} />
+            <div className="home-detection-panels">
+              <div className="home-detection-panel">
+                <div className="home-detection-panel-label">
+                  Your image (waste + animal boxes drawn here)
+                </div>
+                <div className="canvas-section">
+                  <ImageCanvas imageUrl={imageUrl} predictions={predictions} />
+                </div>
+              </div>
+              {lastPredict?.animal &&
+              !lastPredict.animal.error &&
+              lastPredict.animal.annotated_image_base64 ? (
+                <div className="home-detection-panel">
+                  <div className="home-detection-panel-label">
+                    YOLO detection (server-rendered JPEG)
+                  </div>
+                  <img
+                    className="home-yolo-annotated-img"
+                    alt="YOLO annotated detection"
+                    src={`data:image/jpeg;base64,${lastPredict.animal.annotated_image_base64}`}
+                  />
+                  {lastPredict.animal.inference_imgsz != null ? (
+                    <p className="home-detection-panel-meta">
+                      Same scan as hygienic-risk dashboard · inference imgsz{" "}
+                      {lastPredict.animal.inference_imgsz}
+                      {typeof lastPredict.animal.detection_count === "number"
+                        ? ` · ${lastPredict.animal.detection_count} detection(s)`
+                        : ""}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="controls">

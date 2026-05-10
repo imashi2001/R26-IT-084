@@ -30,7 +30,13 @@ const { MODEL_REGISTRY, INFER_TIMEOUT_MS } = require("../config/env");
  *   - waste is a 2-class CLASSIFIER (one label per image)
  *   - animal is a DETECTOR (zero, one, or many boxes per image)
  *
- * Callers usually want both for one capture; see `inferAll()`.
+ *   yolo   -> model-yolo/ (Flask / Ultralytics)
+ *             POST /infer (multipart "image") -> {
+ *               model, predictions: [{ label, confidence, box }],
+ *               detections (alias), annotated_image_base64 (JPEG plot), ...
+ *             }
+ *
+ * Callers usually want waste + animal + optional bin-fill YOLO; see `inferAll()`.
  */
 
 function getModelUrl(modelName) {
@@ -99,6 +105,26 @@ function normalizeAnimalPayload(raw) {
   return { ...raw, detections };
 }
 
+/** Bin-fill model-yolo: unify `predictions` / `detections` lists for dashboards + DB. */
+function normalizeBinFillPayload(raw) {
+  if (!raw || typeof raw !== "object" || raw.error) return raw;
+  const preds = Array.isArray(raw.predictions)
+    ? raw.predictions
+    : Array.isArray(raw.detections)
+      ? raw.detections
+      : [];
+  const normalized = preds.map((p) => ({
+    label: p.label != null ? String(p.label) : "?",
+    confidence: Number(p.confidence) || 0,
+    box: Array.isArray(p.box) ? p.box.map(Number) : [0, 0, 0, 0],
+  }));
+  return {
+    ...raw,
+    predictions: normalized,
+    detections: normalized,
+  };
+}
+
 async function postToService(modelName, fileBuffer, filename, mimetype) {
   const base = getModelUrl(modelName);
   if (!base) {
@@ -138,6 +164,45 @@ async function postToService(modelName, fileBuffer, filename, mimetype) {
   }
 }
 
+async function inferBinFillYolo({ fileBuffer, filename, mimetype }) {
+  const base = getModelUrl("yolo");
+  if (!base) {
+    return { error: "MODEL_YOLO_URL is not set on the backend." };
+  }
+
+  const form = new FormData();
+  form.append("image", fileBuffer, {
+    filename: filename || "upload.jpg",
+    contentType: mimetype || "image/jpeg",
+  });
+
+  const baseTrim = base.replace(/\/+$/, "");
+  const targetUrl = `${baseTrim}/infer`;
+
+  try {
+    const r = await axios.post(targetUrl, form, {
+      headers: form.getHeaders(),
+      timeout: INFER_TIMEOUT_MS,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+    });
+    return normalizeBinFillPayload(r.data || {});
+  } catch (err) {
+    if (err.response) {
+      const detail = err.response.data;
+      const msg =
+        (detail && (detail.error || detail.message)) ||
+        `Bin-fill YOLO returned HTTP ${err.response.status}.`;
+      return { error: typeof msg === "string" ? msg : JSON.stringify(msg) };
+    }
+    return {
+      error:
+        err.message ||
+        `Could not reach bin-fill YOLO at ${targetUrl}. Check MODEL_YOLO_URL.`,
+    };
+  }
+}
+
 async function inferWaste({ fileBuffer, filename, mimetype }) {
   return postToService("waste", fileBuffer, filename, mimetype);
 }
@@ -153,21 +218,33 @@ async function inferAnimal({ fileBuffer, filename, mimetype }) {
  * one comes back with `{ error: "..." }` so the caller can degrade gracefully.
  */
 async function inferAll({ fileBuffer, filename, mimetype }) {
-  const [wasteRes, animalRes] = await Promise.allSettled([
+  const hasYolo = Boolean(getModelUrl("yolo"));
+  const settled = await Promise.allSettled([
     inferWaste({ fileBuffer, filename, mimetype }),
     inferAnimal({ fileBuffer, filename, mimetype }),
+    hasYolo
+      ? inferBinFillYolo({ fileBuffer, filename, mimetype })
+      : Promise.resolve(null),
   ]);
 
   const waste =
-    wasteRes.status === "fulfilled"
-      ? wasteRes.value
-      : { error: wasteRes.reason?.message || "waste service failed" };
+    settled[0].status === "fulfilled"
+      ? settled[0].value
+      : { error: settled[0].reason?.message || "waste service failed" };
   const animal =
-    animalRes.status === "fulfilled"
-      ? animalRes.value
-      : { error: animalRes.reason?.message || "animal service failed" };
+    settled[1].status === "fulfilled"
+      ? settled[1].value
+      : { error: settled[1].reason?.message || "animal service failed" };
 
-  return { waste, animal };
+  let bin_fill = null;
+  if (hasYolo) {
+    bin_fill =
+      settled[2].status === "fulfilled"
+        ? settled[2].value
+        : { error: settled[2].reason?.message || "bin-fill YOLO failed" };
+  }
+
+  return { waste, animal, bin_fill };
 }
 
 /**
@@ -176,6 +253,10 @@ async function inferAll({ fileBuffer, filename, mimetype }) {
  * return the raw service payload because the two services don't share a shape.
  */
 async function infer({ modelName, fileBuffer, filename, mimetype }) {
+  const key = (modelName || "").toString().trim().toLowerCase();
+  if (key === "yolo" || key === "fill" || key === "bin_fill") {
+    return inferBinFillYolo({ fileBuffer, filename, mimetype });
+  }
   const data = await postToService(modelName, fileBuffer, filename, mimetype);
   if (modelName === "animal") return normalizeAnimalPayload(data);
   return data;
@@ -187,7 +268,9 @@ module.exports = {
   pingAllModels,
   inferWaste,
   inferAnimal,
+  inferBinFillYolo,
   inferAll,
   infer,
   normalizeAnimalPayload,
+  normalizeBinFillPayload,
 };

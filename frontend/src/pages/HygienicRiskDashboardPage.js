@@ -113,6 +113,8 @@ export default function HygienicRiskDashboardPage() {
   const risk = result?.risk;
   const waste = result?.waste;
   const animals = result?.animals;
+  const binFill =
+    result?.bin_fill && !result.bin_fill.error ? result.bin_fill : null;
   const theme = risk ? RISK_THEMES[risk.level] || RISK_THEMES.LOW : null;
 
   const dateText = useMemo(() => now.toLocaleDateString(), [now]);
@@ -254,7 +256,7 @@ export default function HygienicRiskDashboardPage() {
         style={{
           display: "grid",
           gap: 16,
-          gridTemplateColumns: "minmax(280px, 1fr) minmax(280px, 1fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           marginBottom: 16,
         }}
       >
@@ -306,6 +308,36 @@ export default function HygienicRiskDashboardPage() {
             </div>
           )}
         </div>
+
+        <div style={card}>
+          <div style={{ ...subtle, fontSize: 12, marginBottom: 8 }}>
+            Bin fill level (YOLO)
+          </div>
+          {binFill?.annotated_image_base64 ? (
+            <img
+              alt="bin fill annotated"
+              src={`data:image/jpeg;base64,${binFill.annotated_image_base64}`}
+              style={{
+                width: "100%",
+                maxHeight: 320,
+                objectFit: "contain",
+                borderRadius: 10,
+                background: "#020617",
+              }}
+            />
+          ) : (
+            <div style={{ ...subtle, padding: 32, textAlign: "center" }}>
+              Enable <code style={{ color: "#cbd5e1" }}>MODEL_YOLO_URL</code> on the backend,
+              deploy <strong style={{ color: "#e2e8f0" }}>model-yolo</strong>, then run Analyze again.
+            </div>
+          )}
+          {result?.bin_fill_level ? (
+            <div style={{ ...subtle, fontSize: 13, marginTop: 8 }}>
+              Derived tier:{" "}
+              <strong style={{ color: "#e2e8f0" }}>{result.bin_fill_level}</strong>
+            </div>
+          ) : null}
+        </div>
       </section>
 
       <section
@@ -328,6 +360,37 @@ export default function HygienicRiskDashboardPage() {
                 {Number(waste.organic_probability).toFixed(2)})
               </div>
             </>
+          ) : (
+            <div style={{ ...subtle, marginTop: 4 }}>—</div>
+          )}
+        </div>
+
+        <div style={card}>
+          <div style={{ ...subtle, fontSize: 12 }}>Bin fill (YOLO)</div>
+          {binFill && Array.isArray(binFill.detections) && binFill.detections.length ? (
+            <>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+                {result?.bin_fill_level || "—"}
+              </div>
+              <ul style={{ margin: "6px 0 0 16px", padding: 0, fontSize: 13 }}>
+                {binFill.detections.map((d, i) => (
+                  <li key={`fill-${i}`}>
+                    {(d.label || d.class_name || "?") +
+                      " · " +
+                      ((Number(d.confidence) || 0) * 100).toFixed(1) +
+                      "%"}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : result?.bin_fill_level ? (
+            <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+              {result.bin_fill_level}
+            </div>
+          ) : result?.bin_fill?.error ? (
+            <div style={{ ...subtle, marginTop: 4, color: "#fecaca" }}>
+              Fill model error: {String(result.bin_fill.error)}
+            </div>
           ) : (
             <div style={{ ...subtle, marginTop: 4 }}>—</div>
           )}

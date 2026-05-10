@@ -50,6 +50,24 @@ function predictionsFromPredictResponse(data) {
       });
     }
   }
+  const binFill = data?.bin_fill;
+  if (binFill && !binFill.error) {
+    const fillList = Array.isArray(binFill.predictions)
+      ? binFill.predictions
+      : Array.isArray(binFill.detections)
+        ? binFill.detections
+        : [];
+    for (const det of fillList) {
+      preds.push({
+        label:
+          det.label != null && String(det.label).trim()
+            ? String(det.label).trim()
+            : "fill",
+        confidence: Number(det.confidence) || 0,
+        box: detectionBox(det),
+      });
+    }
+  }
   const risk = data?.risk;
   if (risk?.level) {
     preds.push({
@@ -251,9 +269,9 @@ export default function HomePage() {
       const preds = predictionsFromPredictResponse(data);
       setPredictions(preds);
 
-      if (preds.length === 0) {
+      if (preds.length === 0 && !data?.bin_fill_level) {
         setError(
-          "No waste/animal/risk outputs returned. Check model services and try another image."
+          "No waste/animal/bin-fill/risk outputs returned. Check backend MODEL_YOLO_URL and other model services, then try another image."
         );
       }
     } catch (e) {
@@ -282,7 +300,8 @@ export default function HomePage() {
           <span className="icon">🗑️</span> Garbage Fill Level Detector
         </h1>
         <p className="subtitle">
-          Upload an image for waste + animal analysis (YOLO-style overlays below).
+          Upload an image for waste + animal detection + bin fill level (when{" "}
+          <code>MODEL_YOLO_URL</code> is set on the API).
         </p>
         <p className="subtitle dashboard-shortcut-row">
           <Link to="/hygienic-risk" className="dashboard-shortcut-link">
@@ -388,7 +407,7 @@ export default function HomePage() {
             <div className="home-detection-panels">
               <div className="home-detection-panel">
                 <div className="home-detection-panel-label">
-                  Your image (waste + animal boxes drawn here)
+                  Your image (waste + animal + bin-fill boxes drawn here)
                 </div>
                 <div className="canvas-section">
                   <ImageCanvas imageUrl={imageUrl} predictions={predictions} />
@@ -399,11 +418,11 @@ export default function HomePage() {
               lastPredict.animal.annotated_image_base64 ? (
                 <div className="home-detection-panel">
                   <div className="home-detection-panel-label">
-                    YOLO detection (server-rendered JPEG)
+                    Animal YOLO (server-rendered JPEG)
                   </div>
                   <img
                     className="home-yolo-annotated-img"
-                    alt="YOLO annotated detection"
+                    alt="Animal YOLO annotated detection"
                     src={`data:image/jpeg;base64,${lastPredict.animal.annotated_image_base64}`}
                   />
                   {lastPredict.animal.inference_imgsz != null ? (
@@ -413,6 +432,30 @@ export default function HomePage() {
                       {typeof lastPredict.animal.detection_count === "number"
                         ? ` · ${lastPredict.animal.detection_count} detection(s)`
                         : ""}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {lastPredict?.bin_fill &&
+              !lastPredict.bin_fill.error &&
+              lastPredict.bin_fill.annotated_image_base64 ? (
+                <div className="home-detection-panel">
+                  <div className="home-detection-panel-label">
+                    Bin fill YOLO (server-rendered JPEG)
+                  </div>
+                  <img
+                    className="home-yolo-annotated-img"
+                    alt="Bin fill YOLO annotated"
+                    src={`data:image/jpeg;base64,${lastPredict.bin_fill.annotated_image_base64}`}
+                  />
+                  {lastPredict.bin_fill_level ? (
+                    <p className="home-detection-panel-meta">
+                      Derived tier: {lastPredict.bin_fill_level}
+                      {typeof lastPredict.bin_fill.detection_count === "number"
+                        ? ` · ${lastPredict.bin_fill.detection_count} detection(s)`
+                        : Array.isArray(lastPredict.bin_fill.predictions)
+                          ? ` · ${lastPredict.bin_fill.predictions.length} detection(s)`
+                          : ""}
                     </p>
                   ) : null}
                 </div>

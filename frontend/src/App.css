@@ -287,12 +287,12 @@
   align-items: center;
   gap: 20px;
   width: 100%;
-  max-width: 960px;
+  max-width: 1200px;
 }
 
 .home-detection-panels {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
   width: 100%;
   align-items: start;

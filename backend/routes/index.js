@@ -17,7 +17,7 @@ router.get("/", (_req, res) => {
     health: "/health",
     auth: "POST /auth/register, POST /auth/login",
     predict:
-      "POST /predict (multipart: image, bridge_instance_id, optional esp32_id/device_id, source_type, lat/lon, optional model=waste|animal)",
+      "POST /predict (multipart: image, bridge_instance_id, optional esp32_id/device_id, source_type, lat/lon, optional model=waste|animal|yolo|fill|bin_fill|all)",
     forecast:
       "GET /forecast?lat=&lon=&hours=24, GET /forecast/:deviceId?hours=24",
     captures: "GET /captures, GET /captures/:id, GET /captures/:id/image",

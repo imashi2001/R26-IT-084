@@ -20,9 +20,10 @@ function normalizeModelServiceUrl(raw, fallback) {
 
 const MODEL_WASTE_URL_RAW = process.env.MODEL_WASTE_URL || "";
 const MODEL_ANIMAL_URL_RAW = process.env.MODEL_ANIMAL_URL || "";
+const MODEL_YOLO_URL_RAW = process.env.MODEL_YOLO_URL || "";
 
 /**
- * Two separately deployed FastAPI microservices (waste + animal).
+ * Two FastAPI services (waste + animal) plus optional Flask model-yolo for bin fill levels.
  */
 const MODEL_REGISTRY = {
   waste: normalizeModelServiceUrl(
@@ -34,6 +35,13 @@ const MODEL_REGISTRY = {
     "http://localhost:8002"
   ),
 };
+
+if (MODEL_YOLO_URL_RAW.trim()) {
+  MODEL_REGISTRY.yolo = normalizeModelServiceUrl(
+    MODEL_YOLO_URL_RAW,
+    "http://localhost:6000"
+  );
+}
 
 const DATABASE_URL = process.env.DATABASE_URL || null;
 

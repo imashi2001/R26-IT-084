@@ -9,9 +9,8 @@
  *   bridge_instance_id     (string, recommended)    laptop bridge UUID
  *   esp32_id               (string, optional)       binds to a Device row
  *   device_id              (number, optional)       direct Device id override
- *   model                  (string, optional)       "waste" | "animal" — when set,
- *                                                   call only that one service
- *                                                   (back-compat with single-model clients)
+ *   model                  (string, optional)       "waste" | "animal" | "yolo"| "fill"| "bin_fill" —
+ *                                                   when set, call only that service; omit / "all" runs waste+animal (+ MODEL_YOLO_URL bin-fill).
  *   lat / lon              (number, optional)       weather + stored on capture
  *   source_type            (string, optional)       esp32 | mobile | admin
  *
@@ -23,7 +22,7 @@
  *     risk:     { level, case, message, rules_fired, alert, rotting_hours, ... },
  *     bin:      { id, name, esp32_id, ... }   (null when no DB / no match),
  *     timestamp: ISO,
- *     model: "waste+animal"
+ *     model: "waste+animal+bin_fill" | ...
  *   }
  *
  * Response sets X-Capture-Id header when the row is saved.
@@ -42,6 +41,7 @@ const {
   deriveFillPercentage,
   derivePredictionClass,
 } = require("../utils/predictCaptureMeta");
+const { deriveFillLevel } = require("../utils/fillLevel");
 
 function trimBridgeInstanceId(body) {
   if (
@@ -142,6 +142,30 @@ function predictionsToPersist(animalPayload) {
   }));
 }
 
+function predictionsFromBinFill(binFillPayload) {
+  if (!binFillPayload || binFillPayload.error) return [];
+  const preds = Array.isArray(binFillPayload.predictions)
+    ? binFillPayload.predictions
+    : [];
+  return preds.map((p) => ({
+    label: p.label || "?",
+    confidence: Number(p.confidence) || 0,
+    box: Array.isArray(p.box) ? p.box.map(Number) : [0, 0, 0, 0],
+  }));
+}
+
+const YOLO_FILL_TIER_TO_PCT = { Empty: 25, Half: 50, Overflow: 85 };
+
+function persistModelLabel(bodyModel, hasYoloRegistry) {
+  const rm = (bodyModel || "").toString().trim().toLowerCase();
+  if (rm === "waste") return "waste";
+  if (rm === "animal") return "animal";
+  if (rm === "yolo" || rm === "fill" || rm === "bin_fill") return "bin_fill_yolo";
+  const parts = ["waste", "animal"];
+  if (hasYoloRegistry) parts.push("bin_fill");
+  return parts.join("+");
+}
+
 async function predict(req, res, next) {
   try {
     if (!req.file) {
@@ -170,21 +194,28 @@ async function predict(req, res, next) {
     const captureLat = Number.isFinite(reportLat) ? reportLat : null;
     const captureLon = Number.isFinite(reportLon) ? reportLon : null;
 
-    // Allow back-compat: model=waste|animal calls just one service.
+    // Allow back-compat: model=waste|animal|yolo calls one service; omit / all => inferAll (waste + animal + optional bin-fill YOLO).
     const requestedModel = (body.model || "").toString().trim().toLowerCase();
     const callBoth = !requestedModel || requestedModel === "all";
+    const binFillOnly =
+      requestedModel === "yolo" ||
+      requestedModel === "fill" ||
+      requestedModel === "bin_fill";
+    const hasYoloRegistry = Boolean(modelClient.getModelUrl("yolo"));
 
     let waste = null;
     let animal = null;
+    let bin_fill = null;
 
     if (callBoth) {
-      const both = await modelClient.inferAll({
+      const triple = await modelClient.inferAll({
         fileBuffer: req.file.buffer,
         filename: req.file.originalname,
         mimetype: req.file.mimetype,
       });
-      waste = both.waste;
-      animal = both.animal;
+      waste = triple.waste;
+      animal = triple.animal;
+      bin_fill = triple.bin_fill;
     } else if (requestedModel === "waste") {
       try {
         waste = await modelClient.inferWaste({
@@ -205,9 +236,15 @@ async function predict(req, res, next) {
       } catch (e) {
         animal = { error: e.message };
       }
+    } else if (binFillOnly) {
+      bin_fill = await modelClient.inferBinFillYolo({
+        fileBuffer: req.file.buffer,
+        filename: req.file.originalname,
+        mimetype: req.file.mimetype,
+      });
     } else {
       return res.status(400).json({
-        error: `Unknown model '${requestedModel}'. Use 'waste', 'animal', or omit to call both.`,
+        error: `Unknown model '${requestedModel}'. Use 'waste', 'animal', 'yolo', 'fill', 'bin_fill', 'all', or omit.`,
       });
     }
 
@@ -223,6 +260,12 @@ async function predict(req, res, next) {
     const weather = await weatherService.getCurrentWeather(lat, lon);
 
     const animalsForEngine = animalsForRiskEngine(animal);
+    const tierPredictions =
+      bin_fill && !bin_fill.error && Array.isArray(bin_fill.predictions)
+        ? bin_fill.predictions
+        : [];
+    const bin_fill_level = deriveFillLevel(tierPredictions);
+
     const binDoc = device
       ? {
           name: device.name,
@@ -246,6 +289,7 @@ async function predict(req, res, next) {
     });
 
     const timestamp = new Date().toISOString();
+    const persistLabel = persistModelLabel(body.model, hasYoloRegistry);
 
     const extras = {
       waste_label: waste?.label || null,
@@ -262,15 +306,27 @@ async function predict(req, res, next) {
       source_type: sourceType,
       latitude: captureLat,
       longitude: captureLon,
-      fill_percentage: deriveFillPercentage(risk),
-      prediction_class: derivePredictionClass(
-        waste,
-        animalsForEngine.length,
-        risk
-      ),
+      fill_percentage:
+        bin_fill_level != null &&
+        YOLO_FILL_TIER_TO_PCT[bin_fill_level] != null
+          ? YOLO_FILL_TIER_TO_PCT[bin_fill_level]
+          : deriveFillPercentage(risk),
+      prediction_class: (() => {
+        if (waste && !waste.error && waste.label)
+          return String(waste.label).slice(0, 160);
+        if (bin_fill_level) return String(bin_fill_level).slice(0, 160);
+        return derivePredictionClass(
+          waste,
+          animalsForEngine.length,
+          risk
+        );
+      })(),
     };
 
-    const predictionsToStore = predictionsToPersist(animal);
+    const predictionsToStore = [
+      ...predictionsToPersist(animal),
+      ...predictionsFromBinFill(bin_fill),
+    ];
 
     try {
       latestState.setLatest({
@@ -278,7 +334,7 @@ async function predict(req, res, next) {
         imageBuffer: req.file.buffer,
         mimetype: req.file.mimetype,
         filename: req.file.originalname,
-        modelName: callBoth ? "waste+animal" : requestedModel,
+        modelName: persistLabel,
         predictions: predictionsToStore,
         extras,
       });
@@ -288,11 +344,11 @@ async function predict(req, res, next) {
 
     try {
       const capture = await captureService.saveCaptureWithPredictions({
-        modelName: callBoth ? "waste+animal" : requestedModel,
+        modelName: persistLabel,
         imageUrl: null,
         imageBuffer: req.file.buffer,
         imageMimetype: req.file.mimetype,
-        fillLevel: null, // YOLO bin-fill labels not produced by these two services
+        fillLevel: bin_fill_level || null,
         userId: null,
         deviceId,
         bridgeInstanceId,
@@ -306,9 +362,11 @@ async function predict(req, res, next) {
 
     return res.json({
       timestamp,
-      model: callBoth ? "waste+animal" : requestedModel,
+      model: persistLabel,
       waste,
       animal,
+      bin_fill,
+      bin_fill_level,
       weather: { ...weather, location_source: locationSource, lat, lon },
       risk,
       bin: device

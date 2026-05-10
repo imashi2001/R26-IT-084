@@ -67,7 +67,7 @@ function inferredFillLevelFromPercentage(pct) {
 }
 
 /**
- * Persisted captures often have fill_level null (dual-model pipeline does not set it).
+ * Persisted captures often have fill_level null unless MODEL_YOLO_URL bin-fill ran successfully.
  * Prefer predictions and risk-derived fill_percentage, then in-memory snapshot.
  */
 function resolveLatestFillLevel({ latestCap, mem }) {

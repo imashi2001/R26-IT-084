@@ -14,6 +14,7 @@ import StubPage from "./pages/StubPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import LiveMonitoringPage from "./pages/LiveMonitoringPage";
 import "./App.css";
 
 /*
@@ -24,14 +25,19 @@ import "./App.css";
  *   /login       -> LoginPage           (email + password)
  *   /register    -> RegisterPage        (admin profile + password)
  *
- * Authenticated surface (everything below `<ProtectedRoute>`):
- *   /dashboard           -> SystemDashboardPage   (new dashboard shell)
- *   /system              -> redirects to /dashboard (legacy alias)
- *   /live-monitoring     -> legacy HomePage upload UI       (LegacyShell)
- *   /hygienic-risk       -> Imashi's risk dashboard         (LegacyShell)
+ * Authenticated surface (everything wrapped in `<ProtectedRoute>`):
+ *   /dashboard            -> SystemDashboardPage      (dashboard shell)
+ *   /system               -> redirects to /dashboard  (legacy alias)
+ *   /live-monitoring      -> LiveMonitoringPage       (dashboard shell, map)
+ *   /bin-level-detector   -> HomePage                 (LegacyShell, upload UI;
+ *                                                      formerly mounted at
+ *                                                      /live-monitoring before
+ *                                                      the rename)
+ *   /bin-fill             -> redirects to /bin-level-detector (back-compat)
+ *   /hygienic-risk        -> HygienicRiskDashboardPage          (LegacyShell)
  *   /map, /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
- *   /bin-fill, /animals, /forecast, /alerts, /reports,
- *   /history, /devices, /bins                                (StubPage)
+ *   /animals, /forecast, /alerts, /reports, /history,
+ *   /devices, /bins                                             (StubPage)
  *
  * Two shells, by intent:
  *
@@ -39,9 +45,9 @@ import "./App.css";
  *                    These pages are teammate-owned and use class-based
  *                    `App.css`; we keep them visually identical.
  *
- *   SystemDashboardPage / StubPage  - opt INTO `DashboardLayout` (sidebar
- *                    + topbar), so the new dashboard surface stays self-
- *                    contained from legacy CSS.
+ *   DashboardLayout (used by SystemDashboardPage, LiveMonitoringPage,
+ *                    StubPage) - sidebar + topbar shell, Tailwind-only,
+ *                    isolated from legacy CSS.
  */
 function LegacyShell({ children }) {
   return (
@@ -83,8 +89,24 @@ export default function App() {
             element={<Navigate to="/dashboard" replace />}
           />
 
+          {/* ---- Live monitoring (new map view, dashboard shell) ---- */}
+          <Route
+            path="/live-monitoring"
+            element={protectedShell(<LiveMonitoringPage />)}
+          />
+
+          {/* ---- Bin Level Detector (the previous /live-monitoring upload UI, renamed) ---- */}
+          <Route
+            path="/bin-level-detector"
+            element={legacyProtected(HomePage)}
+          />
+          {/* Back-compat: old /bin-fill stub now points at the renamed page. */}
+          <Route
+            path="/bin-fill"
+            element={<Navigate to="/bin-level-detector" replace />}
+          />
+
           {/* ---- Legacy pages (top NavBar) ---- */}
-          <Route path="/live-monitoring" element={legacyProtected(HomePage)} />
           <Route
             path="/hygienic-risk"
             element={legacyProtected(HygienicRiskDashboardPage)}
@@ -105,17 +127,6 @@ export default function App() {
           <Route path="/admin" element={legacyProtected(AdminPage)} />
 
           {/* ---- Stub routes (sidebar placeholders) ---- */}
-          <Route
-            path="/bin-fill"
-            element={protectedShell(
-              <StubPage
-                title="Bin Fill Level"
-                description="Per-bin Empty / Half / Overflow tier history with YOLO confidence and a 7-day trend. Backend already exposes /devices and /captures with fill_level + fill_percentage; this page just hasn't been built yet."
-                suggestionTo="/dashboard"
-                suggestionLabel="See current fill on the dashboard"
-              />
-            )}
-          />
           <Route
             path="/animals"
             element={protectedShell(

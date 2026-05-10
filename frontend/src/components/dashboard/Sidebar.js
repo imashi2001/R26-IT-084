@@ -40,7 +40,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/live-monitoring", icon: Activity, label: "Live Monitoring" },
   { to: "/hygienic-risk", icon: ShieldAlert, label: "Risk Dashboard" },
-  { to: "/bin-fill", icon: Trash2, label: "Bin Fill Level" },
+  { to: "/bin-level-detector", icon: Trash2, label: "Bin Level Detector" },
   { to: "/map", icon: MapIcon, label: "Map View" },
   { to: "/bins", icon: Database, label: "Bin Status" },
   { to: "/animals", icon: PawPrint, label: "Animal Detection" },

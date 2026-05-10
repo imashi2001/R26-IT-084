@@ -297,13 +297,18 @@ export default function HomePage() {
     <div className="app">
       <header className="header">
         <h1>
-          <span className="icon">🗑️</span> Garbage Fill Level Detector
+          <span className="icon">🗑️</span> Bin Level Detector
         </h1>
         <p className="subtitle">
-          Upload an image for waste + animal detection + bin fill level (when{" "}
-          <code>MODEL_YOLO_URL</code> is set on the API).
+          Upload an image (or pull from an ESP32-CAM) to run waste classification,
+          animal detection, and bin fill-level detection — same models the live
+          monitoring map uses behind the scenes.
         </p>
         <p className="subtitle dashboard-shortcut-row">
+          <Link to="/live-monitoring" className="dashboard-shortcut-link">
+            ← Back to Live Monitoring
+          </Link>
+          <span className="dashboard-shortcut-sep">·</span>
           <Link to="/hygienic-risk" className="dashboard-shortcut-link">
             Hygienic risk dashboard →
           </Link>
@@ -313,7 +318,7 @@ export default function HomePage() {
           </Link>
         </p>
         <p className="subtitle esp32-status-note">
-          Primary monitoring: ESP32-CAM + laptop bridge (same backend). Manual fallback: phone report link above.
+          Primary monitoring: ESP32-CAM + laptop bridge. Manual fallback: phone report link above.
         </p>
       </header>
 

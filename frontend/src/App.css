@@ -383,6 +383,35 @@
   color: #cbd5e1;
 }
 
+.map-page-hint {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
+.map-route-note {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.map-nav-actions {
+  margin-top: 10px;
+}
+
+.map-nav-link {
+  color: #38bdf8;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.map-nav-link:hover {
+  text-decoration: underline;
+}
+
 .back-row a {
   color: #38bdf8;
   text-decoration: none;

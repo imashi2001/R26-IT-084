@@ -96,7 +96,7 @@ The backend works both **with** and **without** a database:
 
 `POST /predict` adds a response header `X-Capture-Id` whenever the row was saved.
 
-After adding columns in production, set **`DB_SYNC_ALTER=true`** once, redeploy, then **`false`** again.
+After adding columns in production, set **`DB_SYNC=true`** and **`DB_SYNC_ALTER=true`** for **one** redeploy (sync runs only when `DB_SYNC` is on). Confirm logs show `[db] tables synced (alter=true)`, then set **`DB_SYNC=false`** and **`DB_SYNC_ALTER=false`** again.
 
 ---
 

@@ -30,7 +30,7 @@ import "./App.css";
  *   /system               -> redirects to /dashboard  (legacy alias)
  *   /live-monitoring      -> LiveMonitoringPage       (dashboard shell, map)
  *   /hygienic-risk        -> HygienicRiskDashboardPage(dashboard shell)
- *   /bin-level-detector   -> HomePage                 (LegacyShell, upload UI;
+ *   /bin-level-detector   -> HomePage                 (dashboard shell, upload UI;
  *                                                      formerly mounted at
  *                                                      /live-monitoring before
  *                                                      the rename)
@@ -95,10 +95,10 @@ export default function App() {
             element={protectedShell(<LiveMonitoringPage />)}
           />
 
-          {/* ---- Bin Level Detector (the previous /live-monitoring upload UI, renamed) ---- */}
+          {/* ---- Bin Level Detector (dashboard shell, redesigned) ---- */}
           <Route
             path="/bin-level-detector"
-            element={legacyProtected(HomePage)}
+            element={protectedShell(<HomePage />)}
           />
           {/* Back-compat: old /bin-fill stub now points at the renamed page. */}
           <Route

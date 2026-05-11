@@ -9,6 +9,7 @@ const devicesRoutes = require("./devices.routes");
 const geoRoutes = require("./geo.routes");
 const forecastRoutes = require("./forecast.routes");
 const weatherRoutes = require("./weather.routes");
+const alertsRoutes = require("./alerts.routes");
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.get("/", (_req, res) => {
     weather:
       "GET /weather?lat=&lng= (or ?device_id=) — current temp/humidity/condition",
     captures: "GET /captures, GET /captures/:id, GET /captures/:id/image",
+    alerts: "GET /alerts?status=open|acknowledged|actioned|rejected|dismissed|all, PATCH /alerts/:id (admin)",
     devices:
       "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures",
     geo: "GET /geo/search?q=",
@@ -40,5 +42,6 @@ router.use("/captures", captureRoutes);
 router.use("/latest", latestRoutes);
 router.use("/forecast", forecastRoutes);
 router.use("/weather", weatherRoutes);
+router.use("/alerts", alertsRoutes);
 
 module.exports = router;

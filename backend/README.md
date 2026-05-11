@@ -76,6 +76,8 @@ The backend works both **with** and **without** a database:
 | GET | /captures | Query `limit`, `offset`, optional **`device_id`** |
 | GET | /captures/:id | Capture metadata + predictions (`has_image` when JPEG stored; image blob omitted) |
 | GET | /captures/:id/image | Raw JPEG bytes for that capture row |
+| GET | /alerts | **JWT** — list alerts (auto-sync from recent captures); query **`status`** (`open` \| `acknowledged` \| `actioned` \| `rejected` \| `dismissed` \| `all`), **`limit`**, **`offset`** |
+| PATCH | /alerts/:id | **Admin JWT** — JSON **`{ status, admin_note? }`** to update workflow + audit note |
 | GET | /devices | All bins; add **`?latest=1`** for each bin’s resolved **`latest_fill_level`** / **`latest_fill_percentage`** (for dashboards without map coords) |
 | GET | /devices/map | Bins with coordinates + latest fill + image URL + latest source / fill % |
 | GET | /devices/nearest | Query `lat`, `lng`, `limit` |

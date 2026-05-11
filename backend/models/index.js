@@ -11,6 +11,7 @@ const defineUser = require("./User");
 const defineDevice = require("./Device");
 const defineCapture = require("./Capture");
 const definePrediction = require("./Prediction");
+const defineAlert = require("./Alert");
 
 let models = null;
 
@@ -24,6 +25,7 @@ function init() {
   const Device = defineDevice(sequelize);
   const Capture = defineCapture(sequelize);
   const Prediction = definePrediction(sequelize);
+  const Alert = defineAlert(sequelize);
 
   User.hasMany(Device, { foreignKey: "user_id", as: "devices" });
   Device.belongsTo(User, { foreignKey: "user_id", as: "user" });
@@ -41,7 +43,15 @@ function init() {
   });
   Prediction.belongsTo(Capture, { foreignKey: "capture_id", as: "capture" });
 
-  models = { sequelize, User, Device, Capture, Prediction };
+  Capture.hasOne(Alert, { foreignKey: "capture_id", as: "alert" });
+  Alert.belongsTo(Capture, { foreignKey: "capture_id", as: "capture" });
+  Alert.belongsTo(Device, { foreignKey: "device_id", as: "device" });
+  Alert.belongsTo(User, {
+    foreignKey: "resolved_by_user_id",
+    as: "resolver",
+  });
+
+  models = { sequelize, User, Device, Capture, Prediction, Alert };
   return models;
 }
 

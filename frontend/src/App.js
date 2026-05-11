@@ -17,6 +17,7 @@ import RegisterPage from "./pages/RegisterPage";
 import LiveMonitoringPage from "./pages/LiveMonitoringPage";
 import BinStatusPage from "./pages/BinStatusPage";
 import AnimalDetectionPage from "./pages/AnimalDetectionPage";
+import AlertsNotificationsPage from "./pages/AlertsNotificationsPage";
 import "./App.css";
 
 /*
@@ -41,7 +42,8 @@ import "./App.css";
  *   /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
  *   /bins                 -> BinStatusPage             (dashboard shell, registry + form)
  *   /animals              -> AnimalDetectionPage       (dashboard shell, sightings + buzzer log)
- *   /forecast, /alerts, /reports, /history, /devices            (StubPage)
+ *   /alerts               -> AlertsNotificationsPage   (dashboard shell, alerts + admin workflow)
+ *   /forecast, /reports, /history, /devices            (StubPage)
  *
  * Two shells, by intent:
  *
@@ -50,7 +52,9 @@ import "./App.css";
  *                    `App.css`; we keep them visually identical.
  *
  *   DashboardLayout (used by SystemDashboardPage, LiveMonitoringPage,
- *                    MapPage, StubPage, HomePage at /bin-level-detector, etc.)
+ *                    MapPage, BinStatusPage, AnimalDetectionPage,
+ *                    AlertsNotificationsPage, StubPage, HomePage at
+ *                    /bin-level-detector, etc.)
  *                    — sidebar + topbar shell, Tailwind-only, isolated from legacy CSS.
  */
 function LegacyShell({ children }) {
@@ -150,14 +154,7 @@ export default function App() {
           />
           <Route
             path="/alerts"
-            element={protectedShell(
-              <StubPage
-                title="Alerts & Notifications"
-                description="Full alerts feed, filters, and acknowledgement flow. The dashboard's Recent Alerts card shows the last 6 events; this page will paginate through everything."
-                suggestionTo="/dashboard"
-                suggestionLabel="See recent alerts on the dashboard"
-              />
-            )}
+            element={protectedShell(<AlertsNotificationsPage />)}
           />
           <Route
             path="/reports"

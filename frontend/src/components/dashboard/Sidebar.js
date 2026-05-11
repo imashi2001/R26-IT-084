@@ -12,7 +12,6 @@ import {
   Bell,
   FileText,
   History,
-  Cpu,
   Smartphone,
   Settings,
   Leaf,
@@ -48,7 +47,6 @@ const NAV_ITEMS = [
   { to: "/alerts", icon: Bell, label: "Alerts & Notifications" },
   { to: "/reports", icon: FileText, label: "Reports" },
   { to: "/history", icon: History, label: "History" },
-  { to: "/devices", icon: Cpu, label: "IoT Devices" },
   { to: "/mobile-report", icon: Smartphone, label: "Mobile Reports" },
   { to: "/admin", icon: Settings, label: "Settings" },
 ];

@@ -19,6 +19,7 @@ import BinStatusPage from "./pages/BinStatusPage";
 import AnimalDetectionPage from "./pages/AnimalDetectionPage";
 import AlertsNotificationsPage from "./pages/AlertsNotificationsPage";
 import ReportsPage from "./pages/ReportsPage";
+import HistoryPage from "./pages/HistoryPage";
 import "./App.css";
 
 /*
@@ -45,7 +46,9 @@ import "./App.css";
  *   /animals              -> AnimalDetectionPage       (dashboard shell, sightings + buzzer log)
  *   /alerts               -> AlertsNotificationsPage   (dashboard shell, alerts + admin workflow)
  *   /reports              -> ReportsPage               (dashboard shell, aggregations + CSV export)
- *   /forecast, /history, /devices                      (StubPage)
+ *   /history              -> HistoryPage               (dashboard shell, unified event timeline)
+ *   /devices              -> redirects to /bins        (bin registry replaces legacy stub)
+ *   /forecast                                          (StubPage)
  *
  * Two shells, by intent:
  *
@@ -164,25 +167,12 @@ export default function App() {
           />
           <Route
             path="/history"
-            element={protectedShell(
-              <StubPage
-                title="History"
-                description="Full timeline of every capture (the table currently shown on the Risk Dashboard, expanded with image previews and per-bin filters)."
-                suggestionTo="/hygienic-risk"
-                suggestionLabel="Open Risk Dashboard history"
-              />
-            )}
+            element={protectedShell(<HistoryPage />)}
           />
+          {/* IoT Devices replaced by /bins — keep route as redirect for legacy links. */}
           <Route
             path="/devices"
-            element={protectedShell(
-              <StubPage
-                title="IoT Devices"
-                description="Bin (device) registry with bridge bindings, ESP32 ids, and last-seen timestamps. Backend already returns /devices?latest=1; this page wraps it in a manageable list/table."
-                suggestionTo="/admin"
-                suggestionLabel="Add devices via Admin"
-              />
-            )}
+            element={<Navigate to="/bins" replace />}
           />
           <Route
             path="/bins"

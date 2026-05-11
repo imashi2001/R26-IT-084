@@ -40,10 +40,13 @@ docker run --rm -p 8003:8000 -e PORT=8000 litter-api
 
 ## VisionWaste backend
 
-In `backend/.env`:
+In `backend/.env`, point litter inference at your deployed API or local Docker:
 
 ```env
-MODEL_LITTER_URL=http://localhost:8003
+# Hosted (default in repo .env.example):
+MODEL_LITTER_URL=litter-severity-model-waste-classification.up.railway.app
+# Local litter container:
+# MODEL_LITTER_URL=http://localhost:8003
 ```
 
 Then use the main app **Litter Severity** page (`/litter-severity`) or `POST /litter-severity` with field `image`.

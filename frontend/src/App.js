@@ -16,6 +16,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import LiveMonitoringPage from "./pages/LiveMonitoringPage";
 import BinStatusPage from "./pages/BinStatusPage";
+import AnimalDetectionPage from "./pages/AnimalDetectionPage";
 import "./App.css";
 
 /*
@@ -39,8 +40,8 @@ import "./App.css";
  *   /map                  -> MapPage                  (dashboard shell, collection map)
  *   /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
  *   /bins                 -> BinStatusPage             (dashboard shell, registry + form)
- *   /animals, /forecast, /alerts, /reports, /history,
- *   /devices                                                    (StubPage)
+ *   /animals              -> AnimalDetectionPage       (dashboard shell, sightings + buzzer log)
+ *   /forecast, /alerts, /reports, /history, /devices            (StubPage)
  *
  * Two shells, by intent:
  *
@@ -134,14 +135,7 @@ export default function App() {
           {/* ---- Stub routes (sidebar placeholders) ---- */}
           <Route
             path="/animals"
-            element={protectedShell(
-              <StubPage
-                title="Animal Detection"
-                description="Captures filtered to events where the YOLO animal model returned at least one detection. Useful for exporting evidence and tuning deterrence."
-                suggestionTo="/hygienic-risk"
-                suggestionLabel="See animals on the Risk Dashboard for now"
-              />
-            )}
+            element={protectedShell(<AnimalDetectionPage />)}
           />
           <Route
             path="/forecast"

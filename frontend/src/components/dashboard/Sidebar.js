@@ -44,6 +44,7 @@ const NAV_ITEMS = [
   { to: "/map", icon: MapIcon, label: "Map View" },
   { to: "/bins", icon: Database, label: "Bin Status" },
   { to: "/animals", icon: PawPrint, label: "Animal Detection" },
+  { to: "/litter-severity", icon: Leaf, label: "Litter Severity" },
   { to: "/forecast", icon: TrendingUp, label: "Forecasting" },
   { to: "/alerts", icon: Bell, label: "Alerts & Notifications" },
   { to: "/reports", icon: FileText, label: "Reports" },

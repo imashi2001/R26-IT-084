@@ -8,6 +8,7 @@ const authRoutes = require("./auth.routes");
 const devicesRoutes = require("./devices.routes");
 const geoRoutes = require("./geo.routes");
 const forecastRoutes = require("./forecast.routes");
+const litterRoutes = require("./litter.routes");
 
 const router = Router();
 
@@ -25,6 +26,8 @@ router.get("/", (_req, res) => {
       "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures",
     geo: "GET /geo/search?q=",
     latest: "GET /latest (JSON) and GET /latest/image (jpeg)",
+    litter_severity:
+      "POST /litter-severity (multipart: image) — requires MODEL_LITTER_URL litter microservice",
   });
 });
 
@@ -36,5 +39,6 @@ router.use("/predict", predictRoutes);
 router.use("/captures", captureRoutes);
 router.use("/latest", latestRoutes);
 router.use("/forecast", forecastRoutes);
+router.use("/litter-severity", litterRoutes);
 
 module.exports = router;

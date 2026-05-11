@@ -1,0 +1,33 @@
+# Litter Severity Index (LSI) and inference defaults.
+# Calibration: if true HIGH scenes show as MEDIUM (LSI often ~45–59), raise sensitivity
+# and/or lower medium_max. Re-check a few LOW/MEDIUM images after each change.
+
+lsi:
+  # LSI = w_count * CountScore + w_area * AreaScore + w_spread * SpreadScore
+  w_count: 0.5
+  w_area: 0.32
+  w_spread: 0.18
+  # CountScore saturates at this many detections (lower = same count scores higher).
+  count_cap: 18
+  # AreaScore = min(100, coverage_fraction * area_scale). Higher = heavy litter scores higher.
+  area_scale: 115.0
+  # Lower spread_denominator = scattered litter reaches high spread_score more easily.
+  spread_denominator: 0.30
+
+severity:
+  low_max: 30
+  # HIGH when LSI > medium_max. Was 60; severe scenes often peaked ~52–58 — 53 pulls them into HIGH.
+  medium_max: 53
+  # HIGH is strictly above medium_max through 100
+
+inference:
+  conf: 0.25
+  # If severe scenes still miss tiny pieces of litter, try 0.22 (more boxes → higher LSI; watch false positives).
+  iou: 0.45
+  imgsz: 640
+
+# Optional: define a closed polygon around the BIN (image pixel coords).
+# Detections whose box CENTROID falls INSIDE this polygon are discarded (inside-bin ignore).
+# Leave null to disable. Example for a 1280x720 image:
+# bin_polygon: [[400, 200], [900, 200], [920, 600], [380, 580]]
+bin_polygon: null

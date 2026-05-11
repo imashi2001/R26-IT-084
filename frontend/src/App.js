@@ -14,6 +14,7 @@ import StubPage from "./pages/StubPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import LitterSeverityPage from "./pages/LitterSeverityPage";
 import "./App.css";
 
 /*
@@ -103,6 +104,11 @@ export default function App() {
             )}
           />
           <Route path="/admin" element={legacyProtected(AdminPage)} />
+
+          <Route
+            path="/litter-severity"
+            element={protectedShell(<LitterSeverityPage />)}
+          />
 
           {/* ---- Stub routes (sidebar placeholders) ---- */}
           <Route

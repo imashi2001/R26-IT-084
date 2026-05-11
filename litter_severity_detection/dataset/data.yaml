@@ -1,0 +1,14 @@
+# YOLO dataset config (Ultralytics v8+).
+# Do NOT set path: "." here — Ultralytics resolves "." against the process cwd (e.g. litter_severity_detection/),
+# which breaks train/val paths. Omit `path` so the dataset root is the folder containing this YAML (dataset/).
+# Replace names with your Roboflow class name if different (single-class: litter).
+
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 1
+names:
+  - litter
+
+# If you use Roboflow Universe, you can keep their metadata block below your export.

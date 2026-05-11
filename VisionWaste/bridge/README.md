@@ -37,7 +37,7 @@ Set **`BACKEND_PREDICT_URL`** to your real Express service (must start with `htt
 
 ```powershell
 $env:ESP32_CAPTURE_URL = "http://10.134.126.191/capture"
-$env:BACKEND_PREDICT_URL = "https://your-backend.up.railway.app/predict"
+$env:BACKEND_PREDICT_URL = "https://caring-light-production.up.railway.app/predict"
 $env:DEVICE_ESP32_ID = "esp-cam-1"
 python bridge.py
 ```
@@ -46,7 +46,7 @@ python bridge.py
 
 ```bash
 export ESP32_CAPTURE_URL=http://10.134.126.191/capture
-export BACKEND_PREDICT_URL=https://your-backend.up.railway.app/predict
+export BACKEND_PREDICT_URL=https://caring-light-production.up.railway.app/predict
 export DEVICE_ESP32_ID=esp-cam-1
 python bridge.py
 ```

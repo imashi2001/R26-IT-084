@@ -33,7 +33,7 @@ ESP32_CAPTURE_URL = os.environ.get(
 
 BACKEND_PREDICT_URL = os.environ.get(
     "BACKEND_PREDICT_URL",
-    "https://YOUR-BACKEND.up.railway.app/predict",
+    "https://caring-light-production.up.railway.app/predict",
 )
 
 _poll_raw = os.environ.get("VISIONWASTE_POLL_SECONDS") or os.environ.get(

@@ -1,0 +1,490 @@
+/* ─── DashboardInsights Styles ─────────────────────────────────────────── */
+
+.di-root {
+  width: 100%;
+  padding: 2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.di-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, rgba(15,23,42,0.5) 0%, rgba(30,41,59,0.3) 100%);
+  border: 1px solid rgba(51,65,85,0.3);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.di-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.di-section-title h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.di-download-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.di-download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.di-download-btn:active {
+  transform: translateY(0);
+}
+
+/* ─── Main Layout with Sidebar ────────────────────────────────────────── */
+
+.di-main-layout {
+  display: flex;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.di-sidebar {
+  flex-shrink: 0;
+  width: 240px;
+}
+
+.di-charts-section {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .di-main-layout {
+    gap: 1rem;
+  }
+
+  .di-sidebar {
+    width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .di-main-layout {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .di-sidebar {
+    width: 100%;
+  }
+}
+
+/* ─── Location Selector Styles ─────────────────────────────────────────── */
+
+.di-location-selector {
+  background: linear-gradient(135deg, rgba(15,23,42,0.6) 0%, rgba(30,41,59,0.4) 100%);
+  border: 1px solid rgba(51,65,85,0.3);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.di-location-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+  background: rgba(51, 65, 85, 0.1);
+}
+
+.di-location-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.di-location-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.di-location-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.di-location-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.di-location-list::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.3);
+  border-radius: 3px;
+}
+
+.di-location-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(51, 65, 85, 0.5);
+}
+
+.di-location-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.di-location-item:last-child {
+  border-bottom: none;
+}
+
+.di-location-item:hover {
+  background: rgba(51, 65, 85, 0.2);
+}
+
+.di-location-item.active {
+  background: linear-gradient(90deg, rgba(103, 232, 249, 0.1) 0%, transparent 100%);
+  border-left: 3px solid #67e8f9;
+  padding-left: calc(1rem - 3px);
+}
+
+.di-location-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.di-location-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.di-location-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.di-location-region {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.di-location-badge {
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+/* ─── Charts Grid (updated for new layout) ────────────────────────────── */
+
+.di-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.di-chart-wrapper {
+  width: 100%;
+}
+
+.di-full-width {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1200px) {
+  .di-charts-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .di-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .di-header-section {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+}
+
+/* ─── Chart Card Container ─────────────────────────────────────────────── */
+
+.di-chart-card {
+  width: 100%;
+  padding: 1.75rem;
+  background: linear-gradient(135deg, rgba(15,23,42,0.6) 0%, rgba(30,41,59,0.4) 100%);
+  border: 1px solid rgba(51,65,85,0.3);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.di-chart-card:hover {
+  border-color: rgba(51,65,85,0.5);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.di-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.di-chart-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.3px;
+}
+
+.di-chart-subtitle {
+  font-size: 0.8125rem;
+  color: #cbd5e1;
+  margin: 0;
+  opacity: 0.8;
+}
+
+.di-header-icon {
+  padding: 0.75rem;
+  background: rgba(51, 65, 85, 0.3);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Donut Chart Specific ─────────────────────────────────────────────── */
+
+.di-donut-container {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.di-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+  background: rgba(15, 23, 42, 0.8);
+  padding: 1rem;
+  border-radius: 8px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(51, 65, 85, 0.3);
+}
+
+.di-total-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+}
+
+.di-total-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #10b981;
+  line-height: 1;
+}
+
+.di-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.di-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(51, 65, 85, 0.2);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.di-legend-item:hover {
+  background: rgba(51, 65, 85, 0.35);
+}
+
+.di-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.di-legend-name {
+  font-size: 0.8125rem;
+  color: #e2e8f0;
+  flex: 1;
+}
+
+.di-legend-value {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* ─── Tooltip ──────────────────────────────────────────────────────────── */
+
+.di-tooltip {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.di-tooltip-date {
+  font-size: 0.8125rem;
+  color: #cbd5e1;
+  margin: 0 0 0.25rem 0;
+  font-weight: 500;
+}
+
+.di-tooltip-value {
+  font-size: 0.875rem;
+  color: #f1f5f9;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ─── Seasonal Event Legend ────────────────────────────────────────────── */
+
+.di-event-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(51, 65, 85, 0.3);
+}
+
+.di-event-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(51, 65, 85, 0.1);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+.di-event-item:hover {
+  background: rgba(51, 65, 85, 0.2);
+}
+
+.di-event-badge {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+/* ─── Responsive Adjustments ──────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .di-root {
+    padding: 1rem 0;
+    gap: 1rem;
+  }
+
+  .di-chart-card {
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .di-header-section {
+    padding: 1rem 1.5rem;
+  }
+
+  .di-section-title h2 {
+    font-size: 1.25rem;
+  }
+
+  .di-legend {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .di-event-legend {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Dark Theme Enhancements ──────────────────────────────────────────── */
+
+.di-chart-card {
+  overflow: hidden;
+  position: relative;
+}
+
+.di-chart-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(51, 65, 85, 0.5), transparent);
+  opacity: 0.5;
+}

@@ -20,6 +20,7 @@ import {
   Info,
   ChevronRight,
 } from "lucide-react";
+import DashboardInsights from "../components/DashboardInsights";
 import "./ForecastPage.css";
 import { apiUrl } from "../utils/apiBase";
 
@@ -414,6 +415,11 @@ export default function ForecastPage() {
             </div>
           )}
         </aside>
+      </div>
+
+      {/* ── ADVANCED INSIGHTS SECTION ── */}
+      <div className="fp-insights-section">
+        <DashboardInsights selectedDate={selectedDate} />
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ import LiveMonitoringPage from "./pages/LiveMonitoringPage";
 import BinStatusPage from "./pages/BinStatusPage";
 import AnimalDetectionPage from "./pages/AnimalDetectionPage";
 import AlertsNotificationsPage from "./pages/AlertsNotificationsPage";
+import ReportsPage from "./pages/ReportsPage";
 import "./App.css";
 
 /*
@@ -43,7 +44,8 @@ import "./App.css";
  *   /bins                 -> BinStatusPage             (dashboard shell, registry + form)
  *   /animals              -> AnimalDetectionPage       (dashboard shell, sightings + buzzer log)
  *   /alerts               -> AlertsNotificationsPage   (dashboard shell, alerts + admin workflow)
- *   /forecast, /reports, /history, /devices            (StubPage)
+ *   /reports              -> ReportsPage               (dashboard shell, aggregations + CSV export)
+ *   /forecast, /history, /devices                      (StubPage)
  *
  * Two shells, by intent:
  *
@@ -158,14 +160,7 @@ export default function App() {
           />
           <Route
             path="/reports"
-            element={protectedShell(
-              <StubPage
-                title="Reports"
-                description="Aggregated reports + CSV export over /captures: risk timeline, fill events, animal sightings."
-                suggestionTo="/hygienic-risk"
-                suggestionLabel="View capture history on the Risk Dashboard"
-              />
-            )}
+            element={protectedShell(<ReportsPage />)}
           />
           <Route
             path="/history"

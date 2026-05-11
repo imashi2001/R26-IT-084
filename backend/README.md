@@ -89,6 +89,7 @@ The backend works both **with** and **without** a database:
 | PATCH | /devices/:id | **Admin JWT** — update bin |
 | GET | /geo/search?q= | Nominatim proxy for admin UI |
 | GET | /api/waste-data | Query **`date`=`YYYY-MM-DD`** — holiday/long-weekend adjusted demo levels (`backend/holiday_cache.json`); **`geocode_cache`** in JSON mirrors **`backend/geocode_cache.json`** |
+| POST | /litter-severity | multipart **`image`** — proxies to litter microservice (**`MODEL_LITTER_URL`**); returns LSI, severity, detections, optional annotated JPEG |
 
 **`POST /predict` response — `animal`:** Each item in **`detections`** includes **`label`**, **`confidence`**, and **`box`** `[x1,y1,x2,y2]` (the gateway normalizes **`box_xyxy`** / **`class_name`** from the animal microservice). **`annotated_image_base64`** is a JPEG with bounding boxes rendered server-side (YOLO plot).
 
@@ -168,6 +169,7 @@ See `.env.example`:
 | `MODEL_WASTE_URL` | `http://localhost:8001` | Waste classifier microservice; scheme added if omitted (except localhost) |
 | `MODEL_ANIMAL_URL` | `http://localhost:8002` | Animal / detection microservice |
 | `MODEL_YOLO_URL` | (empty) | Optional **`model-yolo`** bin-fill service (`POST /infer`, multipart **`image`**). When empty, **`bin_fill`** is omitted from **`inferAll`** |
+| `MODEL_LITTER_URL` | (empty) | Optional **`litter-severity-api`** (`POST /predict`, multipart **`file`** via gateway **`POST /litter-severity`** with **`image`**) |
 | `CORS_ORIGIN` | (empty) | Comma-separated allowed frontend origins; empty keeps permissive CORS |
 | `JWT_SECRET` | (empty) | Required for auth routes (min 8 chars recommended) |
 | `JWT_EXPIRES_IN` | `7d` | JWT expiry passed to `jsonwebtoken` |
@@ -199,7 +201,7 @@ Start the **waste** and **animal** FastAPI services (see repo `services/waste-ap
 - Root directory: `backend`
 - Start command: `npm start`
 - Variables:
-  - **`MODEL_WASTE_URL`**, **`MODEL_ANIMAL_URL`**, optional **`MODEL_YOLO_URL`** → public URLs of the deployed model services
+  - **`MODEL_WASTE_URL`**, **`MODEL_ANIMAL_URL`**, optional **`MODEL_YOLO_URL`**, optional **`MODEL_LITTER_URL`** → public URLs of the deployed model services
   - `DATABASE_URL` → referenced from Railway Postgres plugin
   - `JWT_SECRET` → random secret string
   - `DB_SYNC=true` only on first deploy to create tables; turn off afterwards

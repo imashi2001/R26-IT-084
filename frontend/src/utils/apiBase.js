@@ -192,3 +192,15 @@ export async function predictAnimal(file, binId) {
   });
   return adaptAnalyzeResponse(data);
 }
+
+/**
+ * Litter severity (YOLO + LSI) via Express proxy → litter microservice.
+ */
+export async function analyzeLitterSeverity(file) {
+  const form = new FormData();
+  form.append("image", file);
+  const { data } = await axios.post(apiUrl("/litter-severity"), form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}

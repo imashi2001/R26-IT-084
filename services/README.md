@@ -5,20 +5,23 @@ model file baked in.
 
 ```
 services/
-  waste-api/   -> TensorFlow MobileNetV2 (organic / non_organic)
-  animal-api/  -> Ultralytics YOLOv8     (cat / crow / dog / monkey)
+  waste-api/           -> TensorFlow MobileNetV2 (organic / non_organic)
+  animal-api/          -> Ultralytics YOLOv8     (cat / crow / dog / monkey)
+  litter-severity-api/ -> Ultralytics YOLO + LSI (litter severity; see `MODEL_LITTER_URL` on Express)
 ```
 
-Each service exposes `GET /health` and `POST /predict` (multipart `file`).
+Each service exposes `GET /health` and `POST /predict` (multipart `file`).  
+The Express gateway exposes **`POST /litter-severity`** (multipart `image`) which forwards to litter-severity-api as `file`.
 
 ## Deploy on Railway
 
-Repeat for both services:
+Repeat for each service:
 
 1. **New Project -> Deploy from GitHub Repo** (use this same repo).
 2. **Settings -> Service -> Root Directory**:
    - `services/waste-api` for the waste service
    - `services/animal-api` for the animal service
+   - `services/litter-severity-api` for litter severity (add **`model/best.pt`** in the image or mount weights; see that service’s `Dockerfile`)
 3. Railway auto-detects the `Dockerfile`. No start command override needed.
 4. **Networking -> Generate Domain** to get the public URL.
 

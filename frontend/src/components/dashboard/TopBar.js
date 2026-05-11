@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Thermometer,
   TrendingUp,
+  ScanSearch,
   LogOut,
   User as UserIcon,
   Building2,
@@ -179,6 +180,13 @@ export default function TopBar({ onToggleSidebar }) {
       </div>
 
       <div className="flex items-center gap-3 pl-3">
+        <Link
+          to="/litter-severity"
+          className="hidden md:inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-ink-800 hover:bg-slate-50 transition"
+        >
+          <ScanSearch className="h-4 w-4 shrink-0" />
+          Litter severity
+        </Link>
         <Link
           to="/forecast"
           className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100 transition"

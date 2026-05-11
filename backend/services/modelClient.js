@@ -36,6 +36,12 @@ const { MODEL_REGISTRY, INFER_TIMEOUT_MS } = require("../config/env");
  *               detections (alias), annotated_image_base64 (JPEG plot), ...
  *             }
  *
+ *   litter -> services/litter-severity-api (FastAPI / YOLO + LSI)
+ *             POST /predict (multipart "file") -> {
+ *               model: "litter_severity", lsi, severity, metrics, detections,
+ *               annotated_image_base64, ...
+ *             }
+ *
  * Callers usually want waste + animal + optional bin-fill YOLO; see `inferAll()`.
  */
 
@@ -212,6 +218,17 @@ async function inferAnimal({ fileBuffer, filename, mimetype }) {
   return normalizeAnimalPayload(data);
 }
 
+/** Litter severity microservice (YOLO + LSI). Requires MODEL_LITTER_URL. */
+async function inferLitter({ fileBuffer, filename, mimetype }) {
+  const base = getModelUrl("litter");
+  if (!base) {
+    const err = new Error("MODEL_LITTER_URL is not set on the backend.");
+    err.status = 503;
+    throw err;
+  }
+  return postToService("litter", fileBuffer, filename, mimetype);
+}
+
 /**
  * Run BOTH models on the same image in parallel and return raw payloads.
  * If one service is down, the other still produces its result; the failing
@@ -257,6 +274,9 @@ async function infer({ modelName, fileBuffer, filename, mimetype }) {
   if (key === "yolo" || key === "fill" || key === "bin_fill") {
     return inferBinFillYolo({ fileBuffer, filename, mimetype });
   }
+  if (key === "litter") {
+    return inferLitter({ fileBuffer, filename, mimetype });
+  }
   const data = await postToService(modelName, fileBuffer, filename, mimetype);
   if (modelName === "animal") return normalizeAnimalPayload(data);
   return data;
@@ -268,6 +288,7 @@ module.exports = {
   pingAllModels,
   inferWaste,
   inferAnimal,
+  inferLitter,
   inferBinFillYolo,
   inferAll,
   infer,

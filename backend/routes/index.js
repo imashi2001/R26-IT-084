@@ -11,6 +11,7 @@ const wasteDataRoutes = require("./wastedata.routes");
 const forecastRoutes = require("./forecast.routes");
 const weatherRoutes = require("./weather.routes");
 const alertsRoutes = require("./alerts.routes");
+const litterRoutes = require("./litter.routes");
 
 const router = Router();
 
@@ -33,6 +34,8 @@ router.get("/", (_req, res) => {
     latest: "GET /latest (JSON) and GET /latest/image (jpeg)",
     waste_data:
       "GET /api/waste-data?date=YYYY-MM-DD — tourism demo fills (holiday_cache.json + geocode_cache.json)",
+    litter_severity:
+      "POST /litter-severity (multipart: image) — requires MODEL_LITTER_URL (litter microservice)",
   });
 });
 
@@ -47,5 +50,6 @@ router.use("/latest", latestRoutes);
 router.use("/forecast", forecastRoutes);
 router.use("/weather", weatherRoutes);
 router.use("/alerts", alertsRoutes);
+router.use("/litter-severity", litterRoutes);
 
 module.exports = router;

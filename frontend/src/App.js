@@ -20,6 +20,7 @@ import AnimalDetectionPage from "./pages/AnimalDetectionPage";
 import AlertsNotificationsPage from "./pages/AlertsNotificationsPage";
 import ReportsPage from "./pages/ReportsPage";
 import HistoryPage from "./pages/HistoryPage";
+import LitterSeverityPage from "./pages/LitterSeverityPage";
 import "./App.css";
 
 /*
@@ -44,6 +45,7 @@ import "./App.css";
  *   /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
  *   /bins                 -> BinStatusPage             (dashboard shell, registry + form)
  *   /animals              -> AnimalDetectionPage       (dashboard shell, sightings + buzzer log)
+ *   /litter-severity      -> LitterSeverityPage        (litter YOLO + LSI; MODEL_LITTER_URL)
  *   /alerts               -> AlertsNotificationsPage   (dashboard shell, alerts + admin workflow)
  *   /reports              -> ReportsPage               (dashboard shell, aggregations + CSV export)
  *   /history              -> HistoryPage               (dashboard shell, unified event timeline)
@@ -58,7 +60,7 @@ import "./App.css";
  *
  *   DashboardLayout (used by SystemDashboardPage, LiveMonitoringPage,
  *                    MapPage, BinStatusPage, AnimalDetectionPage,
- *                    AlertsNotificationsPage, ForecastPage, HomePage at
+ *                    AlertsNotificationsPage, ForecastPage, LitterSeverityPage, HomePage at
  *                    /bin-level-detector, etc.)
  *                    — sidebar + topbar shell, Tailwind-only, isolated from legacy CSS.
  */
@@ -145,6 +147,10 @@ export default function App() {
           <Route
             path="/animals"
             element={protectedShell(<AnimalDetectionPage />)}
+          />
+          <Route
+            path="/litter-severity"
+            element={protectedShell(<LitterSeverityPage />)}
           />
           <Route
             path="/forecast"

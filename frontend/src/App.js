@@ -15,6 +15,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import LiveMonitoringPage from "./pages/LiveMonitoringPage";
+import BinStatusPage from "./pages/BinStatusPage";
 import "./App.css";
 
 /*
@@ -37,8 +38,9 @@ import "./App.css";
  *   /bin-fill             -> redirects to /bin-level-detector (back-compat)
  *   /map                  -> MapPage                  (dashboard shell, collection map)
  *   /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
+ *   /bins                 -> BinStatusPage             (dashboard shell, registry + form)
  *   /animals, /forecast, /alerts, /reports, /history,
- *   /devices, /bins                                             (StubPage)
+ *   /devices                                                    (StubPage)
  *
  * Two shells, by intent:
  *
@@ -198,14 +200,7 @@ export default function App() {
           />
           <Route
             path="/bins"
-            element={protectedShell(
-              <StubPage
-                title="Bin Status"
-                description="Bin list with current fill, risk, and last-capture thumbnails. Click through to /bins/:id for the detail page."
-                suggestionTo="/admin"
-                suggestionLabel="Manage bins via Admin"
-              />
-            )}
+            element={protectedShell(<BinStatusPage />)}
           />
 
           {/* Anything else falls back to the landing page. */}

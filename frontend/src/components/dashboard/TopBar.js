@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Calendar,
   Clock,
@@ -9,6 +9,7 @@ import {
   Menu,
   ChevronDown,
   Thermometer,
+  TrendingUp,
   LogOut,
   User as UserIcon,
   Building2,
@@ -178,6 +179,13 @@ export default function TopBar({ onToggleSidebar }) {
       </div>
 
       <div className="flex items-center gap-3 pl-3">
+        <Link
+          to="/forecast"
+          className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100 transition"
+        >
+          <TrendingUp className="h-4 w-4 shrink-0" />
+          Tourism forecast
+        </Link>
         <button
           type="button"
           className="relative flex h-10 w-10 items-center justify-center rounded-lg text-ink-500 hover:bg-slate-100"

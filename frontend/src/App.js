@@ -10,7 +10,7 @@ import AdminPage from "./pages/AdminPage";
 import HygienicRiskDashboardPage from "./pages/HygienicRiskDashboardPage";
 import MobileReportPage from "./pages/MobileReportPage";
 import SystemDashboardPage from "./pages/SystemDashboardPage";
-import StubPage from "./pages/StubPage";
+import ForecastPage from "./pages/ForecastPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -48,7 +48,7 @@ import "./App.css";
  *   /reports              -> ReportsPage               (dashboard shell, aggregations + CSV export)
  *   /history              -> HistoryPage               (dashboard shell, unified event timeline)
  *   /devices              -> redirects to /bins        (bin registry replaces legacy stub)
- *   /forecast                                          (StubPage)
+ *   /forecast               -> ForecastPage            (holiday / tourism demand demo)
  *
  * Two shells, by intent:
  *
@@ -58,7 +58,7 @@ import "./App.css";
  *
  *   DashboardLayout (used by SystemDashboardPage, LiveMonitoringPage,
  *                    MapPage, BinStatusPage, AnimalDetectionPage,
- *                    AlertsNotificationsPage, StubPage, HomePage at
+ *                    AlertsNotificationsPage, ForecastPage, HomePage at
  *                    /bin-level-detector, etc.)
  *                    — sidebar + topbar shell, Tailwind-only, isolated from legacy CSS.
  */
@@ -148,14 +148,7 @@ export default function App() {
           />
           <Route
             path="/forecast"
-            element={protectedShell(
-              <StubPage
-                title="Forecasting"
-                description="24-hour rule-based forecast (already implemented under GET /forecast). The Risk Dashboard renders the timeline today; a dedicated page with deeper controls is planned."
-                suggestionTo="/hygienic-risk"
-                suggestionLabel="Open the forecast on the Risk Dashboard"
-              />
-            )}
+            element={protectedShell(<ForecastPage />)}
           />
           <Route
             path="/alerts"

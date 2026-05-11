@@ -7,6 +7,7 @@ const latestRoutes = require("./latest.routes");
 const authRoutes = require("./auth.routes");
 const devicesRoutes = require("./devices.routes");
 const geoRoutes = require("./geo.routes");
+const wasteDataRoutes = require("./wastedata.routes");
 const forecastRoutes = require("./forecast.routes");
 const weatherRoutes = require("./weather.routes");
 const alertsRoutes = require("./alerts.routes");
@@ -30,6 +31,8 @@ router.get("/", (_req, res) => {
       "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures",
     geo: "GET /geo/search?q=",
     latest: "GET /latest (JSON) and GET /latest/image (jpeg)",
+    waste_data:
+      "GET /api/waste-data?date=YYYY-MM-DD — tourism demo fills (holiday_cache.json + geocode_cache.json)",
   });
 });
 
@@ -37,6 +40,7 @@ router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
 router.use("/devices", devicesRoutes);
 router.use("/geo", geoRoutes);
+router.use("/api/waste-data", wasteDataRoutes);
 router.use("/predict", predictRoutes);
 router.use("/captures", captureRoutes);
 router.use("/latest", latestRoutes);

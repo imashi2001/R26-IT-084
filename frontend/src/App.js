@@ -42,7 +42,8 @@ import "./App.css";
  *                                                      the rename)
  *   /bin-fill             -> redirects to /bin-level-detector (back-compat)
  *   /map                  -> MapPage                  (dashboard shell, collection map)
- *   /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
+ *   /bins/:id, /admin -> teammates' pages (LegacyShell)
+ *   /mobile-report        -> MobileReportPage         (dashboard shell, field photo + GPS)
  *   /bins                 -> BinStatusPage             (dashboard shell, registry + form)
  *   /animals              -> AnimalDetectionPage       (dashboard shell, sightings + buzzer log)
  *   /litter-severity      -> LitterSeverityPage        (litter YOLO + LSI; MODEL_LITTER_URL)
@@ -60,8 +61,8 @@ import "./App.css";
  *
  *   DashboardLayout (used by SystemDashboardPage, LiveMonitoringPage,
  *                    MapPage, BinStatusPage, AnimalDetectionPage,
- *                    AlertsNotificationsPage, ForecastPage, LitterSeverityPage, HomePage at
- *                    /bin-level-detector, etc.)
+ *                    AlertsNotificationsPage, ForecastPage, LitterSeverityPage,
+ *                    MobileReportPage, HomePage at /bin-level-detector, etc.)
  *                    — sidebar + topbar shell, Tailwind-only, isolated from legacy CSS.
  */
 function LegacyShell({ children }) {
@@ -130,7 +131,7 @@ export default function App() {
           {/* ---- Legacy pages (top NavBar) ---- */}
           <Route
             path="/mobile-report"
-            element={legacyProtected(MobileReportPage)}
+            element={protectedShell(<MobileReportPage />)}
           />
           <Route path="/map" element={protectedShell(<MapPage />)} />
           <Route

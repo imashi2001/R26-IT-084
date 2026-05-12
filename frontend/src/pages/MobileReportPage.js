@@ -1,6 +1,27 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiUrl, getApiBaseUrl, getPredictUrl, isApiUrlPointingAtFrontend } from "../utils/apiBase";
+import {
+  Smartphone,
+  Camera,
+  MapPin,
+  Trash2,
+  ImageIcon,
+  Upload,
+  ChevronRight,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+} from "lucide-react";
+
+import DashboardLayout from "../components/dashboard/DashboardLayout";
+import Card from "../components/dashboard/Card";
+import {
+  apiUrl,
+  getApiBaseUrl,
+  getPredictUrl,
+  isApiUrlPointingAtFrontend,
+  analyzeCapture,
+} from "../utils/apiBase";
 
 function haversineM(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -13,6 +34,20 @@ function haversineM(lat1, lng1, lat2, lng2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+function riskBadgeClass(level) {
+  const u = String(level || "").toUpperCase();
+  if (u === "HIGH" || u === "CRITICAL")
+    return "border-red-200 bg-red-50 text-red-800";
+  if (u === "MEDIUM") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (u === "LOW") return "border-brand-200 bg-brand-50 text-brand-800";
+  return "border-slate-200 bg-slate-50 text-ink-700";
+}
+
+/**
+ * /mobile-report — Field capture from a phone: camera or gallery, GPS,
+ * bin selection, then POST /predict with source_type=mobile (same pipeline
+ * as ESP32 bridge). Uses DashboardLayout to match the rest of VisionWaste.
+ */
 export default function MobileReportPage() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -31,6 +66,7 @@ export default function MobileReportPage() {
   const [busy, setBusy] = useState(false);
   const [resultMsg, setResultMsg] = useState("");
   const [resultErr, setResultErr] = useState("");
+  const [lastRisk, setLastRisk] = useState(null);
 
   const stopCamera = useCallback(() => {
     const s = streamRef.current;
@@ -100,7 +136,7 @@ export default function MobileReportPage() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setGpsNote("Geolocation not supported.");
+      setGpsNote("Geolocation not supported on this device.");
       return;
     }
     setGpsNote("Locating…");
@@ -163,7 +199,9 @@ export default function MobileReportPage() {
         const url = URL.createObjectURL(blob);
         previewUrlRef.current = url;
         setPreviewUrl(url);
-        setCaptureFile(new File([blob], "mobile-report.jpg", { type: "image/jpeg" }));
+        setCaptureFile(
+          new File([blob], "mobile-report.jpg", { type: "image/jpeg" })
+        );
       },
       "image/jpeg",
       0.92
@@ -183,8 +221,9 @@ export default function MobileReportPage() {
   const runSubmit = async () => {
     setResultErr("");
     setResultMsg("");
+    setLastRisk(null);
     if (!captureFile) {
-      setResultErr("Capture an image first.");
+      setResultErr("Capture or choose a photo first.");
       return;
     }
     const did = parseInt(binId, 10);
@@ -214,132 +253,268 @@ export default function MobileReportPage() {
       return;
     }
 
-    const fd = new FormData();
-    fd.append("image", captureFile);
-    fd.append("device_id", String(did));
-    fd.append("lat", String(la));
-    fd.append("lon", String(ln));
-    fd.append("source_type", "mobile");
-
     setBusy(true);
     try {
-      const res = await fetch(predictUrl, { method: "POST", body: fd });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      const cap = res.headers.get("x-capture-id");
+      const body = await analyzeCapture(captureFile, {
+        binId: did,
+        lat: la,
+        lon: ln,
+        sourceType: "mobile",
+      });
+      const cap = body.capture_id;
+      const level = body?.risk?.level;
+      setLastRisk(level || null);
       setResultMsg(
-        cap ? `Saved capture #${cap}. Risk: ${body?.risk?.level ?? "—"}` : "Prediction OK."
+        cap
+          ? `Capture saved (#${cap}). Pipeline completed successfully.`
+          : "Analysis completed."
       );
     } catch (e) {
-      setResultErr(e.message || "Upload failed.");
+      const msg =
+        e?.response?.data?.error ||
+        e?.message ||
+        "Upload failed.";
+      setResultErr(typeof msg === "string" ? msg : JSON.stringify(msg));
     } finally {
       setBusy(false);
     }
   };
 
+  const inputClass =
+    "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500";
+
   return (
-    <div className="page mobile-report-page">
-      <p className="back-row">
-        <Link to="/">&larr; Home</Link>
-      </p>
-      <header className="page-header">
-        <h1>Mobile report</h1>
-        <p className="subtitle">
-          Use your phone camera to submit a manual capture to the same AI pipeline as the ESP32
-          bridge. Requires HTTPS for camera access.
-        </p>
-      </header>
-
-      <section className="mobile-report-grid">
-        <div className="mobile-report-card">
-          <h2>Camera</h2>
-          {!cameraOn ? (
-            <button type="button" className="btn btn-primary" onClick={startCamera}>
-              Open rear camera
-            </button>
-          ) : (
-            <>
-              <video ref={videoRef} className="mobile-report-video" playsInline muted />
-              <div className="mobile-report-actions">
-                <button type="button" className="btn btn-primary" onClick={snapshotFromVideo}>
-                  Capture frame
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={stopCamera}>
-                  Stop camera
-                </button>
-              </div>
-            </>
-          )}
-          <p className="mobile-report-muted">
-            Fallback:{" "}
-            <label className="mobile-report-file-label">
-              choose photo
-              <input type="file" accept="image/*" capture="environment" hidden onChange={onPickFile} />
-            </label>
-          </p>
-          {cameraErr ? <div className="error-banner">{cameraErr}</div> : null}
-        </div>
-
-        <div className="mobile-report-card">
-          <h2>GPS</h2>
-          <p className="mobile-report-muted">{gpsNote}</p>
-          <div className="latlng-row">
-            <label>
-              Latitude
-              <input value={latInput} onChange={(e) => setLatInput(e.target.value)} placeholder="e.g. 6.927" />
-            </label>
-            <label>
-              Longitude
-              <input value={lngInput} onChange={(e) => setLngInput(e.target.value)} placeholder="e.g. 79.861" />
-            </label>
+    <DashboardLayout>
+      <div className="space-y-6 p-4 lg:p-6">
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-brand-600">
+              <Smartphone className="h-6 w-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+                Field reporting
+              </span>
+            </div>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
+              Mobile report
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-ink-500">
+              Submit an on-site photo through the same analysis pipeline as the
+              ESP32 bridge. Use{" "}
+              <strong className="text-ink-700">HTTPS</strong> so the camera API
+              works in the browser.
+            </p>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
+            >
+              Dashboard
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link
+              to="/bins"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
+            >
+              Bin registry
+            </Link>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card className="!min-h-0">
+            <Card.Header icon={Camera} title="Capture" />
+            <Card.Body className="!mt-2 space-y-3">
+              {!cameraOn ? (
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+                >
+                  <Camera className="h-4 w-4" />
+                  Open rear camera
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <video
+                    ref={videoRef}
+                    className="w-full max-h-64 rounded-lg bg-black object-contain"
+                    playsInline
+                    muted
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={snapshotFromVideo}
+                      className="inline-flex flex-1 min-w-[8rem] items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                    >
+                      Capture frame
+                    </button>
+                    <button
+                      type="button"
+                      onClick={stopCamera}
+                      className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-ink-700 hover:bg-slate-50"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-ink-500">
+                Or{" "}
+                <label className="cursor-pointer font-semibold text-brand-700 hover:text-brand-600">
+                  choose from gallery
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="sr-only"
+                    onChange={onPickFile}
+                  />
+                </label>
+              </p>
+              {cameraErr ? (
+                <div
+                  className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                  role="alert"
+                >
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  {cameraErr}
+                </div>
+              ) : null}
+            </Card.Body>
+          </Card>
+
+          <Card className="!min-h-0">
+            <Card.Header icon={MapPin} title="Location" />
+            <Card.Body className="!mt-2 space-y-3">
+              <p className="text-xs text-ink-500">{gpsNote}</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-semibold text-ink-600">
+                  Latitude
+                  <input
+                    className={inputClass}
+                    value={latInput}
+                    onChange={(e) => setLatInput(e.target.value)}
+                    placeholder="e.g. 6.927079"
+                  />
+                </label>
+                <label className="block text-xs font-semibold text-ink-600">
+                  Longitude
+                  <input
+                    className={inputClass}
+                    value={lngInput}
+                    onChange={(e) => setLngInput(e.target.value)}
+                    placeholder="e.g. 79.861244"
+                  />
+                </label>
+              </div>
+            </Card.Body>
+          </Card>
+
+          <Card className="!min-h-0">
+            <Card.Header icon={Trash2} title="Bin" />
+            <Card.Body className="!mt-2 space-y-2">
+              {binsError ? (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  {binsError}
+                </div>
+              ) : null}
+              <label className="block text-xs font-semibold text-ink-600">
+                Linked bin
+                <select
+                  className={inputClass}
+                  value={binId}
+                  onChange={(e) => setBinId(e.target.value)}
+                >
+                  <option value="">Select a bin…</option>
+                  {bins.map((b) => (
+                    <option key={b.id} value={String(b.id)}>
+                      {b.name} (#{b.id})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-xs text-ink-400">
+                When GPS works, the nearest bin with coordinates is pre-selected.
+              </p>
+            </Card.Body>
+          </Card>
+
+          <Card className="!min-h-0">
+            <Card.Header icon={ImageIcon} title="Review & submit" />
+            <Card.Body className="!mt-2 space-y-3">
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt="Selected capture"
+                  className="max-h-56 w-full rounded-lg border border-slate-200 bg-slate-50 object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 py-12 text-center">
+                  <Upload className="h-10 w-10 text-ink-300" />
+                  <p className="mt-2 text-sm text-ink-500">No image yet</p>
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={runSubmit}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Upload &amp; analyze
+                  </>
+                )}
+              </button>
+              {resultErr ? (
+                <div
+                  className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                  role="alert"
+                >
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  {resultErr}
+                </div>
+              ) : null}
+              {resultMsg ? (
+                <div className="space-y-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-3 text-sm text-brand-900">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+                    <span>{resultMsg}</span>
+                  </div>
+                  {lastRisk ? (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+                        Hygienic risk
+                      </span>
+                      <span
+                        className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${riskBadgeClass(
+                          lastRisk
+                        )}`}
+                      >
+                        {lastRisk}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </Card.Body>
+          </Card>
         </div>
 
-        <div className="mobile-report-card">
-          <h2>Bin</h2>
-          {binsError ? <div className="error-banner">{binsError}</div> : null}
-          <label>
-            Select bin
-            <select value={binId} onChange={(e) => setBinId(e.target.value)}>
-              <option value="">— choose —</option>
-              {bins.map((b) => (
-                <option key={b.id} value={String(b.id)}>
-                  {b.name} (#{b.id})
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="mobile-report-muted">
-            Nearest bin with coordinates is pre-selected when GPS works.
-          </p>
-        </div>
-
-        <div className="mobile-report-card mobile-report-preview-card">
-          <h2>Preview</h2>
-          {previewUrl ? (
-            <img className="mobile-report-preview-img" src={previewUrl} alt="Preview" />
-          ) : (
-            <p className="mobile-report-muted">No image yet.</p>
-          )}
-          <button
-            type="button"
-            className="btn btn-primary mobile-report-submit"
-            disabled={busy}
-            onClick={runSubmit}
-          >
-            {busy ? "Uploading…" : "Upload & analyze"}
-          </button>
-          {resultErr ? <div className="error-banner">{resultErr}</div> : null}
-          {resultMsg ? <div className="info-banner">{resultMsg}</div> : null}
-        </div>
-      </section>
-
-      <section className="mobile-report-footnote">
-        <p className="subtitle">
-          ESP32 remains the primary automated path (LAN bridge). This page is for secondary manual
-          reporting when you are on-site with a phone.
+        <p className="text-center text-xs text-ink-400">
+          Automated captures still use the ESP32 LAN bridge. This page is for
+          manual reporting when you are on-site with a phone.
         </p>
-      </section>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

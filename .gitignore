@@ -1,4 +1,7 @@
 venv/
+# `python -m venv .venv` — must be ignored; `venv/` alone does not match `.venv/`
+.venv/
+**/.venv/
 data_set/
 dataset/
 *.h5

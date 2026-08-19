@@ -28,7 +28,7 @@ import { apiUrl } from "../utils/apiBase";
  *       fill_percentage, prediction_class, source_type,
  *       latitude, longitude,
  *     },
- *     imageUrl,         // CRA-relative URL so it goes through the dev proxy
+ *     imageUrl,         // relative URL so it goes through the Vite dev proxy
  *   }
  *
  * 404 from /latest just means "no capture yet" - returned as data: null with
@@ -99,7 +99,7 @@ export default function useSystemSnapshot(intervalMs = DEFAULT_INTERVAL_MS) {
         model: body.model,
         predictions: Array.isArray(body.predictions) ? body.predictions : [],
         extras: body.extras || {},
-        // Use a relative URL so CRA's dev proxy serves it from the backend.
+        // Use a relative URL so the Vite dev proxy serves it from the backend.
         // ?t= ensures the <img> reloads when timestamp changes.
         imageUrl: `${apiUrl("/latest/image")}?t=${encodeURIComponent(body.timestamp || "")}`,
         imageMimetype: body.image?.mimetype || "image/jpeg",

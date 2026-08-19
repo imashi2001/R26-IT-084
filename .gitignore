@@ -57,7 +57,7 @@ skipped_samples.tsv
 
 # React / Node
 node_modules/
-frontend/build/
+frontend/dist/
 
 # Backend local
 backend/.env

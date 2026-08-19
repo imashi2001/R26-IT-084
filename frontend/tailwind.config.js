@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   // Only scan source files. CSS classes outside this list won't get JIT-compiled.
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
 

@@ -4,7 +4,7 @@ import Card from "../Card";
 /*
  * Latest Capture (ESP32-CAM) card.
  *
- * - Uses the relative imageUrl from useSystemSnapshot so the CRA dev proxy
+ * - Uses the relative imageUrl from useSystemSnapshot so the Vite dev proxy
  *   forwards the GET to the Express /latest/image endpoint.
  * - Shows a green "Live" pill when stale === false (capture seen this poll).
  * - Falls back to a placeholder when there is no capture yet (404 case).

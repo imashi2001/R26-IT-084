@@ -1,5 +1,5 @@
 /**
- * Backend API base URL + helpers for CRA dashboard pages.
+ * Backend API base URL + helpers for Vite dashboard pages.
  */
 
 import axios from "axios";
@@ -16,9 +16,9 @@ function ensureHttpsBase(raw) {
 }
 
 export function getApiBaseUrl() {
-  const fromEnv = ensureHttpsBase(process.env.REACT_APP_API_URL || "");
+  const fromEnv = ensureHttpsBase(import.meta.env.VITE_API_URL || "");
 
-  if (process.env.NODE_ENV === "development") {
+  if (import.meta.env.DEV) {
     return fromEnv || "";
   }
 
@@ -50,7 +50,7 @@ export function apiUrl(path) {
   const base = getApiBaseUrl();
   if (base === null) {
     throw new Error(
-      "API URL missing. Set REACT_APP_API_URL for production builds."
+      "API URL missing. Set VITE_API_URL for production builds."
     );
   }
   if (base === "") return p;

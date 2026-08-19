@@ -241,15 +241,15 @@ export default function MobileReportPage() {
     const predictUrl = getPredictUrl();
     const apiBase = getApiBaseUrl();
     if (predictUrl === null) {
-      setResultErr("Production API URL missing (REACT_APP_API_URL).");
+      setResultErr("Production API URL missing (VITE_API_URL).");
       return;
     }
     if (
-      process.env.NODE_ENV === "production" &&
+      import.meta.env.PROD &&
       apiBase &&
       isApiUrlPointingAtFrontend(apiBase)
     ) {
-      setResultErr("REACT_APP_API_URL points at this frontend; set backend URL.");
+      setResultErr("VITE_API_URL points at this frontend; set backend URL.");
       return;
     }
 

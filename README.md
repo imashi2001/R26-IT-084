@@ -50,14 +50,14 @@ Always use **full URLs with scheme**:
 | Variable | Example |
 |----------|---------|
 | `MODEL_YOLO_URL` (backend) | `https://your-model.up.railway.app` |
-| `REACT_APP_API_URL` (frontend build) | `https://your-backend.up.railway.app` |
+| `VITE_API_URL` (frontend build) | `https://your-backend.up.railway.app` |
 | Bridge `BACKEND_PREDICT_URL` | `https://your-backend.up.railway.app/predict` |
 
-Host-only strings like `something.up.railway.app` are normalized to **`https://`** where applicable (`MODEL_YOLO_URL`, `REACT_APP_API_URL`).
+Host-only strings like `something.up.railway.app` are normalized to **`https://`** where applicable (`MODEL_YOLO_URL`, `VITE_API_URL`).
 
 Optional backend **`CORS_ORIGIN`**: comma-separated allowed frontend origins (empty = allow all). See [backend/.env.example](backend/.env.example).
 
-Frontend local overrides: copy [frontend/.env.example](frontend/.env.example) to **`frontend/.env.local`** (`REACT_APP_API_URL`, `REACT_APP_ESP32_CAPTURE_URL`).
+Frontend local overrides: copy [frontend/.env.example](frontend/.env.example) to **`frontend/.env.local`** (`VITE_API_URL`, `VITE_ESP32_CAPTURE_URL`).
 
 ## Run locally (3 terminals)
 
@@ -93,6 +93,6 @@ Create one Railway project with three services:
 1. **model-yolo** — root: `model-yolo`; uses `Dockerfile` (leave Railway **custom start command** empty so `$PORT` is not passed literally).
 2. **backend** — root: `backend`, start: `npm start`,
    set `MODEL_YOLO_URL` to the **https://** public URL of the `model-yolo` service.
-3. **frontend** — root: `frontend`, build: `npm run build`, set `REACT_APP_API_URL` to the **https://** public URL of `backend`.
+3. **frontend** — root: `frontend`, build: `npm run build`, start: `npm run serve`, output: `dist`, set `VITE_API_URL` to the **https://** public URL of `backend`.
 
 Add Railway Postgres later when you wire users / history into the gateway.

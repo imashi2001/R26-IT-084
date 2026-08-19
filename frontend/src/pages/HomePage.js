@@ -53,7 +53,7 @@ import { normalizeFill, effectiveFillTier, fillLabel } from "../utils/fillTier";
  */
 
 const DEFAULT_ESP32_URL =
-  process.env.REACT_APP_ESP32_CAPTURE_URL || "http://10.134.126.191/capture";
+  import.meta.env.VITE_ESP32_CAPTURE_URL || "http://10.134.126.191/capture";
 
 function detectionLabel(det) {
   if (det.label != null && String(det.label).trim()) return String(det.label).trim();
@@ -287,18 +287,18 @@ export default function HomePage() {
 
     if (predictUrl === null) {
       setError(
-        "API URL missing for production. In Railway → Frontend service → Variables, set REACT_APP_API_URL to your backend URL (e.g. https://your-backend.up.railway.app) then redeploy."
+        "API URL missing for production. In Railway → Frontend service → Variables, set VITE_API_URL to your backend URL (e.g. https://your-backend.up.railway.app) then redeploy."
       );
       return;
     }
 
     if (
-      process.env.NODE_ENV === "production" &&
+      import.meta.env.PROD &&
       apiBase &&
       isApiUrlPointingAtFrontend(apiBase)
     ) {
       setError(
-        "REACT_APP_API_URL points to this frontend site. Set it to your backend Railway URL only, save variables, and redeploy the frontend."
+        "VITE_API_URL points to this frontend site. Set it to your backend Railway URL only, save variables, and redeploy the frontend."
       );
       return;
     }
@@ -329,7 +329,7 @@ export default function HomePage() {
           }
         } else if (response.status === 405) {
           message =
-            "405 Method Not Allowed — the request hit the wrong server (often REACT_APP_API_URL points at the frontend URL, not the backend). Fix the variable and redeploy.";
+            "405 Method Not Allowed — the request hit the wrong server (often VITE_API_URL points at the frontend URL, not the backend). Fix the variable and redeploy.";
         }
         throw new Error(message);
       }

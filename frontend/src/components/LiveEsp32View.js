@@ -4,7 +4,7 @@ import { apiUrl, getApiBaseUrl } from "../utils/apiBase";
 
 const POLL_MS = 60_000;
 
-const LIVE_DEVICE_ID = (process.env.REACT_APP_LIVE_DEVICE_ID || "").trim();
+const LIVE_DEVICE_ID = (import.meta.env.VITE_LIVE_DEVICE_ID || "").trim();
 
 export default function LiveEsp32View() {
   const apiBase = getApiBaseUrl();
@@ -30,7 +30,7 @@ export default function LiveEsp32View() {
   const loadLatest = useCallback(async () => {
     if (!latestUrl) {
       setError(
-        "Set REACT_APP_API_URL to your backend Railway URL and redeploy the frontend."
+        "Set VITE_API_URL to your backend Railway URL and redeploy the frontend."
       );
       return;
     }

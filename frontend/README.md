@@ -52,7 +52,10 @@ npm run serve      # serve dist/ with SPA fallback (Railway start command)
 
 ## Railway
 
-- **Build command:** `npm run build`
-- **Start command:** `npm run serve`
-- **Output directory:** `dist`
+- **Root directory:** `frontend`
+- **Build command:** `npm run build` (auto via Nixpacks)
+- **Start command:** `npm start` (serves `dist/` on `$PORT`)
 - **Variable:** `VITE_API_URL=https://your-backend.up.railway.app`
+
+Rename any old `REACT_APP_API_URL` to **`VITE_API_URL`** — Vite only reads `VITE_*` at build time.
+Redeploy after changing env vars so the bundle is rebuilt.

@@ -167,67 +167,6 @@
   gap: 28px;
 }
 
-.mobile-report-page .mobile-report-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
-.mobile-report-card {
-  background: #111827;
-  border: 1px solid #334155;
-  border-radius: 14px;
-  padding: 16px;
-}
-
-.mobile-report-card h2 {
-  margin: 0 0 12px;
-  font-size: 1rem;
-}
-
-.mobile-report-video {
-  width: 100%;
-  max-height: 280px;
-  border-radius: 10px;
-  background: #000;
-  margin-bottom: 10px;
-}
-
-.mobile-report-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mobile-report-muted {
-  margin: 10px 0 0;
-  font-size: 0.85rem;
-  color: #94a3b8;
-}
-
-.mobile-report-file-label {
-  color: #38bdf8;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.mobile-report-preview-img {
-  width: 100%;
-  max-height: 240px;
-  object-fit: contain;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  background: #0f172a;
-}
-
-.mobile-report-submit {
-  width: 100%;
-}
-
-.mobile-report-footnote {
-  margin-top: 24px;
-}
-
 /* Main */
 .main {
   flex: 1;

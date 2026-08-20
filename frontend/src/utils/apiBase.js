@@ -162,11 +162,15 @@ export async function analyzeCapture(file, opts = {}) {
   if (opts.bridgeInstanceId)
     form.append("bridge_instance_id", String(opts.bridgeInstanceId));
   if (opts.esp32Id) form.append("esp32_id", String(opts.esp32Id));
+  if (opts.sourceType) form.append("source_type", String(opts.sourceType));
 
-  const { data } = await axios.post(apiUrl("/predict"), form, {
+  const res = await axios.post(apiUrl("/predict"), form, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-  return adaptAnalyzeResponse(data);
+  const out = adaptAnalyzeResponse(res.data);
+  const cap = res.headers["x-capture-id"] || res.headers["X-Capture-Id"];
+  if (cap) out.capture_id = cap;
+  return out;
 }
 
 export async function predictWaste(file, binId) {

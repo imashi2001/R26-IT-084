@@ -12,6 +12,7 @@ const forecastRoutes = require("./forecast.routes");
 const weatherRoutes = require("./weather.routes");
 const alertsRoutes = require("./alerts.routes");
 const litterRoutes = require("./litter.routes");
+const bridgeRoutes = require("./bridge.routes");
 
 const router = Router();
 
@@ -29,7 +30,9 @@ router.get("/", (_req, res) => {
     captures: "GET /captures, GET /captures/:id, GET /captures/:id/image",
     alerts: "GET /alerts?status=open|acknowledged|actioned|rejected|dismissed|all, PATCH /alerts/:id (admin)",
     devices:
-      "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures",
+      "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures, POST /devices/:id/speaker-test (admin)",
+    bridge:
+      "GET /bridge/speaker-pending?bridge_instance_id=&esp32_id=, POST /bridge/speaker-ack",
     geo: "GET /geo/search?q=",
     latest: "GET /latest (JSON) and GET /latest/image (jpeg)",
     waste_data:
@@ -42,6 +45,7 @@ router.get("/", (_req, res) => {
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
 router.use("/devices", devicesRoutes);
+router.use("/bridge", bridgeRoutes);
 router.use("/geo", geoRoutes);
 router.use("/api/waste-data", wasteDataRoutes);
 router.use("/predict", predictRoutes);

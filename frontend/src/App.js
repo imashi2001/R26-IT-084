@@ -21,6 +21,7 @@ import AlertsNotificationsPage from "./pages/AlertsNotificationsPage";
 import ReportsPage from "./pages/ReportsPage";
 import HistoryPage from "./pages/HistoryPage";
 import LitterSeverityPage from "./pages/LitterSeverityPage";
+import SpeakerCheckPage from "./pages/SpeakerCheckPage";
 import "./App.css";
 
 /*
@@ -168,6 +169,10 @@ export default function App() {
           <Route
             path="/history"
             element={protectedShell(<HistoryPage />)}
+          />
+          <Route
+            path="/speaker"
+            element={protectedShell(<SpeakerCheckPage />)}
           />
           {/* IoT Devices replaced by /bins — keep route as redirect for legacy links. */}
           <Route

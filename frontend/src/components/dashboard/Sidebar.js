@@ -15,6 +15,7 @@ import {
   History,
   Smartphone,
   Settings,
+  Volume2,
   Leaf,
   CircleCheck,
   CircleAlert,
@@ -50,6 +51,7 @@ const NAV_ITEMS = [
   { to: "/reports", icon: FileText, label: "Reports" },
   { to: "/history", icon: History, label: "History" },
   { to: "/mobile-report", icon: Smartphone, label: "Mobile Reports" },
+  { to: "/speaker", icon: Volume2, label: "Speaker Check" },
   { to: "/admin", icon: Settings, label: "Settings" },
 ];
 

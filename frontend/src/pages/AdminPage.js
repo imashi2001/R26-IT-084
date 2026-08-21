@@ -41,6 +41,7 @@ export default function AdminPage() {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [bridgeInstanceId, setBridgeInstanceId] = useState("");
+  const [cameraBaseUrl, setCameraBaseUrl] = useState("");
   const [status, setStatus] = useState("active");
   const [geoQuery, setGeoQuery] = useState("");
   const [formMsg, setFormMsg] = useState(null);
@@ -76,6 +77,7 @@ export default function AdminPage() {
     setName("");
     setEsp32Id("");
     setBridgeInstanceId("");
+    setCameraBaseUrl("");
     setStatus("active");
     setLocationLabel("");
     setAddress("");
@@ -89,6 +91,7 @@ export default function AdminPage() {
     setName(d.name || "");
     setEsp32Id(d.esp32_id || "");
     setBridgeInstanceId(d.bridge_instance_id || "");
+    setCameraBaseUrl(d.camera_base_url || "");
     setStatus(d.status || "active");
     setLocationLabel(d.location || "");
     setAddress(d.address || "");
@@ -155,6 +158,7 @@ export default function AdminPage() {
       status,
       esp32_id: esp32Id.trim() || null,
       bridge_instance_id: bridgeInstanceId.trim() || null,
+      camera_base_url: cameraBaseUrl.trim().replace(/\/+$/, "") || null,
       location: locationLabel.trim() || null,
       address: address.trim() || null,
       latitude: lat,
@@ -268,6 +272,19 @@ export default function AdminPage() {
                   </span>
                 </label>
                 <label>
+                  Camera base URL{" "}
+                  <span className="field-hint">(LAN, for speaker relay)</span>
+                  <input
+                    value={cameraBaseUrl}
+                    onChange={(e) => setCameraBaseUrl(e.target.value)}
+                    placeholder="http://10.158.245.191"
+                    autoComplete="off"
+                  />
+                  <span className="field-helper">
+                    No <code>/capture</code> suffix. Used by Speaker Check and the bridge when relaying tones.
+                  </span>
+                </label>
+                <label>
                   Location name
                   <input
                     value={locationLabel}
@@ -375,6 +392,11 @@ export default function AdminPage() {
                       {d.bridge_instance_id && (
                         <div className="device-admin-meta">
                           Bridge ID: <code>{d.bridge_instance_id}</code>
+                        </div>
+                      )}
+                      {d.camera_base_url && (
+                        <div className="device-admin-meta">
+                          Camera: <code>{d.camera_base_url}</code>
                         </div>
                       )}
                       <div className="device-admin-meta">

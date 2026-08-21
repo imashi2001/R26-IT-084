@@ -180,6 +180,10 @@ async function create(req, res, next) {
         body.bridge_instance_id != null
           ? String(body.bridge_instance_id).trim() || null
           : null,
+      camera_base_url:
+        body.camera_base_url != null
+          ? String(body.camera_base_url).trim().replace(/\/+$/, "") || null
+          : null,
       status: normalizeDeviceStatus(body.status) || "active",
     };
 
@@ -264,6 +268,12 @@ async function patch(req, res, next) {
         body.bridge_instance_id == null || body.bridge_instance_id === ""
           ? null
           : String(body.bridge_instance_id).trim();
+    }
+    if (body.camera_base_url !== undefined) {
+      patch.camera_base_url =
+        body.camera_base_url == null || body.camera_base_url === ""
+          ? null
+          : String(body.camera_base_url).trim().replace(/\/+$/, "");
     }
     if (body.status !== undefined) {
       const st = normalizeDeviceStatus(body.status);
@@ -607,6 +617,33 @@ async function latestImage(req, res, next) {
   }
 }
 
+async function speakerTest(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "Invalid device id" });
+    }
+
+    const existing = await deviceService.getDeviceById(id);
+    if (!existing) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    const updated = await deviceService.enqueueSpeakerAction(id, "test");
+    return res.json({
+      ok: true,
+      device_id: id,
+      pending_speaker_action: updated?.pending_speaker_action || "test",
+      pending_speaker_at: updated?.pending_speaker_at || null,
+      message:
+        "Speaker test queued. Keep the VisionWaste bridge running on the same Wi‑Fi; the ESP32 should sound within one poll cycle.",
+    });
+  } catch (e) {
+    return next(e);
+  }
+}
+
 module.exports = {
   list,
   create,
@@ -617,4 +654,5 @@ module.exports = {
   listCapturesForDevice,
   latestDetail,
   latestImage,
+  speakerTest,
 };

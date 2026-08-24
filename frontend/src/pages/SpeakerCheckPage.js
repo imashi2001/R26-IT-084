@@ -6,6 +6,7 @@ import { apiUrl } from "../utils/apiBase";
 import {
   formatLastSeen,
   isCameraOnline,
+  runRemoteAudioStop,
   runRemoteAudioTest,
 } from "../utils/audioTest";
 
@@ -22,6 +23,7 @@ export default function SpeakerCheckPage() {
   const [audioMsgs, setAudioMsgs] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [audioBusyId, setAudioBusyId] = useState(null);
+  const [stopBusyId, setStopBusyId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadDevices = useCallback(async () => {
@@ -91,6 +93,28 @@ export default function SpeakerCheckPage() {
     }
   };
 
+  const onStopAudio = async (d) => {
+    if (!d?.esp32_id) return;
+    setStopBusyId(d.id);
+    setAudioMsgs((m) => ({ ...m, [d.id]: null }));
+    try {
+      await runRemoteAudioStop({
+        authFetch,
+        deviceId: d.id,
+        onStatus: (msg) => setAudioMsgs((m) => ({ ...m, [d.id]: msg })),
+      });
+      loadDevices();
+    } catch (e) {
+      setAudioMsgs((m) => ({
+        ...m,
+        [d.id]: e.message || "Stop failed.",
+      }));
+    } finally {
+      setStopBusyId(null);
+      setAudioBusyId(null);
+    }
+  };
+
   const isAdmin = user?.role === "admin";
 
   return (
@@ -133,6 +157,10 @@ export default function SpeakerCheckPage() {
               <code>PLAY_AUDIO</code> track 1; ESP32 polls{" "}
               <code>/devices/commands?esp32_id=…</code> and plays{" "}
               <code>/MP3/0001.mp3</code> on the DFPlayer (no bridge required).
+            </li>
+            <li>
+              <strong>Stop</strong> — queues <code>STOP_AUDIO</code>; ESP32
+              should stop the DFPlayer and ACK.
             </li>
           </ol>
         </div>
@@ -232,12 +260,25 @@ export default function SpeakerCheckPage() {
                     <div className="flex shrink-0 flex-col gap-2 sm:items-end">
                       <button
                         type="button"
-                        disabled={!isAdmin || !hasEsp32 || audioBusyId === d.id}
+                        disabled={
+                          !isAdmin ||
+                          !hasEsp32 ||
+                          audioBusyId === d.id ||
+                          stopBusyId === d.id
+                        }
                         onClick={() => onTestAudio(d)}
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Volume2 className="h-4 w-4" aria-hidden />
                         {audioBusyId === d.id ? "Testing…" : "Test Audio"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!isAdmin || !hasEsp32 || stopBusyId === d.id}
+                        onClick={() => onStopAudio(d)}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {stopBusyId === d.id ? "Stopping…" : "Stop"}
                       </button>
                       <button
                         type="button"

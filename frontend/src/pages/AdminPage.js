@@ -11,6 +11,7 @@ import { apiUrl } from "../utils/apiBase";
 import {
   formatLastSeen,
   isCameraOnline,
+  runRemoteAudioStop,
   runRemoteAudioTest,
 } from "../utils/audioTest";
 
@@ -53,6 +54,7 @@ export default function AdminPage() {
   const [formError, setFormError] = useState(null);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
   const [audioBusyId, setAudioBusyId] = useState(null);
+  const [stopBusyId, setStopBusyId] = useState(null);
   const [audioMsgs, setAudioMsgs] = useState({});
 
   const mapCenter = useMemo(() => {
@@ -212,6 +214,28 @@ export default function AdminPage() {
         [d.id]: e.message || "Audio test failed.",
       }));
     } finally {
+      setAudioBusyId(null);
+    }
+  };
+
+  const onStopAudio = async (d) => {
+    if (!d?.id || !d?.esp32_id) return;
+    setStopBusyId(d.id);
+    setAudioMsgs((m) => ({ ...m, [d.id]: null }));
+    try {
+      await runRemoteAudioStop({
+        authFetch,
+        deviceId: d.id,
+        onStatus: (msg) => setAudioMsgs((m) => ({ ...m, [d.id]: msg })),
+      });
+      loadDevices();
+    } catch (e) {
+      setAudioMsgs((m) => ({
+        ...m,
+        [d.id]: e.message || "Stop failed.",
+      }));
+    } finally {
+      setStopBusyId(null);
       setAudioBusyId(null);
     }
   };
@@ -446,14 +470,24 @@ export default function AdminPage() {
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {hasEsp32 && (
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          disabled={audioBusyId === d.id}
-                          onClick={() => onTestAudio(d)}
-                        >
-                          {audioBusyId === d.id ? "Testing…" : "Test Audio"}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            disabled={audioBusyId === d.id || stopBusyId === d.id}
+                            onClick={() => onTestAudio(d)}
+                          >
+                            {audioBusyId === d.id ? "Testing…" : "Test Audio"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            disabled={stopBusyId === d.id}
+                            onClick={() => onStopAudio(d)}
+                          >
+                            {stopBusyId === d.id ? "Stopping…" : "Stop"}
+                          </button>
+                        </>
                       )}
                       <button
                         type="button"

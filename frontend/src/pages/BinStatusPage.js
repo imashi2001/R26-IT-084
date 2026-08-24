@@ -45,6 +45,7 @@ import {
 import {
   formatLastSeen,
   isCameraOnline,
+  runRemoteAudioStop,
   runRemoteAudioTest,
 } from "../utils/audioTest";
 
@@ -188,6 +189,7 @@ export default function BinStatusPage() {
   const [formError, setFormError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [audioBusyId, setAudioBusyId] = useState(null);
+  const [stopBusyId, setStopBusyId] = useState(null);
   const [audioMsgs, setAudioMsgs] = useState({});
 
   /* ----- data ----- */
@@ -237,6 +239,32 @@ export default function BinStatusPage() {
           [device.id]: e.message || "Audio test failed.",
         }));
       } finally {
+        setAudioBusyId(null);
+      }
+    },
+    [authFetch, loadDevices]
+  );
+
+  const onStopAudio = useCallback(
+    async (device) => {
+      if (!device?.id || !device?.esp32_id) return;
+      setStopBusyId(device.id);
+      setAudioMsgs((m) => ({ ...m, [device.id]: null }));
+      try {
+        await runRemoteAudioStop({
+          authFetch,
+          deviceId: device.id,
+          onStatus: (msg) =>
+            setAudioMsgs((m) => ({ ...m, [device.id]: msg })),
+        });
+        loadDevices();
+      } catch (e) {
+        setAudioMsgs((m) => ({
+          ...m,
+          [device.id]: e.message || "Stop failed.",
+        }));
+      } finally {
+        setStopBusyId(null);
         setAudioBusyId(null);
       }
     },
@@ -649,7 +677,9 @@ export default function BinStatusPage() {
                         onEdit={() => startEdit(d)}
                         onQuickStatus={(s) => quickStatus(d, s)}
                         onTestAudio={() => onTestAudio(d)}
+                        onStopAudio={() => onStopAudio(d)}
                         audioBusy={audioBusyId === d.id}
+                        stopBusy={stopBusyId === d.id}
                         audioMsg={audioMsgs[d.id] || null}
                       />
                     ))}
@@ -1074,7 +1104,9 @@ function BinRow({
   onEdit,
   onQuickStatus,
   onTestAudio,
+  onStopAudio,
   audioBusy,
+  stopBusy,
   audioMsg,
 }) {
   const d = device;
@@ -1205,15 +1237,25 @@ function BinRow({
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
             {canEdit && hasEsp32 ? (
-              <button
-                type="button"
-                disabled={audioBusy}
-                onClick={onTestAudio}
-                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Volume2 className="h-3.5 w-3.5" />
-                {audioBusy ? "Testing…" : "Test Audio"}
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={audioBusy || stopBusy}
+                  onClick={onTestAudio}
+                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Volume2 className="h-3.5 w-3.5" />
+                  {audioBusy ? "Testing…" : "Test Audio"}
+                </button>
+                <button
+                  type="button"
+                  disabled={stopBusy}
+                  onClick={onStopAudio}
+                  className="inline-flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {stopBusy ? "Stopping…" : "Stop"}
+                </button>
+              </>
             ) : null}
             {canEdit ? (
               <>

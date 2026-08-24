@@ -1,5 +1,5 @@
 /**
- * ESP32 device command queue (PLAY_AUDIO etc.).
+ * ESP32 device command queue (PLAY_AUDIO / STOP_AUDIO).
  * Independent from laptop bridge pending_speaker_* fields.
  */
 
@@ -13,6 +13,16 @@ const ACTIVE_STATUSES = ["pending", "sent"];
 function ensureModels() {
   if (!db.isDbEnabled()) return null;
   return modelsRegistry.getModels() || modelsRegistry.init();
+}
+
+function requireEsp32Id(device) {
+  const esp32Id = device?.esp32_id ? String(device.esp32_id).trim() : "";
+  if (!esp32Id) {
+    const err = new Error("Device has no esp32_id");
+    err.status = 400;
+    throw err;
+  }
+  return esp32Id;
 }
 
 function toApiCommand(row) {
@@ -32,17 +42,35 @@ function toApiCommand(row) {
   };
 }
 
+/**
+ * Cancel pending/sent commands so STOP (or a fresh command) is not stuck behind them.
+ */
+async function cancelActiveCommands(esp32Id, reason) {
+  const models = ensureModels();
+  if (!models) return 0;
+  const { DeviceCommand } = models;
+  const [count] = await DeviceCommand.update(
+    {
+      status: "failed",
+      completed_at: new Date(),
+      error_message: reason || "cancelled",
+    },
+    {
+      where: {
+        esp32_id: esp32Id,
+        status: { [Op.in]: ACTIVE_STATUSES },
+      },
+    }
+  );
+  return count;
+}
+
 async function createPlayAudioCommand(device, { track = 1 } = {}) {
   const models = ensureModels();
   if (!models) return null;
   const { DeviceCommand } = models;
 
-  const esp32Id = device.esp32_id ? String(device.esp32_id).trim() : "";
-  if (!esp32Id) {
-    const err = new Error("Device has no esp32_id");
-    err.status = 400;
-    throw err;
-  }
+  const esp32Id = requireEsp32Id(device);
 
   const trackNum = Number.isFinite(Number(track)) ? Math.trunc(Number(track)) : 1;
   if (trackNum < 1 || trackNum > 9999) {
@@ -56,6 +84,32 @@ async function createPlayAudioCommand(device, { track = 1 } = {}) {
     esp32_id: esp32Id,
     command: "PLAY_AUDIO",
     track: trackNum,
+    status: "pending",
+    sent_at: null,
+    completed_at: null,
+    error_message: null,
+  });
+
+  return toApiCommand(row);
+}
+
+/**
+ * Queue STOP_AUDIO. Cancels any pending/sent commands first so the ESP32
+ * receives stop on the next poll (and stops current DFPlayer playback).
+ */
+async function createStopAudioCommand(device) {
+  const models = ensureModels();
+  if (!models) return null;
+  const { DeviceCommand } = models;
+
+  const esp32Id = requireEsp32Id(device);
+  await cancelActiveCommands(esp32Id, "cancelled: stop requested");
+
+  const row = await DeviceCommand.create({
+    device_id: device.id,
+    esp32_id: esp32Id,
+    command: "STOP_AUDIO",
+    track: null,
     status: "pending",
     sent_at: null,
     completed_at: null,
@@ -191,6 +245,7 @@ async function getCommandById(commandId) {
 
 module.exports = {
   createPlayAudioCommand,
+  createStopAudioCommand,
   pollNextCommand,
   ackCommand,
   getCommandById,

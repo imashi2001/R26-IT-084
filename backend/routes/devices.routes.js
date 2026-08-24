@@ -40,6 +40,14 @@ router.post(
   devices.audioTest
 );
 
+/** ESP32 poll-based stop playback. */
+router.post(
+  "/:id/audio-stop",
+  requireAuth,
+  requireRole("admin"),
+  devices.audioStop
+);
+
 router.get("/:id/captures", devices.listCapturesForDevice);
 router.get("/:id/latest", devices.latestDetail);
 router.get("/:id/image/latest", devices.latestImage);

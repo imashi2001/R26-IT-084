@@ -1,10 +1,41 @@
-/** Remote ESP32 DFPlayer audio test (poll-based command queue). */
+/** Remote ESP32 DFPlayer audio (poll-based command queue). */
 
 export const AUDIO_TEST_TIMEOUT_MS = 25_000;
 export const AUDIO_TEST_POLL_MS = 1_500;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForCommand({ authFetch, commandId, onStatus, successMsg }) {
+  const say = (msg) => {
+    if (typeof onStatus === "function") onStatus(msg);
+  };
+
+  say("Waiting for ESP32...");
+  const deadline = Date.now() + AUDIO_TEST_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    await sleep(AUDIO_TEST_POLL_MS);
+    const stRes = await authFetch(`/devices/commands/${commandId}`);
+    const st = await stRes.json().catch(() => ({}));
+    if (!stRes.ok) throw new Error(st.error || `HTTP ${stRes.status}`);
+
+    if (st.status === "completed") {
+      say(successMsg);
+      return st;
+    }
+    if (st.status === "failed") {
+      const msg = st.error_message || "Command failed.";
+      if (String(msg).includes("cancelled: stop")) {
+        say("Stopped.");
+        return st;
+      }
+      throw new Error(msg);
+    }
+  }
+
+  throw new Error("ESP32 did not respond.");
 }
 
 /**
@@ -27,25 +58,39 @@ export async function runRemoteAudioTest({ authFetch, deviceId, onStatus }) {
   const commandId = body.command_id;
   if (!commandId) throw new Error("No command_id returned from audio-test");
 
-  say("Waiting for ESP32...");
-  const deadline = Date.now() + AUDIO_TEST_TIMEOUT_MS;
+  return waitForCommand({
+    authFetch,
+    commandId,
+    onStatus,
+    successMsg: "Audio test completed successfully.",
+  });
+}
 
-  while (Date.now() < deadline) {
-    await sleep(AUDIO_TEST_POLL_MS);
-    const stRes = await authFetch(`/devices/commands/${commandId}`);
-    const st = await stRes.json().catch(() => ({}));
-    if (!stRes.ok) throw new Error(st.error || `HTTP ${stRes.status}`);
+/**
+ * Queue STOP_AUDIO (cancels pending play) and wait for ESP32 ACK.
+ */
+export async function runRemoteAudioStop({ authFetch, deviceId, onStatus }) {
+  const say = (msg) => {
+    if (typeof onStatus === "function") onStatus(msg);
+  };
 
-    if (st.status === "completed") {
-      say("Audio test completed successfully.");
-      return st;
-    }
-    if (st.status === "failed") {
-      throw new Error(st.error_message || "Audio test failed.");
-    }
-  }
+  say("Sending stop...");
+  const res = await authFetch(`/devices/${deviceId}/audio-stop`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
 
-  throw new Error("ESP32 did not respond.");
+  const commandId = body.command_id;
+  if (!commandId) throw new Error("No command_id returned from audio-stop");
+
+  return waitForCommand({
+    authFetch,
+    commandId,
+    onStatus,
+    successMsg: "Playback stopped.",
+  });
 }
 
 /** Online if last_seen_at is within ~20s (matches backend camera_online). */

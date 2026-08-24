@@ -699,6 +699,37 @@ async function audioTest(req, res, next) {
 }
 
 /**
+ * Admin: queue STOP_AUDIO for ESP32 DFPlayer (stops current playback).
+ */
+async function audioStop(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "Invalid device id" });
+    }
+
+    const device = await deviceService.getDeviceById(id);
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+    if (!device.esp32_id || !String(device.esp32_id).trim()) {
+      return res.status(400).json({
+        error: "Device has no esp32_id. Set ESP32 ID on the bin first.",
+      });
+    }
+
+    const cmd = await deviceCommandService.createStopAudioCommand(device);
+    return res.status(201).json(cmd);
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return next(e);
+  }
+}
+
+/**
  * ESP32 poll: GET /devices/commands?esp32_id=esp-cam-1
  * No auth (same trust model as /bridge/speaker-pending).
  */
@@ -777,6 +808,7 @@ module.exports = {
   latestImage,
   speakerTest,
   audioTest,
+  audioStop,
   pollCommands,
   ackCommand,
   getCommand,

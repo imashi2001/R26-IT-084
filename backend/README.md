@@ -154,11 +154,16 @@ Independent from the laptop-bridge speaker relay (`pending_speaker_*` / `/bridge
 | Method | Path | Auth |
 |--------|------|------|
 | POST | `/devices/:id/audio-test` | Admin JWT — queues `PLAY_AUDIO` track 1 |
+| POST | `/devices/:id/audio-stop` | Admin JWT — cancels pending commands, queues `STOP_AUDIO` |
 | GET | `/devices/commands?esp32_id=` | None — ESP32 poll; marks `pending`→`sent`; updates `last_seen_at` |
 | POST | `/devices/commands/:command_id/ack` | None — body `{ esp32_id, status: completed\|failed, error_message? }` |
 | GET | `/devices/commands/:command_id` | Admin JWT — status for dashboard UX |
 
-ESP32 response when idle: `{ "command": null }`. When queued: `{ "command_id", "command": "PLAY_AUDIO", "track": 1 }`.
+ESP32 response when idle: `{ "command": null }`.
+
+Play: `{ "command_id", "command": "PLAY_AUDIO", "track": 1 }`.
+
+Stop: `{ "command_id", "command": "STOP_AUDIO", "track": null }`.
 
 Appendix — additive columns if you manage schema manually (Postgres):
 

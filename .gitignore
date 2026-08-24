@@ -15,6 +15,9 @@ animal_detection/runs/
 animal_detection/models/
 animal_detection/yolov8n.pt
 
+# Local Next.js experiment (not part of VisionWaste deploy)
+web/
+
 # Per-host stable device id (laptop bridge / dyno)
 backend/.device_id
 .bridge_id

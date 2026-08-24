@@ -8,6 +8,11 @@ import {
 import "leaflet/dist/leaflet.css";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../utils/apiBase";
+import {
+  formatLastSeen,
+  isCameraOnline,
+  runRemoteAudioTest,
+} from "../utils/audioTest";
 
 /*
  * AdminPage assumes the visitor is authenticated. The /login and /register
@@ -47,6 +52,8 @@ export default function AdminPage() {
   const [formMsg, setFormMsg] = useState(null);
   const [formError, setFormError] = useState(null);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
+  const [audioBusyId, setAudioBusyId] = useState(null);
+  const [audioMsgs, setAudioMsgs] = useState({});
 
   const mapCenter = useMemo(() => {
     const lat = Number(latitude);
@@ -187,6 +194,27 @@ export default function AdminPage() {
   };
 
   const isAdmin = user?.role === "admin";
+
+  const onTestAudio = async (d) => {
+    if (!d?.id || !d?.esp32_id) return;
+    setAudioBusyId(d.id);
+    setAudioMsgs((m) => ({ ...m, [d.id]: null }));
+    try {
+      await runRemoteAudioTest({
+        authFetch,
+        deviceId: d.id,
+        onStatus: (msg) => setAudioMsgs((m) => ({ ...m, [d.id]: msg })),
+      });
+      loadDevices();
+    } catch (e) {
+      setAudioMsgs((m) => ({
+        ...m,
+        [d.id]: e.message || "Audio test failed.",
+      }));
+    } finally {
+      setAudioBusyId(null);
+    }
+  };
 
   return (
     <div className="page admin-page">
@@ -372,7 +400,10 @@ export default function AdminPage() {
           <section className="admin-card">
             <h2>Existing bins ({devices.length})</h2>
             <ul className="device-admin-list">
-              {devices.map((d) => (
+              {devices.map((d) => {
+                const hasEsp32 = Boolean(d.esp32_id && String(d.esp32_id).trim());
+                const camOnline = isCameraOnline(d);
+                return (
                 <li key={d.id}>
                   <div className="device-admin-row">
                     <div>
@@ -389,6 +420,13 @@ export default function AdminPage() {
                           <code>{d.esp32_id}</code>
                         </>
                       )}
+                      {hasEsp32 && (
+                        <div className="device-admin-meta">
+                          Camera: {camOnline ? "Online" : "Offline"}
+                          {" · "}
+                          Last seen: {formatLastSeen(d.last_seen_at)}
+                        </div>
+                      )}
                       {d.bridge_instance_id && (
                         <div className="device-admin-meta">
                           Bridge ID: <code>{d.bridge_instance_id}</code>
@@ -396,23 +434,39 @@ export default function AdminPage() {
                       )}
                       {d.camera_base_url && (
                         <div className="device-admin-meta">
-                          Camera: <code>{d.camera_base_url}</code>
+                          Camera URL: <code>{d.camera_base_url}</code>
                         </div>
                       )}
                       <div className="device-admin-meta">
                         lat {d.latitude ?? "—"}, lng {d.longitude ?? "—"}
                       </div>
+                      {audioMsgs[d.id] && (
+                        <div className="device-admin-meta">{audioMsgs[d.id]}</div>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => startEdit(d)}
-                    >
-                      Edit
-                    </button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {hasEsp32 && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          disabled={audioBusyId === d.id}
+                          onClick={() => onTestAudio(d)}
+                        >
+                          {audioBusyId === d.id ? "Testing…" : "Test Audio"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => startEdit(d)}
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
         </>

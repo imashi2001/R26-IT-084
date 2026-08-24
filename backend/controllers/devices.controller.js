@@ -1,10 +1,25 @@
 const db = require("../config/db");
 const deviceService = require("../services/deviceService");
+const deviceCommandService = require("../services/deviceCommandService");
 const captureService = require("../services/captureService");
 const latestState = require("../services/latestState");
 const { deriveFillLevel } = require("../utils/fillLevel");
 const { haversineMeters } = require("../utils/geo");
 const { getPublicBaseUrl } = require("../utils/publicUrl");
+
+/** ESP32 considered Online for UI if last poll within this window. */
+const ONLINE_MS = 20_000;
+
+function withPresence(device) {
+  if (!device || typeof device !== "object") return device;
+  const last = device.last_seen_at ? new Date(device.last_seen_at).getTime() : 0;
+  const online = Boolean(last && Date.now() - last <= ONLINE_MS);
+  return {
+    ...device,
+    camera_online: online,
+    last_seen_at: device.last_seen_at || null,
+  };
+}
 
 function dbRequired(res) {
   if (!db.isDbEnabled()) {
@@ -124,14 +139,14 @@ async function list(req, res, next) {
       String(req.query.latest || "").trim() === "1" ||
       String(req.query.latest || "").toLowerCase() === "true";
     if (!wantLatest) {
-      return res.json({ devices: rows });
+      return res.json({ devices: rows.map(withPresence) });
     }
 
     const devices = await Promise.all(
       rows.map(async (d) => {
         const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
         const mem = latestState.getLatestForDevice(d.id);
-        return {
+        return withPresence({
           ...d,
           latest_fill_level: resolveLatestFillLevel({ latestCap, mem }),
           latest_fill_percentage: resolveLatestFillPercentage({
@@ -142,7 +157,7 @@ async function list(req, res, next) {
             latestCap?.source_type || mem?.extras?.source_type || null,
           latest_captured_at:
             latestCap?.captured_at || mem?.timestamp || null,
-        };
+        });
       })
     );
 
@@ -325,7 +340,7 @@ async function getOne(req, res, next) {
       return res.status(404).json({ error: "Device not found" });
     }
 
-    return res.json(row);
+    return res.json(withPresence(row));
   } catch (e) {
     return next(e);
   }
@@ -564,7 +579,7 @@ async function latestDetail(req, res, next) {
     }
 
     return res.json({
-      device,
+      device: withPresence(device),
       latest: {
         captured_at,
         fill_level,
@@ -644,6 +659,112 @@ async function speakerTest(req, res, next) {
   }
 }
 
+/**
+ * Admin: queue PLAY_AUDIO track 1 for ESP32 DFPlayer (poll-based, no LAN).
+ * Independent from POST /:id/speaker-test (laptop bridge).
+ */
+async function audioTest(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "Invalid device id" });
+    }
+
+    const device = await deviceService.getDeviceById(id);
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+    if (!device.esp32_id || !String(device.esp32_id).trim()) {
+      return res.status(400).json({
+        error: "Device has no esp32_id. Set ESP32 ID on the bin first.",
+      });
+    }
+
+    const track =
+      req.body?.track !== undefined && req.body?.track !== ""
+        ? req.body.track
+        : 1;
+
+    const cmd = await deviceCommandService.createPlayAudioCommand(device, {
+      track,
+    });
+    return res.status(201).json(cmd);
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return next(e);
+  }
+}
+
+/**
+ * ESP32 poll: GET /devices/commands?esp32_id=esp-cam-1
+ * No auth (same trust model as /bridge/speaker-pending).
+ */
+async function pollCommands(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const esp32Id = req.query.esp32_id;
+    if (!esp32Id || !String(esp32Id).trim()) {
+      return res.status(400).json({ error: "esp32_id query parameter is required" });
+    }
+
+    const result = await deviceCommandService.pollNextCommand(esp32Id);
+    if (!result.command) {
+      return res.json({ command: null });
+    }
+    return res.json(result.command);
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return next(e);
+  }
+}
+
+/**
+ * ESP32 ACK: POST /devices/commands/:command_id/ack
+ */
+async function ackCommand(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const commandId = req.params.command_id;
+    const body = req.body || {};
+    const updated = await deviceCommandService.ackCommand(commandId, {
+      esp32Id: body.esp32_id,
+      status: body.status,
+      errorMessage: body.error_message,
+    });
+    return res.json({
+      ok: true,
+      command: updated,
+    });
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return next(e);
+  }
+}
+
+/**
+ * Admin status poll for Test Audio UX.
+ * GET /devices/commands/:command_id
+ */
+async function getCommand(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const cmd = await deviceCommandService.getCommandById(req.params.command_id);
+    if (!cmd) {
+      return res.status(404).json({ error: "Command not found" });
+    }
+    return res.json(cmd);
+  } catch (e) {
+    return next(e);
+  }
+}
+
 module.exports = {
   list,
   create,
@@ -655,4 +776,8 @@ module.exports = {
   latestDetail,
   latestImage,
   speakerTest,
+  audioTest,
+  pollCommands,
+  ackCommand,
+  getCommand,
 };

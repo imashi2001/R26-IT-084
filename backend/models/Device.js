@@ -61,6 +61,11 @@ module.exports = (sequelize) =>
         type: DataTypes.DATE,
         allowNull: true,
       },
+      /** Updated when ESP32 polls GET /devices/commands (presence / Online UI). */
+      last_seen_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
     },
     {
       tableName: "devices",

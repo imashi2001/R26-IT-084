@@ -61,7 +61,7 @@ if POLL_INTERVAL_SEC < 60:
 
 ESP32_TIMEOUT = float(os.environ.get("ESP32_TIMEOUT", "10"))
 BACKEND_TIMEOUT = float(os.environ.get("BACKEND_TIMEOUT", "120"))
-SPEAKER_TIMEOUT = float(os.environ.get("SPEAKER_TIMEOUT", "8"))
+SPEAKER_TIMEOUT = float(os.environ.get("SPEAKER_TIMEOUT", "30"))
 
 BACKEND_MAX_RETRIES = int(os.environ.get("BACKEND_MAX_RETRIES", "3"))
 BACKEND_RETRY_DELAY_SEC = float(os.environ.get("BACKEND_RETRY_DELAY_SEC", "2"))

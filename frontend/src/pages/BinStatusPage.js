@@ -26,6 +26,7 @@ import {
   CircleAlert,
   CircleCheck,
   Settings as SettingsIcon,
+  Volume2,
 } from "lucide-react";
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
@@ -41,6 +42,11 @@ import {
   collectionUrgency,
   needsCollectionSoon,
 } from "../utils/collectionPriority";
+import {
+  formatLastSeen,
+  isCameraOnline,
+  runRemoteAudioTest,
+} from "../utils/audioTest";
 
 /*
  * /bins  - Bin Status (formerly the legacy /admin device-management UI).
@@ -181,6 +187,8 @@ export default function BinStatusPage() {
   const [formMsg, setFormMsg] = useState(null);
   const [formError, setFormError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [audioBusyId, setAudioBusyId] = useState(null);
+  const [audioMsgs, setAudioMsgs] = useState({});
 
   /* ----- data ----- */
 
@@ -209,6 +217,31 @@ export default function BinStatusPage() {
   useEffect(() => {
     loadDevices();
   }, [loadDevices]);
+
+  const onTestAudio = useCallback(
+    async (device) => {
+      if (!device?.id || !device?.esp32_id) return;
+      setAudioBusyId(device.id);
+      setAudioMsgs((m) => ({ ...m, [device.id]: null }));
+      try {
+        await runRemoteAudioTest({
+          authFetch,
+          deviceId: device.id,
+          onStatus: (msg) =>
+            setAudioMsgs((m) => ({ ...m, [device.id]: msg })),
+        });
+        loadDevices();
+      } catch (e) {
+        setAudioMsgs((m) => ({
+          ...m,
+          [device.id]: e.message || "Audio test failed.",
+        }));
+      } finally {
+        setAudioBusyId(null);
+      }
+    },
+    [authFetch, loadDevices]
+  );
 
   /* ----- summary chips ----- */
 
@@ -615,6 +648,9 @@ export default function BinStatusPage() {
                         canEdit={isAdmin}
                         onEdit={() => startEdit(d)}
                         onQuickStatus={(s) => quickStatus(d, s)}
+                        onTestAudio={() => onTestAudio(d)}
+                        audioBusy={audioBusyId === d.id}
+                        audioMsg={audioMsgs[d.id] || null}
                       />
                     ))}
                   </ul>
@@ -1031,7 +1067,16 @@ function EmptyState({ title, body }) {
   );
 }
 
-function BinRow({ device, editing, canEdit, onEdit, onQuickStatus }) {
+function BinRow({
+  device,
+  editing,
+  canEdit,
+  onEdit,
+  onQuickStatus,
+  onTestAudio,
+  audioBusy,
+  audioMsg,
+}) {
   const d = device;
   const tier = effectiveFillTier(d);
   const tierKey = normalizeFill(tier) || "unknown";
@@ -1042,6 +1087,8 @@ function BinRow({ device, editing, canEdit, onEdit, onQuickStatus }) {
       : "—";
   const urgency = collectionUrgency(d);
   const urgent = needsCollectionSoon(d);
+  const hasEsp32 = Boolean(d.esp32_id && String(d.esp32_id).trim());
+  const camOnline = isCameraOnline(d);
 
   return (
     <li>
@@ -1062,6 +1109,17 @@ function BinRow({ device, editing, canEdit, onEdit, onQuickStatus }) {
               >
                 {d.status || "—"}
               </span>
+              {hasEsp32 ? (
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                    camOnline
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-slate-200 bg-slate-50 text-ink-500"
+                  }`}
+                >
+                  Camera {camOnline ? "Online" : "Offline"}
+                </span>
+              ) : null}
               {urgent ? (
                 <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                   Urgent pickup
@@ -1079,6 +1137,7 @@ function BinRow({ device, editing, canEdit, onEdit, onQuickStatus }) {
               {d.esp32_id ? (
                 <span className="inline-flex items-center gap-1">
                   <Cpu className="h-3 w-3" />
+                  ESP32 ID:{" "}
                   <code className="rounded bg-slate-100 px-1">
                     {d.esp32_id}
                   </code>
@@ -1090,6 +1149,11 @@ function BinRow({ device, editing, canEdit, onEdit, onQuickStatus }) {
                   <code className="rounded bg-slate-100 px-1">
                     {d.bridge_instance_id}
                   </code>
+                </span>
+              ) : null}
+              {hasEsp32 ? (
+                <span className="text-ink-400">
+                  Last seen: {formatLastSeen(d.last_seen_at)}
                 </span>
               ) : null}
             </div>
@@ -1128,6 +1192,9 @@ function BinRow({ device, editing, canEdit, onEdit, onQuickStatus }) {
                 <span className="text-[11px] text-amber-700">No coordinates</span>
               )}
             </div>
+            {audioMsg ? (
+              <p className="mt-2 text-xs text-ink-700">{audioMsg}</p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
@@ -1137,6 +1204,17 @@ function BinRow({ device, editing, canEdit, onEdit, onQuickStatus }) {
               Details
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
+            {canEdit && hasEsp32 ? (
+              <button
+                type="button"
+                disabled={audioBusy}
+                onClick={onTestAudio}
+                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Volume2 className="h-3.5 w-3.5" />
+                {audioBusy ? "Testing…" : "Test Audio"}
+              </button>
+            ) : null}
             {canEdit ? (
               <>
                 <button

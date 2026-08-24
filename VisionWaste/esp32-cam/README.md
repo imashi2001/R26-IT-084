@@ -22,10 +22,19 @@ speaker_begin();
 startCameraServer();
 ```
 
-## Wiring (prototype)
+## Wiring (PCM5102 I2S DAC)
 
-- Buzzer **+** → **GPIO 12** (`SPEAKER_GPIO`; change in `speaker.h` if needed). Use a transistor if current is high.
-- Buzzer **−** → **GND**
+| PCM5102 | ESP32-CAM |
+|---------|-----------|
+| VIN | 3V3 |
+| GND | GND |
+| BCK | GPIO **14** |
+| LCK | GPIO **13** |
+| DIN | GPIO **15** |
+| **SCK** | **GND** (required) |
+
+See [WIRING_PCM5102.md](WIRING_PCM5102.md). `/speaker/test` and `/alarm` play sine tones through the DAC (Arduino-ESP32 3.x `ESP_I2S.h`).
+
 
 ## Routes
 

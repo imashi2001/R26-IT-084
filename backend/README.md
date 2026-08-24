@@ -133,7 +133,8 @@ Multipart fields typical for the React **`/mobile-report`** flow:
 | Table | Key columns |
 |-------|-------------|
 | users | id, name, email, password_hash, role (`user` \| `admin`), timestamps |
-| devices | id, user_id, **name** (display “Bin name”), **esp32_id** (unique), **location** (“Location name”), address, latitude, longitude, **status** (`active` \| `inactive` \| `maintenance`), **bridge_instance_id** (optional laptop binding), **camera_base_url**, **pending_speaker_action**, **pending_speaker_at**, timestamps |
+| devices | id, user_id, **name** (display “Bin name”), **esp32_id** (unique), **location** (“Location name”), address, latitude, longitude, **status** (`active` \| `inactive` \| `maintenance`), **bridge_instance_id** (optional laptop binding), **camera_base_url**, **pending_speaker_action**, **pending_speaker_at**, **last_seen_at** (ESP32 command poll), timestamps |
+| device_commands | **id** (UUID PK), **device_id**, **esp32_id**, **command** (e.g. `PLAY_AUDIO`), **track**, **status** (`pending` \| `sent` \| `completed` \| `failed`), **sent_at**, **completed_at**, **error_message**, timestamps |
 | captures | id, user_id, device_id, **bridge_instance_id**, image_url, image_buffer, image_mimetype, fill_level, model_name, captured_at, **source_type**, **latitude**, **longitude**, **fill_percentage**, **prediction_class**, waste_*, risk_*, weather fields, timestamps |
 | predictions | id, capture_id, label, confidence, box_x1..box_y2, timestamps |
 
@@ -141,9 +142,23 @@ Associations:
 
 - User 1—N Device, User 1—N Capture
 - Device 1—N Capture
+- Device 1—N DeviceCommand
 - Capture 1—N Prediction (cascade delete)
 
 Index on `(device_id, captured_at)` for latest-per-bin queries.
+
+### Remote audio test (ESP32 DFPlayer)
+
+Independent from the laptop-bridge speaker relay (`pending_speaker_*` / `/bridge/speaker-*`).
+
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/devices/:id/audio-test` | Admin JWT — queues `PLAY_AUDIO` track 1 |
+| GET | `/devices/commands?esp32_id=` | None — ESP32 poll; marks `pending`→`sent`; updates `last_seen_at` |
+| POST | `/devices/commands/:command_id/ack` | None — body `{ esp32_id, status: completed\|failed, error_message? }` |
+| GET | `/devices/commands/:command_id` | Admin JWT — status for dashboard UX |
+
+ESP32 response when idle: `{ "command": null }`. When queued: `{ "command_id", "command": "PLAY_AUDIO", "track": 1 }`.
 
 Appendix — additive columns if you manage schema manually (Postgres):
 
@@ -152,11 +167,28 @@ ALTER TABLE devices ADD COLUMN IF NOT EXISTS status VARCHAR(255) DEFAULT 'active
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS camera_base_url VARCHAR(255);
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS pending_speaker_action VARCHAR(16);
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS pending_speaker_at TIMESTAMPTZ;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS source_type VARCHAR(16);
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS fill_percentage DOUBLE PRECISION;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS prediction_class VARCHAR(160);
+
+CREATE TABLE IF NOT EXISTS device_commands (
+  id UUID PRIMARY KEY,
+  device_id INTEGER NOT NULL REFERENCES devices(id),
+  esp32_id VARCHAR(80) NOT NULL,
+  command VARCHAR(40) NOT NULL,
+  track INTEGER,
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  sent_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS device_commands_esp32_status_idx
+  ON device_commands (esp32_id, status, created_at);
 ```
 
 (Adjust lengths/types to match `backend/models`. Use **`DB_SYNC=true`** + **`DB_SYNC_ALTER=true`** once on Railway instead if preferred.)

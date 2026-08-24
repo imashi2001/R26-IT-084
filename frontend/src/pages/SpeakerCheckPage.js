@@ -3,17 +3,25 @@ import { Volume2 } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../utils/apiBase";
+import {
+  formatLastSeen,
+  isCameraOnline,
+  runRemoteAudioTest,
+} from "../utils/audioTest";
 
 /**
- * Speaker Check — queue a LAN speaker test via the backend; the laptop bridge
- * relays GET /speaker/test to the ESP32 (HTTPS sites cannot call private IPs).
+ * Speaker Check —
+ * 1) Laptop bridge relay: POST /devices/:id/speaker-test → /bridge/speaker-*
+ * 2) Remote DFPlayer audio: POST /devices/:id/audio-test → ESP32 polls /devices/commands
  */
 export default function SpeakerCheckPage() {
   const { user, authFetch } = useAuth();
   const [devices, setDevices] = useState([]);
   const [error, setError] = useState(null);
   const [msgs, setMsgs] = useState({});
+  const [audioMsgs, setAudioMsgs] = useState({});
   const [busyId, setBusyId] = useState(null);
+  const [audioBusyId, setAudioBusyId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadDevices = useCallback(async () => {
@@ -36,7 +44,7 @@ export default function SpeakerCheckPage() {
     loadDevices();
   }, [loadDevices]);
 
-  const onTest = async (deviceId) => {
+  const onTestSpeaker = async (deviceId) => {
     setBusyId(deviceId);
     setMsgs((m) => ({ ...m, [deviceId]: null }));
     try {
@@ -62,6 +70,27 @@ export default function SpeakerCheckPage() {
     }
   };
 
+  const onTestAudio = async (d) => {
+    if (!d?.esp32_id) return;
+    setAudioBusyId(d.id);
+    setAudioMsgs((m) => ({ ...m, [d.id]: null }));
+    try {
+      await runRemoteAudioTest({
+        authFetch,
+        deviceId: d.id,
+        onStatus: (msg) => setAudioMsgs((m) => ({ ...m, [d.id]: msg })),
+      });
+      loadDevices();
+    } catch (e) {
+      setAudioMsgs((m) => ({
+        ...m,
+        [d.id]: e.message || "Audio test failed.",
+      }));
+    } finally {
+      setAudioBusyId(null);
+    }
+  };
+
   const isAdmin = user?.role === "admin";
 
   return (
@@ -77,8 +106,8 @@ export default function SpeakerCheckPage() {
                 Speaker check
               </h1>
               <p className="text-sm text-slate-600">
-                Queue a test tone on the ESP32 buzzer. The laptop bridge relays
-                the command (Railway cannot reach LAN cameras directly).
+                Test the laptop-bridge speaker relay or the remote ESP32
+                DFPlayer audio queue (no private IP required).
               </p>
             </div>
           </div>
@@ -86,23 +115,26 @@ export default function SpeakerCheckPage() {
 
         {!isAdmin && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Admin role required to queue speaker tests. You can still view
-            connected cameras below.
+            Admin role required to queue speaker / audio tests. You can still
+            view connected cameras below.
           </div>
         )}
 
         <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-          <p className="font-medium text-slate-900">How it works</p>
+          <p className="font-medium text-slate-900">Two independent paths</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
-            <li>Flash VisionWaste speaker routes on the ESP32 (see <code>VisionWaste/esp32-cam</code>).</li>
-            <li>Set each bin’s <strong>Camera base URL</strong> in Admin (e.g. <code>http://10.158.245.191</code>).</li>
-            <li>Run the bridge with matching <code>DEVICE_ESP32_ID</code>.</li>
-            <li>Click <strong>Test speaker</strong> — bridge polls every ~5s and hits <code>/speaker/test</code>.</li>
+            <li>
+              <strong>Test speaker</strong> — laptop bridge polls{" "}
+              <code>/bridge/speaker-pending</code> and hits LAN{" "}
+              <code>/speaker/test</code> (PCM5102 / legacy).
+            </li>
+            <li>
+              <strong>Test Audio</strong> — queues{" "}
+              <code>PLAY_AUDIO</code> track 1; ESP32 polls{" "}
+              <code>/devices/commands?esp32_id=…</code> and plays{" "}
+              <code>/MP3/0001.mp3</code> on the DFPlayer (no bridge required).
+            </li>
           </ol>
-          <p className="mt-2 text-slate-500">
-            Same Wi‑Fi direct link (opens in a new tab from a LAN machine only):{" "}
-            <code>/speaker/test</code> on the camera IP.
-          </p>
         </div>
 
         <div className="flex items-center justify-between gap-3">
@@ -135,6 +167,8 @@ export default function SpeakerCheckPage() {
             {devices.map((d) => {
               const base = (d.camera_base_url || "").replace(/\/+$/, "");
               const directTest = base ? `${base}/speaker/test` : null;
+              const hasEsp32 = Boolean(d.esp32_id && String(d.esp32_id).trim());
+              const camOnline = isCameraOnline(d);
               return (
                 <li
                   key={d.id}
@@ -147,6 +181,15 @@ export default function SpeakerCheckPage() {
                         <span className="ml-2 text-xs font-normal uppercase tracking-wide text-slate-500">
                           {d.status || "active"}
                         </span>
+                        {hasEsp32 && (
+                          <span
+                            className={`ml-2 text-xs font-medium ${
+                              camOnline ? "text-emerald-700" : "text-slate-500"
+                            }`}
+                          >
+                            · Camera {camOnline ? "Online" : "Offline"}
+                          </span>
+                        )}
                       </p>
                       <p className="text-sm text-slate-600">
                         ESP32 ID:{" "}
@@ -154,6 +197,11 @@ export default function SpeakerCheckPage() {
                           {d.esp32_id || "—"}
                         </code>
                       </p>
+                      {hasEsp32 && (
+                        <p className="text-sm text-slate-600">
+                          Last seen: {formatLastSeen(d.last_seen_at)}
+                        </p>
+                      )}
                       <p className="text-sm text-slate-600">
                         Camera URL:{" "}
                         {base ? (
@@ -168,7 +216,7 @@ export default function SpeakerCheckPage() {
                       </p>
                       {d.pending_speaker_action && (
                         <p className="text-xs text-emerald-700">
-                          Pending: {d.pending_speaker_action}
+                          Pending bridge speaker: {d.pending_speaker_action}
                           {d.pending_speaker_at
                             ? ` @ ${new Date(d.pending_speaker_at).toLocaleString()}`
                             : ""}
@@ -177,16 +225,27 @@ export default function SpeakerCheckPage() {
                       {msgs[d.id] && (
                         <p className="text-sm text-slate-700">{msgs[d.id]}</p>
                       )}
+                      {audioMsgs[d.id] && (
+                        <p className="text-sm text-slate-700">{audioMsgs[d.id]}</p>
+                      )}
                     </div>
                     <div className="flex shrink-0 flex-col gap-2 sm:items-end">
                       <button
                         type="button"
-                        disabled={!isAdmin || busyId === d.id}
-                        onClick={() => onTest(d.id)}
+                        disabled={!isAdmin || !hasEsp32 || audioBusyId === d.id}
+                        onClick={() => onTestAudio(d)}
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Volume2 className="h-4 w-4" aria-hidden />
-                        {busyId === d.id ? "Queuing…" : "Test speaker"}
+                        {audioBusyId === d.id ? "Testing…" : "Test Audio"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!isAdmin || busyId === d.id}
+                        onClick={() => onTestSpeaker(d.id)}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {busyId === d.id ? "Queuing…" : "Test speaker (bridge)"}
                       </button>
                       {directTest && (
                         <a

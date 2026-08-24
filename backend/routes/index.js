@@ -30,7 +30,7 @@ router.get("/", (_req, res) => {
     captures: "GET /captures, GET /captures/:id, GET /captures/:id/image",
     alerts: "GET /alerts?status=open|acknowledged|actioned|rejected|dismissed|all, PATCH /alerts/:id (admin)",
     devices:
-      "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures, POST /devices/:id/speaker-test (admin)",
+      "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures, POST /devices/:id/speaker-test (admin, laptop bridge), POST /devices/:id/audio-test (admin, ESP32 DFPlayer queue), GET /devices/commands?esp32_id=, POST /devices/commands/:command_id/ack, GET /devices/commands/:command_id (admin)",
     bridge:
       "GET /bridge/speaker-pending?bridge_instance_id=&esp32_id=, POST /bridge/speaker-ack",
     geo: "GET /geo/search?q=",

@@ -19,16 +19,8 @@ let isEnabled = false;
 
 if (DATABASE_URL) {
   sequelize = new Sequelize(DATABASE_URL, {
-    dialect: "postgres",
+    dialect: "mysql",
     logging: DB_LOGGING ? console.log : false,
-    dialectOptions: IS_PROD
-      ? {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false,
-          },
-        }
-      : {},
     pool: {
       max: 10,
       min: 0,
@@ -57,7 +49,7 @@ async function connect() {
 
   try {
     await sequelize.authenticate();
-    console.log("[db] connected to Postgres.");
+    console.log("[db] connected to MySQL.");
     return true;
   } catch (err) {
     console.error("[db] failed to connect:", err.message);

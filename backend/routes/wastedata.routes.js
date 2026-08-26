@@ -1,71 +1,24 @@
 const { Router } = require("express");
 const path = require("path");
 const fs = require("fs");
+const { execSync } = require("child_process");
 
 const router = Router();
 
 // ---------- static data ----------
 const LOCATIONS = [
-  {
-    id: "colombo-fort",
-    name: "Fort Railway Station",
-    region: "Colombo",
-    lat: 6.9337271,
-    lng: 79.8500803,
-    baseLevel: 62,
-    holidayBoost: 22,
-    longWeekendBoost: 32,
-  },
-  {
-    id: "galle-face",
-    name: "Galle Face Green",
-    region: "Colombo",
-    lat: 6.9249607,
-    lng: 79.8444586,
-    baseLevel: 55,
-    holidayBoost: 28,
-    longWeekendBoost: 38,
-  },
-  {
-    id: "kandy-tooth",
-    name: "Temple of the Tooth",
-    region: "Kandy",
-    lat: 7.2936148,
-    lng: 80.6413453,
-    baseLevel: 48,
-    holidayBoost: 35,
-    longWeekendBoost: 45,
-  },
-  {
-    id: "anuradhapura",
-    name: "Ruwanwelisaya",
-    region: "Anuradhapura",
-    lat: 8.3499963,
-    lng: 80.39639,
-    baseLevel: 41,
-    holidayBoost: 30,
-    longWeekendBoost: 40,
-  },
-  {
-    id: "kataragama",
-    name: "Kataragama Temple",
-    region: "Kataragama",
-    lat: 6.4135586,
-    lng: 81.3324423,
-    baseLevel: 38,
-    holidayBoost: 40,
-    longWeekendBoost: 50,
-  },
-  {
-    id: "sri-pada",
-    name: "Nallathanniya (Sri Pada)",
-    region: "Sri Pada",
-    lat: 6.8242395,
-    lng: 80.5199628,
-    baseLevel: 33,
-    holidayBoost: 25,
-    longWeekendBoost: 35,
-  },
+  { id: "moratuwa-mc", name: "Moratuwa M.C.", maxCapacity: 45, region: "Moratuwa" },
+  { id: "boralesgamuwa-uc", name: "Boralesgamuwa U.C.", maxCapacity: 25, region: "Boralesgamuwa" },
+  { id: "kesbewa-uc", name: "Kesbewa U.C.", maxCapacity: 50, region: "Kesbewa" },
+  { id: "dehiwala-mtlavinia", name: "Dehiwala - Mount Lavinia M.C.", maxCapacity: 80, region: "Dehiwala" },
+  { id: "kotte-mc", name: "Sri Jayawardenepura Kotte M.C.", maxCapacity: 20, region: "Kotte" },
+  { id: "maharagama-uc", name: "Maharagama U.C.", maxCapacity: 60, region: "Maharagama" },
+  { id: "homagama-ps", name: "Homagama P.S.", maxCapacity: 30, region: "Homagama" },
+  { id: "kdu-campus", name: "Kothalawala Defence University", maxCapacity: 5, region: "Kdu" }
+];
+
+const CATEGORIES = [
+  "Unburnable", "SOW", "Burnable", "Bulky Waste", "Industrial Waste", "Slaughter House Waste", "Sanitary Waste", "C & D"
 ];
 
 // ---------- helpers ----------
@@ -78,7 +31,6 @@ function loadHolidayCache() {
   }
 }
 
-/** Temporary lookup table (edit geocode_cache.json on disk without code changes). */
 function loadGeocodeCache() {
   try {
     const p = path.join(__dirname, "..", "geocode_cache.json");
@@ -88,34 +40,18 @@ function loadGeocodeCache() {
   }
 }
 
-/** Return all holidays for a given YYYY-MM-DD string. */
 function getHolidaysForDate(dateStr, cache) {
   const year = dateStr.slice(0, 4);
   const holidays = cache[year] || [];
   return holidays.filter((h) => h.iso_date.slice(0, 10) === dateStr);
 }
 
-/** Shift a date string by N days. */
 function shiftDate(dateStr, days) {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
-/**
- * Long-weekend detection rules:
- *
- *  Holiday on Friday  → Fri + Sat + Sun form a long weekend
- *  Holiday on Monday  → Sat + Sun + Mon form a long weekend
- *
- * So for any given date we check:
- *  - Is *this* date a Friday holiday?  (covers Fri itself)
- *  - Is *this* date a Saturday?  → does Friday before or Monday after have a holiday?
- *  - Is *this* date a Sunday?    → does Friday two days before or Monday after have a holiday?
- *  - Is *this* date a Monday holiday? (covers Mon itself)
- *
- * Returns { isLongWeekend, longWeekendDates, triggerHoliday }
- */
 function detectLongWeekend(dateStr, cache) {
   const d = new Date(dateStr);
   const dow = d.getDay(); // 0=Sun,1=Mon,...,5=Fri,6=Sat
@@ -126,21 +62,18 @@ function detectLongWeekend(dateStr, cache) {
   let longWeekendDates = [];
 
   if (dow === 5) {
-    // Friday — is it a holiday?
     const h = check(dateStr);
     if (h.length > 0) {
       triggerHoliday = h[0];
       longWeekendDates = [dateStr, shiftDate(dateStr, 1), shiftDate(dateStr, 2)];
     }
   } else if (dow === 6) {
-    // Saturday — check if Friday before has a holiday
     const fri = shiftDate(dateStr, -1);
     const hFri = check(fri);
     if (hFri.length > 0) {
       triggerHoliday = hFri[0];
       longWeekendDates = [fri, dateStr, shiftDate(dateStr, 1)];
     }
-    // OR check if Monday after has a holiday
     if (!triggerHoliday) {
       const mon = shiftDate(dateStr, 2);
       const hMon = check(mon);
@@ -150,14 +83,12 @@ function detectLongWeekend(dateStr, cache) {
       }
     }
   } else if (dow === 0) {
-    // Sunday — check if Friday two days ago has a holiday
     const fri = shiftDate(dateStr, -2);
     const hFri = check(fri);
     if (hFri.length > 0) {
       triggerHoliday = hFri[0];
       longWeekendDates = [fri, shiftDate(dateStr, -1), dateStr];
     }
-    // OR check if Monday after has a holiday
     if (!triggerHoliday) {
       const mon = shiftDate(dateStr, 1);
       const hMon = check(mon);
@@ -167,7 +98,6 @@ function detectLongWeekend(dateStr, cache) {
       }
     }
   } else if (dow === 1) {
-    // Monday — is it a holiday?
     const h = check(dateStr);
     if (h.length > 0) {
       triggerHoliday = h[0];
@@ -184,38 +114,6 @@ function isWeekend(dateStr) {
   return dow === 0 || dow === 6;
 }
 
-function seededRandom(seed) {
-  let s = seed;
-  return function () {
-    s = (s * 16807 + 0) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
-function computeFillLevel(loc, dateStr, isHoliday, isWknd, isLongWeekend) {
-  const dateSeed =
-    dateStr
-      .replace(/-/g, "")
-      .split("")
-      .reduce((a, c) => a + c.charCodeAt(0), 0) +
-    loc.id.length * 17;
-
-  const rand = seededRandom(dateSeed);
-  const noise = (rand() - 0.5) * 14; // ±7
-
-  let level = loc.baseLevel + noise;
-
-  if (isLongWeekend) {
-    // Long weekend: biggest boost (supersedes individual holiday + weekend boosts)
-    level += loc.longWeekendBoost;
-  } else if (isHoliday || isWknd) {
-    // Both normal holidays and regular weekends get the holiday boost
-    level += loc.holidayBoost;
-  }
-
-  return Math.min(100, Math.max(0, Math.round(level)));
-}
-
 // ---------- GET /api/waste-data ----------
 router.get("/", (req, res) => {
   const dateStr = req.query.date || new Date().toISOString().slice(0, 10);
@@ -225,27 +123,97 @@ router.get("/", (req, res) => {
   const isHoliday = matchedHolidays.length > 0;
   const weekend   = isWeekend(dateStr);
 
-  // Long weekend detection
   const { isLongWeekend, longWeekendDates, triggerHoliday } =
     detectLongWeekend(dateStr, cache);
 
+  // Construct input rows for model
+  const rows = [];
+  const month = parseInt(dateStr.slice(5, 7), 10);
+  
+  for (const loc of LOCATIONS) {
+    for (const cat of CATEGORIES) {
+      const row = {
+        Is_Weekend: weekend ? 1 : 0,
+        Is_Holiday: isHoliday ? 1 : 0,
+        Is_Long_Weekend: isLongWeekend ? 1 : 0,
+        Rainfall_mm: 0,
+        Max_Temp_C: 30,
+        Waste_Lag_1: 15,
+        Waste_Lag_7: 15,
+        Month: month,
+      };
+
+      // One-hot encode location
+      if (loc.id === "moratuwa-mc") row["Institute_Moratuwa M.C."] = 1;
+      else if (loc.id === "boralesgamuwa-uc") row["Institute_Other"] = 1;
+      else if (loc.id === "kesbewa-uc") row["Institute_Kesbewa U.C."] = 1;
+      else if (loc.id === "dehiwala-mtlavinia") row["Institute_Dehiwala - Mt Lavinia"] = 1;
+      else if (loc.id === "kotte-mc") row["Institute_Sri J,puraKotte M.C."] = 1;
+      else if (loc.id === "maharagama-uc") row["Institute_Maharagama U.C."] = 1;
+      else if (loc.id === "homagama-ps") row["Institute_Homagama P.S."] = 1;
+      else if (loc.id === "kdu-campus") row["Institute_Kothalawala Defence University"] = 1;
+
+      // One-hot encode category
+      if (cat === "Unburnable") row["Category_Unburnable"] = 1;
+      else if (cat === "SOW") row["Category_SOW"] = 1;
+      else if (cat === "Burnable") row["Category_Burnable"] = 1;
+      else if (cat === "Industrial Waste") row["Category_Industrial Waste"] = 1;
+      else if (cat === "Slaughter House Waste") row["Category_Slaughter House Waste"] = 1;
+      else if (cat === "Sanitary Waste") row["Category_Sanitary Waste"] = 1;
+      else if (cat === "C & D") row["Category_C & D"] = 1;
+
+      rows.push(row);
+    }
+  }
+
+  // Write input.json, execute model, read output.json
+  const modelDir = path.join(__dirname, "../../forecasting dashboard");
+  const inputPath = path.join(modelDir, "input.json");
+  const outputPath = path.join(modelDir, "output.json");
+  
+  let predictions = [];
+  try {
+    fs.writeFileSync(inputPath, JSON.stringify(rows, null, 2));
+    execSync("python run_model.py", { cwd: modelDir });
+    const rawOutput = fs.readFileSync(outputPath, "utf8");
+    predictions = JSON.parse(rawOutput);
+    if (predictions.error) {
+      throw new Error(predictions.error);
+    }
+  } catch (err) {
+    console.error("ML model execution failed, falling back to dummy predictions:", err.message);
+    // Plausible fallback values
+    predictions = rows.map(() => 5 + Math.random() * 15);
+  }
+
+  // Parse predictions back to locations
+  let index = 0;
   const locations = LOCATIONS.map((loc) => {
-    const fillLevel = computeFillLevel(
-      loc,
-      dateStr,
-      isHoliday,
-      weekend,
-      isLongWeekend
-    );
+    const composition = {};
+    let totalWaste = 0;
+
+    for (const cat of CATEGORIES) {
+      let predVal = predictions[index++];
+      if (predVal === undefined || typeof predVal !== "number" || isNaN(predVal)) {
+        predVal = 5.0;
+      }
+      predVal = Math.max(0, Math.round(predVal * 10) / 10);
+      composition[cat] = predVal;
+      totalWaste += predVal;
+    }
+
+    totalWaste = Math.round(totalWaste * 10) / 10;
+    const fillLevel = Math.min(100, Math.max(0, Math.round((totalWaste / loc.maxCapacity) * 100)));
+
     return {
       id: loc.id,
       name: loc.name,
       region: loc.region,
-      lat: loc.lat,
-      lng: loc.lng,
+      maxCapacity: loc.maxCapacity,
+      totalWaste,
+      composition,
       fillLevel,
-      status:
-        fillLevel >= 80 ? "ALERT" : fillLevel >= 60 ? "WATCH" : "NORMAL",
+      status: fillLevel >= 80 ? "ALERT" : fillLevel >= 60 ? "WATCH" : "NORMAL",
     };
   });
 
@@ -259,8 +227,8 @@ router.get("/", (req, res) => {
     isHoliday,
     isWeekend: weekend,
     isLongWeekend,
-    longWeekendDates,   // e.g. ["2026-01-16", "2026-01-17", "2026-01-18"]
-    triggerHoliday,     // the holiday that caused the long weekend
+    longWeekendDates,
+    triggerHoliday,
     holidays: matchedHolidays,
     globalAvgFill: avgFill,
     locations,

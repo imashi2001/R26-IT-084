@@ -20,7 +20,7 @@ export default {
 
   theme: {
     extend: {
-      // Project palette — keeps the dark slate / lime-green look from the mockup.
+      // Project palette — dark dashboard + eco landing page.
       colors: {
         brand: {
           50: "#f0fdf4",
@@ -30,6 +30,15 @@ export default {
           500: "#22c55e",
           600: "#16a34a",
           700: "#15803d",
+        },
+        eco: {
+          primary: "#2E7D32",
+          dark: "#1B5E20",
+          light: "#E8F5E9",
+          bg: "#F8FAF8",
+          warn: "#F59E0B",
+          danger: "#EF4444",
+          overflow: "#8B5CF6",
         },
         ink: {
           50: "#f8fafc",
@@ -52,10 +61,18 @@ export default {
       fontFamily: {
         sans: [
           "Inter",
+          "Manrope",
+          "Plus Jakarta Sans",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
           "Roboto",
+          "system-ui",
+          "sans-serif",
+        ],
+        display: [
+          "Manrope",
+          "Plus Jakarta Sans",
           "system-ui",
           "sans-serif",
         ],
@@ -65,10 +82,30 @@ export default {
         glow: "0 0 0 1px rgba(34, 197, 94, 0.12), 0 4px 24px rgba(0, 0, 0, 0.45)",
         "glow-brand": "0 0 20px rgba(34, 197, 94, 0.2)",
         "glow-red": "0 0 16px rgba(239, 68, 68, 0.25)",
+        search: "0 12px 40px rgba(27, 94, 32, 0.18)",
       },
       backgroundImage: {
         "dashboard-radial":
           "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(34, 197, 94, 0.08), transparent 55%)",
+      },
+      keyframes: {
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(18px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        "count-pulse": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.03)" },
+        },
+      },
+      animation: {
+        "fade-up": "fade-up 0.7s ease-out both",
+        float: "float 5s ease-in-out infinite",
+        "count-pulse": "count-pulse 2.4s ease-in-out infinite",
       },
     },
   },

@@ -28,7 +28,7 @@ import "./App.css";
  * App routing.
  *
  * Public surface (no auth required):
- *   /            -> LandingPage         (marketing + product overview)
+ *   /            -> LandingPage         (public citizen UX: find nearest bin)
  *   /login       -> LoginPage           (email + password)
  *   /register    -> RegisterPage        (admin profile + password)
  *

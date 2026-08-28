@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trash2, Wifi, Bell, PawPrint } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { DEFAULT_HERO_PATH } from "../../hooks/useDashboardSettings";
 import { computeFleetStats, greetingForHour } from "../../utils/dashboardBins";
 
 function QuickStat({ icon: Icon, label, value, accent = "text-brand-400" }) {
@@ -35,26 +34,34 @@ export default function DashboardHero({
 
   const stats = computeFleetStats(devices);
   const greeting = greetingForHour();
-  const src = heroUrl || DEFAULT_HERO_PATH;
   const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [heroUrl]);
+
+  const hasImage = Boolean(heroUrl) && !imgFailed;
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-slate-700/50 shadow-card">
-      <div className="relative min-h-[11rem] md:min-h-[13rem] lg:min-h-[15rem]">
-        {!imgFailed ? (
+      <div className="relative min-h-[12rem] md:min-h-[14rem] lg:min-h-[16rem]">
+        {hasImage ? (
           <img
-            src={src}
+            key={heroUrl}
+            src={heroUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-right"
+            className="absolute inset-0 h-full w-full object-cover object-center md:object-right"
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/50 via-slate-900 to-[#0b131e]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 via-slate-900 to-[#0b131e]" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0b131e] via-[#0b131e]/80 to-[#0b131e]/25" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b131e]/90 via-transparent to-transparent" />
 
-        <div className="relative flex h-full flex-col justify-between gap-6 p-5 md:p-6 lg:min-h-[15rem]">
+        {/* Text readable on left; image visible on right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0b131e] via-[#0b131e]/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b131e]/85 via-[#0b131e]/20 to-transparent" />
+
+        <div className="relative flex min-h-[12rem] flex-col justify-between gap-6 p-5 md:min-h-[14rem] md:p-6 lg:min-h-[16rem]">
           <div className="max-w-xl">
             <p className="text-sm font-semibold text-brand-400">
               {greeting}, {name}!
@@ -66,6 +73,11 @@ export default function DashboardHero({
               Real-time fill levels, risk scores, and alerts across your smart
               waste network.
             </p>
+            {!hasImage ? (
+              <p className="mt-2 text-xs text-slate-500">
+                Upload a hero banner in Settings → Dashboard Hero Image.
+              </p>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">

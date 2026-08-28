@@ -16,7 +16,6 @@ import Card from "../components/dashboard/Card";
 import PromoFooter from "../components/dashboard/PromoFooter";
 import { useAuth } from "../context/AuthContext";
 import useDashboardSettings, {
-  DEFAULT_HERO_PATH,
   removeDashboardHero,
   removeDashboardPromo,
   uploadDashboardHero,
@@ -305,7 +304,7 @@ export default function DashboardSettingsPage() {
         <ImageUploadPanel
           title="Dashboard Hero Image"
           description="Wide banner at the top of the main dashboard. Recommended 1200×400px or larger."
-          displayUrl={heroUrl || DEFAULT_HERO_PATH}
+          displayUrl={heroPreview || heroUrl}
           preview={heroPreview}
           fileRef={heroFileRef}
           onPick={pickImage(setHeroPreview, setHeroErr, setHeroMsg)}
@@ -372,7 +371,7 @@ export default function DashboardSettingsPage() {
               This is how the promo card appears in the navigation sidebar.
             </p>
             <div className="max-w-xs rounded-xl border border-slate-800 bg-slate-950 p-1">
-              <PromoFooter />
+              <PromoFooter compact />
             </div>
           </Card.Body>
         </Card>

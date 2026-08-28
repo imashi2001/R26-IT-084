@@ -2,16 +2,35 @@ import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { apiUrl } from "../utils/apiBase";
 
-/** Bundled fallback when no custom hero is uploaded. */
-export const DEFAULT_HERO_PATH = "/dashboard/default-hero.jpg";
+/**
+ * Rewrites backend upload URLs so images load through the Vite dev proxy
+ * (or VITE_API_URL in production). Fixes hero/promo not showing on localhost:3000.
+ */
+export function normalizeDashboardAssetUrl(url) {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed, window.location.origin);
+    if (parsed.pathname.startsWith("/uploads/dashboard/")) {
+      return apiUrl(`${parsed.pathname}${parsed.search}`);
+    }
+    return trimmed;
+  } catch {
+    if (trimmed.startsWith("/uploads/")) {
+      return apiUrl(trimmed);
+    }
+    return trimmed;
+  }
+}
 
 export function resolveHeroUrl(settings) {
-  if (settings?.hero_image_url) return settings.hero_image_url;
-  return DEFAULT_HERO_PATH;
+  return normalizeDashboardAssetUrl(settings?.hero_image_url);
 }
 
 export function resolvePromoUrl(settings) {
-  return settings?.promo_image_url || null;
+  return normalizeDashboardAssetUrl(settings?.promo_image_url);
 }
 
 export async function fetchDashboardSettings() {
@@ -27,6 +46,12 @@ async function uploadImage(authFetch, path, file) {
   const res = await authFetch(path, { method: "POST", body: fd });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  if (body.hero_image_url) {
+    body.hero_image_url = normalizeDashboardAssetUrl(body.hero_image_url);
+  }
+  if (body.promo_image_url) {
+    body.promo_image_url = normalizeDashboardAssetUrl(body.promo_image_url);
+  }
   return body;
 }
 
@@ -61,7 +86,11 @@ export default function useDashboardSettings(intervalMs = 120_000) {
   const refresh = useCallback(async () => {
     try {
       const data = await fetchDashboardSettings();
-      setSettings(data);
+      setSettings({
+        ...data,
+        hero_image_url: normalizeDashboardAssetUrl(data?.hero_image_url),
+        promo_image_url: normalizeDashboardAssetUrl(data?.promo_image_url),
+      });
       setError(null);
     } catch (e) {
       setError(e?.message || "Could not load dashboard settings.");

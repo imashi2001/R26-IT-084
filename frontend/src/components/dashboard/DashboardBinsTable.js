@@ -78,14 +78,15 @@ export default function DashboardBinsTable({
   );
 
   return (
-    <Card className="min-h-[420px]">
+    <Card className="h-full">
       <Card.Header
         icon={Database}
         title="All Bins Overview"
+        subtitle="Search, filter, and select a bin for live details"
         right={
           <Link
             to="/bins"
-            className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-glow-brand hover:bg-brand-500"
+            className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-glow-brand hover:bg-brand-500"
           >
             <Plus className="h-3 w-3" />
             Add Bin
@@ -93,7 +94,7 @@ export default function DashboardBinsTable({
         }
       />
 
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="mt-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
         <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-950/50 px-3 py-2">
           <Search className="h-4 w-4 shrink-0 text-slate-500" />
           <input
@@ -144,29 +145,30 @@ export default function DashboardBinsTable({
         </div>
       </div>
 
-      <Card.Body className="mt-3 overflow-x-auto p-0">
+      <Card.Body className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-800/60">
         {dbDisabled ? (
-          <div className="px-1 py-8 text-center text-sm text-slate-500">
+          <div className="flex min-h-[12rem] items-center justify-center px-4 py-8 text-center text-sm text-slate-500">
             Enable DATABASE_URL to list registered bins.
           </div>
         ) : loading ? (
-          <div className="px-1 py-8 text-center text-sm text-slate-500">
+          <div className="flex min-h-[12rem] items-center justify-center text-sm text-slate-500">
             Loading bins…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="px-1 py-8 text-center text-sm text-slate-500">
+          <div className="flex min-h-[12rem] items-center justify-center text-sm text-slate-500">
             No bins match your filters.
           </div>
         ) : (
-          <table className="w-full min-w-[520px] text-left text-sm">
-            <thead>
+          <table className="w-full min-w-[540px] text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm">
               <tr className="border-b border-slate-800/80 text-[11px] uppercase tracking-wider text-slate-500">
-                <th className="px-3 py-2 font-semibold">Bin ID</th>
-                <th className="px-3 py-2 font-semibold">Location</th>
-                <th className="px-3 py-2 font-semibold">Fill Level</th>
-                <th className="px-3 py-2 font-semibold">Status</th>
-                <th className="px-3 py-2 font-semibold">Last Updated</th>
-                <th className="px-3 py-2 font-semibold text-right">Actions</th>
+                <th className="px-4 py-2.5 font-semibold">Bin ID</th>
+                <th className="px-4 py-2.5 font-semibold">Location</th>
+                <th className="px-4 py-2.5 font-semibold">Fill Level</th>
+                <th className="px-4 py-2.5 font-semibold">Status</th>
+                <th className="px-4 py-2.5 font-semibold">Last Updated</th>
+                <th className="px-4 py-2.5 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -185,13 +187,13 @@ export default function DashboardBinsTable({
                         : "hover:bg-slate-800/40",
                     ].join(" ")}
                   >
-                    <td className="px-3 py-3 font-semibold text-white">
+                    <td className="px-4 py-3 font-semibold text-white">
                       {formatBinCode(d.id)}
                     </td>
-                    <td className="max-w-[160px] truncate px-3 py-3 text-slate-400">
+                    <td className="max-w-[10rem] truncate px-4 py-3 text-slate-400">
                       {d.location || d.address || d.name || "—"}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-800">
                           <div
@@ -208,17 +210,17 @@ export default function DashboardBinsTable({
                         </span>
                       </div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_PILL[status.tone]}`}
                       >
                         {status.label}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-xs text-slate-500">
+                    <td className="px-4 py-3 text-xs text-slate-500">
                       {relativeFromNow(d.latest_captured_at)}
                     </td>
-                    <td className="px-3 py-3 text-right">
+                    <td className="px-4 py-3 text-right">
                       <Link
                         to={`/bins/${d.id}`}
                         onClick={(e) => e.stopPropagation()}
@@ -234,6 +236,7 @@ export default function DashboardBinsTable({
             </tbody>
           </table>
         )}
+        </div>
       </Card.Body>
 
       {!dbDisabled && filtered.length > PAGE_SIZE ? (

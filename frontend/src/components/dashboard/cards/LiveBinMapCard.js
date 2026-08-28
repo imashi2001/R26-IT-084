@@ -81,11 +81,12 @@ export default function LiveBinMapCard() {
   const hasBins = bins.length > 0;
 
   return (
-    <Card className="min-h-[320px]">
+    <Card className="h-full">
       <Card.Header
         icon={MapIcon}
         accent="text-sky-400"
         title="Live Bin Map"
+        subtitle="Colombo region · color-coded by fill risk"
         right={
           <Link
             to="/map"
@@ -97,9 +98,10 @@ export default function LiveBinMapCard() {
         }
       />
 
-      <Card.Body className="relative overflow-hidden rounded-xl border border-slate-800/80 bg-slate-950/60">
+      <Card.Body className="flex min-h-0 flex-1 flex-col p-0">
+        <div className="relative min-h-[14rem] flex-1 overflow-hidden rounded-xl border border-slate-800/60 bg-slate-950/60">
         {dbDisabled ? (
-          <div className="flex h-64 flex-col items-center justify-center gap-2 text-center text-sm text-slate-500">
+          <div className="flex h-full min-h-[14rem] flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-500">
             <Database className="h-6 w-6 text-slate-600" />
             <div className="font-medium text-slate-300">DB not configured</div>
             <div className="text-xs">
@@ -111,15 +113,15 @@ export default function LiveBinMapCard() {
             </div>
           </div>
         ) : error ? (
-          <div className="flex h-64 items-center justify-center text-sm text-red-400">
+          <div className="flex h-full min-h-[14rem] items-center justify-center text-sm text-red-400">
             {error}
           </div>
         ) : !hasBins && !loading ? (
-          <div className="flex h-64 items-center justify-center text-sm text-slate-500">
+          <div className="flex h-full min-h-[14rem] items-center justify-center text-sm text-slate-500">
             No bins registered yet. Add one from the Admin page.
           </div>
         ) : (
-          <div className="h-64 [&_.leaflet-container]:rounded-xl [&_.leaflet-container]:bg-slate-950">
+          <div className="absolute inset-0 [&_.leaflet-container]:h-full [&_.leaflet-container]:rounded-xl [&_.leaflet-container]:bg-slate-950">
             <MapContainer
               center={SRI_LANKA_CENTER}
               zoom={7}
@@ -194,6 +196,7 @@ export default function LiveBinMapCard() {
             {bins.length} bin{bins.length === 1 ? "" : "s"}
           </div>
         ) : null}
+        </div>
       </Card.Body>
 
       <Card.Footer>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
+import DashboardSection from "../components/dashboard/DashboardSection";
 import DashboardHero from "../components/dashboard/DashboardHero";
 import DashboardKpiRow from "../components/dashboard/DashboardKpiRow";
 import DashboardBinsTable from "../components/dashboard/DashboardBinsTable";
@@ -8,6 +9,7 @@ import DashboardBinDetail from "../components/dashboard/DashboardBinDetail";
 import LiveBinMapCard from "../components/dashboard/cards/LiveBinMapCard";
 import RecentAlertsCard from "../components/dashboard/cards/RecentAlertsCard";
 import RiskTrend7dCard from "../components/dashboard/cards/RiskTrend7dCard";
+import { LAYOUT } from "../components/dashboard/dashboardTheme";
 import useSystemSnapshot from "../hooks/useSystemSnapshot";
 import useCaptureHistory from "../hooks/useCaptureHistory";
 import useDevicesOverview from "../hooks/useDevicesOverview";
@@ -74,82 +76,92 @@ export default function SystemDashboardPage() {
     return null;
   }, [loading, error, snapshot, stale, fleet.devices]);
 
+  const onRefreshAll = () => {
+    refresh();
+    fleet.refresh();
+    history.refresh();
+  };
+
   return (
     <DashboardLayout>
-      {banner ? (
-        <div
-          className={`mb-5 flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm backdrop-blur-sm ${
-            banner.tone === "error"
-              ? "border-red-500/30 bg-red-500/10 text-red-300"
-              : banner.tone === "warn"
-                ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                : "border-slate-700/60 bg-slate-900/60 text-slate-300"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{banner.text}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              refresh();
-              fleet.refresh();
-              history.refresh();
-            }}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
+      <div className={LAYOUT.page}>
+        {banner ? (
+          <div
+            className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm backdrop-blur-sm ${
+              banner.tone === "error"
+                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                : banner.tone === "warn"
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  : "border-slate-700/60 bg-slate-900/60 text-slate-300"
+            }`}
           >
-            <RefreshCw className="h-3 w-3" /> Refresh
-          </button>
-        </div>
-      ) : null}
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{banner.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={onRefreshAll}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
+            >
+              <RefreshCw className="h-3 w-3" /> Refresh
+            </button>
+          </div>
+        ) : null}
 
-      <DashboardHero
-        devices={fleet.devices}
-        alertCount={alertCount}
-        animalsToday={animalsToday}
-        heroUrl={heroUrl}
-      />
+        <DashboardHero
+          devices={fleet.devices}
+          alertCount={alertCount}
+          animalsToday={animalsToday}
+          heroUrl={heroUrl}
+        />
 
-      <DashboardKpiRow
-        devices={fleet.devices}
-        history={history.captures}
-      />
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <div className="xl:col-span-3">
-          <DashboardBinsTable
+        <DashboardSection label="Fleet overview">
+          <DashboardKpiRow
             devices={fleet.devices}
-            loading={fleet.loading}
-            dbDisabled={fleet.dbDisabled}
-            selectedId={selectedBinId}
-            onSelect={setSelectedBinId}
-          />
-        </div>
-        <div className="xl:col-span-2">
-          <DashboardBinDetail
-            device={selectedDevice}
             history={history.captures}
           />
-        </div>
-      </div>
+        </DashboardSection>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-5">
-          <LiveBinMapCard />
-        </div>
-        <div className="lg:col-span-4">
-          <RecentAlertsCard
-            history={history.captures}
-            dbDisabled={history.dbDisabled}
-          />
-        </div>
-        <div className="lg:col-span-3">
-          <RiskTrend7dCard
-            history={history.last7d}
-            dbDisabled={history.dbDisabled}
-          />
-        </div>
+        <DashboardSection label="Operations">
+          <div className={LAYOUT.opsGrid}>
+            <div className="flex min-h-0 flex-col xl:col-span-7">
+              <DashboardBinsTable
+                devices={fleet.devices}
+                loading={fleet.loading}
+                dbDisabled={fleet.dbDisabled}
+                selectedId={selectedBinId}
+                onSelect={setSelectedBinId}
+              />
+            </div>
+            <div className="flex min-h-0 flex-col xl:col-span-5">
+              <DashboardBinDetail
+                device={selectedDevice}
+                history={history.captures}
+              />
+            </div>
+          </div>
+        </DashboardSection>
+
+        <DashboardSection label="Analytics">
+          <div className={LAYOUT.analyticsGrid}>
+            <div className="flex min-h-0 flex-col lg:col-span-5">
+              <LiveBinMapCard />
+            </div>
+            <div className="flex min-h-0 flex-col lg:col-span-4">
+              <RecentAlertsCard
+                history={history.captures}
+                dbDisabled={history.dbDisabled}
+              />
+            </div>
+            <div className="flex min-h-0 flex-col lg:col-span-3">
+              <RiskTrend7dCard
+                history={history.last7d}
+                dbDisabled={history.dbDisabled}
+              />
+            </div>
+          </div>
+        </DashboardSection>
       </div>
     </DashboardLayout>
   );

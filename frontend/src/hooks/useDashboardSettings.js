@@ -10,6 +10,10 @@ export function resolveHeroUrl(settings) {
   return DEFAULT_HERO_PATH;
 }
 
+export function resolvePromoUrl(settings) {
+  return settings?.promo_image_url || null;
+}
+
 export async function fetchDashboardSettings() {
   const { data } = await axios.get(apiUrl("/dashboard/settings"), {
     timeout: 8000,
@@ -17,25 +21,36 @@ export async function fetchDashboardSettings() {
   return data;
 }
 
-export async function uploadDashboardHero(authFetch, file) {
+async function uploadImage(authFetch, path, file) {
   const fd = new FormData();
   fd.append("image", file);
-  const res = await authFetch("/dashboard/settings/hero", {
-    method: "POST",
-    body: fd,
-  });
+  const res = await authFetch(path, { method: "POST", body: fd });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
   return body;
 }
 
-export async function removeDashboardHero(authFetch) {
-  const res = await authFetch("/dashboard/settings/hero", {
-    method: "DELETE",
-  });
+async function removeImage(authFetch, path) {
+  const res = await authFetch(path, { method: "DELETE" });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
   return body;
+}
+
+export function uploadDashboardHero(authFetch, file) {
+  return uploadImage(authFetch, "/dashboard/settings/hero", file);
+}
+
+export function removeDashboardHero(authFetch) {
+  return removeImage(authFetch, "/dashboard/settings/hero");
+}
+
+export function uploadDashboardPromo(authFetch, file) {
+  return uploadImage(authFetch, "/dashboard/settings/promo", file);
+}
+
+export function removeDashboardPromo(authFetch) {
+  return removeImage(authFetch, "/dashboard/settings/promo");
 }
 
 export default function useDashboardSettings(intervalMs = 120_000) {
@@ -61,7 +76,13 @@ export default function useDashboardSettings(intervalMs = 120_000) {
     return () => clearInterval(t);
   }, [refresh, intervalMs]);
 
-  const heroUrl = resolveHeroUrl(settings);
-
-  return { settings, heroUrl, loading, error, refresh, setSettings };
+  return {
+    settings,
+    heroUrl: resolveHeroUrl(settings),
+    promoUrl: resolvePromoUrl(settings),
+    loading,
+    error,
+    refresh,
+    setSettings,
+  };
 }

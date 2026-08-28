@@ -23,6 +23,7 @@ import {
 import axios from "axios";
 import { apiUrl } from "../../utils/apiBase";
 import useAlertBadgeCount from "../../hooks/useAlertBadgeCount";
+import PromoFooter from "./PromoFooter";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", end: true },
@@ -105,29 +106,6 @@ function useSystemHealth(intervalMs = 30_000) {
   }, [intervalMs]);
 
   return state;
-}
-
-function PromoFooter() {
-  return (
-    <div className="mx-3 mb-3 overflow-hidden rounded-xl border border-brand-500/25 bg-gradient-to-br from-emerald-900/40 via-slate-900 to-slate-950">
-      <div className="relative h-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-brand-500/10" />
-        <div className="absolute bottom-0 left-0 right-0 flex items-end gap-2 p-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-500/20">
-            <Trash2 className="h-5 w-5 text-brand-400" />
-          </div>
-          <div>
-            <div className="text-xs font-bold leading-tight text-white">
-              Cleaner City,
-            </div>
-            <div className="text-xs font-bold leading-tight text-brand-400">
-              Better Tomorrow
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function StatusFooter() {

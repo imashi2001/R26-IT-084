@@ -67,11 +67,12 @@ export default function RiskTrend7dCard({ history, dbDisabled }) {
   const daysWithData = series.filter((d) => d.score != null).length;
 
   return (
-    <Card className="min-h-[320px]">
+    <Card className="h-full">
       <Card.Header
         icon={TrendingUp}
         accent="text-brand-400"
         title="Risk Trend (7 Days)"
+        subtitle="Daily average risk score"
         right={
           <Link
             to="/reports"
@@ -82,19 +83,19 @@ export default function RiskTrend7dCard({ history, dbDisabled }) {
         }
       />
 
-      <Card.Body className="flex flex-col">
+      <Card.Body className="flex min-h-0 flex-1 flex-col">
         {dbDisabled ? (
-          <div className="flex h-full items-center justify-center text-xs text-slate-500">
+          <div className="flex flex-1 items-center justify-center text-xs text-slate-500">
             DB off — trend appears once captures are persisted.
           </div>
         ) : daysWithData < 2 ? (
-          <div className="flex h-full items-center justify-center text-xs text-slate-500">
+          <div className="flex flex-1 items-center justify-center text-xs text-slate-500">
             {daysWithData === 0
               ? "No captures in the last 7 days."
               : "Need at least 2 days of data to draw a trend."}
           </div>
         ) : (
-          <div className="h-56 w-full">
+          <div className="min-h-[12rem] w-full flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={series}

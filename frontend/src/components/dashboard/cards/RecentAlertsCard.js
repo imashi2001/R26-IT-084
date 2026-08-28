@@ -116,11 +116,12 @@ export default function RecentAlertsCard({ history, dbDisabled }) {
   );
 
   return (
-    <Card className="min-h-[320px]">
+    <Card className="h-full">
       <Card.Header
         icon={Bell}
         accent="text-amber-400"
         title="Recent Alerts"
+        subtitle="Latest events across all bins"
         right={
           <Link
             to="/alerts"
@@ -131,7 +132,7 @@ export default function RecentAlertsCard({ history, dbDisabled }) {
         }
       />
 
-      <Card.Body>
+      <Card.Body className="overflow-y-auto">
         {dbDisabled ? (
           <div className="text-xs text-slate-500">
             DB off — alerts will appear once captures are persisted.

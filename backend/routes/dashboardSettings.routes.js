@@ -22,4 +22,19 @@ router.delete(
   dashboardSettings.deleteHero
 );
 
+router.post(
+  "/settings/promo",
+  requireAuth,
+  requireRole("admin"),
+  upload.single("image"),
+  dashboardSettings.uploadPromo
+);
+
+router.delete(
+  "/settings/promo",
+  requireAuth,
+  requireRole("admin"),
+  dashboardSettings.deletePromo
+);
+
 module.exports = router;

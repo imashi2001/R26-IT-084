@@ -41,7 +41,7 @@ router.get("/", (_req, res) => {
     litter_severity:
       "POST /litter-severity (multipart: image) — requires MODEL_LITTER_URL (litter microservice)",
     dashboard:
-      "GET /dashboard/settings, POST /dashboard/settings/hero (admin), DELETE /dashboard/settings/hero (admin)",
+      "GET /dashboard/settings, POST /dashboard/settings/hero (admin), DELETE /dashboard/settings/hero (admin), POST /dashboard/settings/promo (admin), DELETE /dashboard/settings/promo (admin)",
   });
 });
 

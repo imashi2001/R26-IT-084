@@ -1,88 +1,103 @@
 import { TrendingUp, AlertTriangle, Flame, Truck } from "lucide-react";
 import Card from "./Card";
+import { LAYOUT } from "./dashboardTheme";
 import { computeFleetStats } from "../../utils/dashboardBins";
 
 function MiniSparkline({ points, stroke }) {
-  if (!points.length) {
-    return (
-      <svg viewBox="0 0 80 24" className="h-6 w-20 opacity-40">
-        <polyline
-          fill="none"
-          stroke={stroke}
-          strokeWidth="2"
-          points="0,20 20,16 40,18 60,12 80,14"
-        />
-      </svg>
-    );
-  }
-  const max = Math.max(...points, 1);
-  const coords = points
-    .map((v, i) => {
-      const x = (i / Math.max(points.length - 1, 1)) * 80;
-      const y = 22 - (v / max) * 18;
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const coords =
+    points.length > 0
+      ? points
+          .map((v, i) => {
+            const max = Math.max(...points, 1);
+            const x = (i / Math.max(points.length - 1, 1)) * 72;
+            const y = 20 - (v / max) * 16;
+            return `${x},${y}`;
+          })
+          .join(" ")
+      : "0,18 18,14 36,16 54,10 72,12";
+
   return (
-    <svg viewBox="0 0 80 24" className="h-6 w-20">
+    <svg viewBox="0 0 72 22" className="h-5 w-[4.5rem] shrink-0 opacity-90">
       <polyline
         fill="none"
         stroke={stroke}
         strokeWidth="2"
         strokeLinecap="round"
+        strokeLinejoin="round"
         points={coords}
       />
     </svg>
   );
 }
 
-function KpiRing({ value, max, color, label, sub, icon: Icon, spark, suffix = "" }) {
+function ProgressRing({ value, max, color, suffix = "", size = 64, stroke = 7 }) {
   const numeric = typeof value === "number" ? value : null;
-  const pct = numeric != null && max > 0 ? Math.min(100, (numeric / max) * 100) : 0;
-  const size = 72;
-  const strokeW = 8;
-  const r = (size - strokeW) / 2;
+  const pct =
+    numeric != null && max > 0 ? Math.min(100, (numeric / max) * 100) : 0;
+  const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
 
   return (
-    <Card className="min-h-0">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800/80">
-          <Icon className="h-4 w-4" style={{ color }} />
-        </div>
-        <MiniSparkline points={spark} stroke={color} />
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke="#1e293b"
+          strokeWidth={stroke}
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          style={{ filter: `drop-shadow(0 0 4px ${color}55)` }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-base font-bold tabular-nums text-white">
+        {numeric != null ? `${numeric}${suffix}` : "—"}
       </div>
-      <div className="mt-3 flex items-center gap-4">
-        <div className="relative shrink-0">
-          <svg width={size} height={size} className="-rotate-90">
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              stroke="#1e293b"
-              strokeWidth={strokeW}
-              fill="none"
-            />
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              stroke={color}
-              strokeWidth={strokeW}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={circ}
-              strokeDashoffset={offset}
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center text-lg font-bold text-white">
-            {numeric != null ? `${numeric}${suffix}` : "—"}
-          </div>
+    </div>
+  );
+}
+
+function KpiCard({ icon: Icon, value, max, color, label, sub, spark, suffix }) {
+  return (
+    <Card compact className="min-h-[9.5rem]">
+      <div className="flex h-full flex-col">
+        <div className="flex items-start justify-between gap-2">
+          <span
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/70"
+            style={{ color }}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+          <MiniSparkline points={spark} stroke={color} />
         </div>
-        <div>
-          <div className="text-sm font-semibold text-slate-200">{label}</div>
-          <div className="text-xs text-slate-500">{sub}</div>
+
+        <div className="mt-auto flex items-center gap-3 pt-3">
+          <ProgressRing
+            value={value}
+            max={max}
+            color={color}
+            suffix={suffix}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold leading-snug text-slate-100">
+              {label}
+            </div>
+            <div className="mt-0.5 text-[11px] leading-snug text-slate-500">
+              {sub}
+            </div>
+          </div>
         </div>
       </div>
     </Card>
@@ -112,8 +127,8 @@ export default function DashboardKpiRow({ devices, history }) {
   }).length;
 
   return (
-    <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <KpiRing
+    <div className={LAYOUT.kpiGrid}>
+      <KpiCard
         icon={TrendingUp}
         value={fleet.avgFill}
         max={100}
@@ -123,7 +138,7 @@ export default function DashboardKpiRow({ devices, history }) {
         spark={fillSpark}
         suffix="%"
       />
-      <KpiRing
+      <KpiCard
         icon={AlertTriangle}
         value={fleet.nearFull}
         max={Math.max(fleet.total, 1)}
@@ -132,7 +147,7 @@ export default function DashboardKpiRow({ devices, history }) {
         sub="Needs attention soon"
         spark={[2, 3, 4, fleet.nearFull, fleet.nearFull]}
       />
-      <KpiRing
+      <KpiCard
         icon={Flame}
         value={fleet.overflow}
         max={Math.max(fleet.total, 1)}
@@ -141,7 +156,7 @@ export default function DashboardKpiRow({ devices, history }) {
         sub="Schedule collection"
         spark={[1, 2, fleet.overflow, fleet.overflow, fleet.overflow]}
       />
-      <KpiRing
+      <KpiCard
         icon={Truck}
         value={collectionsToday}
         max={Math.max(collectionsToday, 12, 1)}

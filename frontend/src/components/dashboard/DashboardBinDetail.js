@@ -35,12 +35,37 @@ const TABS = [
 
 function MetaRow({ icon: Icon, label, value, valueClass = "text-slate-200" }) {
   return (
-    <div className="flex items-center justify-between gap-2 text-xs">
-      <span className="flex items-center gap-1.5 text-slate-500">
-        <Icon className="h-3.5 w-3.5" />
+    <div className="flex items-center justify-between gap-3 border-b border-slate-800/40 py-2 last:border-0">
+      <span className="flex items-center gap-1.5 text-xs text-slate-500">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
         {label}
       </span>
-      <span className={`font-semibold ${valueClass}`}>{value}</span>
+      <span className={`truncate text-right text-xs font-semibold ${valueClass}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function TabBar({ tab, setTab }) {
+  return (
+    <div className="mt-3 flex shrink-0 flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      {TABS.map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => setTab(id)}
+          className={[
+            "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition",
+            tab === id
+              ? "bg-brand-500/15 text-brand-400 ring-1 ring-brand-500/25"
+              : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+          ].join(" ")}
+        >
+          <Icon className="h-3 w-3" />
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -57,12 +82,18 @@ export default function DashboardBinDetail({ device, history }) {
 
   if (!device) {
     return (
-      <Card className="min-h-[420px]">
-        <Card.Header icon={Trash2} title="Bin Detail" />
-        <Card.Body className="flex flex-col items-center justify-center py-16 text-center">
-          <Trash2 className="h-10 w-10 text-slate-700" />
-          <p className="mt-3 text-sm text-slate-500">
-            Select a bin from the table to view details.
+      <Card className="h-full">
+        <Card.Header
+          icon={Trash2}
+          title="Bin Detail"
+          subtitle="Select a row from the table"
+        />
+        <Card.Body className="flex flex-col items-center justify-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-800/60">
+            <Trash2 className="h-8 w-8 text-slate-600" />
+          </div>
+          <p className="mt-4 text-sm text-slate-500">
+            Click any bin to preview fill level, live feed, and alerts.
           </p>
         </Card.Body>
       </Card>
@@ -74,176 +105,153 @@ export default function DashboardBinDetail({ device, history }) {
   const imageUrl = `${apiUrl(`/devices/${device.id}/image/latest`)}?t=${encodeURIComponent(device.latest_captured_at || Date.now())}`;
   const online = device.camera_online;
   const zone = device.location || device.address || "—";
+  const accent =
+    status.tone === "danger"
+      ? "text-red-400"
+      : status.tone === "warn"
+        ? "text-amber-400"
+        : "text-brand-400";
 
   return (
-    <Card className="min-h-[420px]" glow={status.tone === "danger"}>
+    <Card className="h-full" glow={status.tone === "danger"}>
       <Card.Header
         icon={Trash2}
-        accent={
-          status.tone === "danger"
-            ? "text-red-400"
-            : status.tone === "warn"
-              ? "text-amber-400"
-              : "text-brand-400"
-        }
-        title={formatBinCode(device.id)}
+        accent={accent}
+        title={`${formatBinCode(device.id)} · ${device.name || "Unnamed"}`}
+        subtitle={zone}
         right={
           <span
-            className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STATUS_PILL[status.tone]}`}
+            className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_PILL[status.tone]}`}
           >
             {status.label}
           </span>
         }
       />
-      <div className="mt-1 text-xs text-slate-500">
-        {device.name || zone}
-      </div>
 
-      <div className="mt-3 flex flex-wrap gap-1 border-b border-slate-800/80 pb-2">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={[
-              "inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition",
-              tab === id
-                ? "bg-brand-500/15 text-brand-400"
-                : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
-            ].join(" ")}
-          >
-            <Icon className="h-3 w-3" />
-            {label}
-          </button>
-        ))}
-      </div>
+      <TabBar tab={tab} setTab={setTab} />
 
-      <Card.Body className="space-y-4">
-        {(tab === "overview" || tab === "live") && (
-          <>
-            <div>
-              <div className="text-xs text-slate-500">Fill Level</div>
-              <div
-                className={`text-5xl font-bold tracking-tight ${
-                  status.tone === "danger"
-                    ? "text-red-400"
-                    : status.tone === "warn"
-                      ? "text-amber-400"
-                      : "text-brand-400"
-                }`}
-              >
-                {pct != null ? `${pct}%` : "—"}
+      <Card.Body className="overflow-y-auto">
+        <div className="space-y-4">
+          {(tab === "overview" || tab === "live") && (
+            <>
+              <div className="rounded-xl border border-slate-800/50 bg-slate-950/30 p-4 text-center">
+                <div className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Fill Level
+                </div>
+                <div className={`mt-1 text-5xl font-bold tabular-nums ${accent}`}>
+                  {pct != null ? `${pct}%` : "—"}
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2 rounded-xl border border-slate-800/60 bg-slate-950/40 p-3">
-              <MetaRow icon={MapPin} label="Zone" value={zone} />
-              <MetaRow
-                icon={Clock}
-                label="Last Updated"
-                value={relativeFromNow(device.latest_captured_at)}
-              />
-              <MetaRow
-                icon={Wifi}
-                label="Device Status"
-                value={online ? "Online" : "Offline"}
-                valueClass={online ? "text-brand-400" : "text-slate-500"}
-              />
-              {device.esp32_id ? (
+              <div className="rounded-xl border border-slate-800/50 bg-slate-950/30 px-3 py-1">
+                <MetaRow icon={MapPin} label="Zone" value={zone} />
                 <MetaRow
-                  icon={Battery}
-                  label="ESP32"
-                  value={device.esp32_id}
-                  valueClass="text-slate-300"
+                  icon={Clock}
+                  label="Last Updated"
+                  value={relativeFromNow(device.latest_captured_at)}
                 />
-              ) : null}
-            </div>
-
-            <div>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Live Feed
-              </div>
-              <div className="relative overflow-hidden rounded-xl border border-slate-800/80 bg-slate-950/80">
-                {device.latest_captured_at ? (
-                  <img
-                    src={imageUrl}
-                    alt={`${formatBinCode(device.id)} camera`}
-                    className="h-40 w-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
+                <MetaRow
+                  icon={Wifi}
+                  label="Device Status"
+                  value={online ? "Online" : "Offline"}
+                  valueClass={online ? "text-brand-400" : "text-slate-500"}
+                />
+                {device.esp32_id ? (
+                  <MetaRow
+                    icon={Battery}
+                    label="ESP32 ID"
+                    value={device.esp32_id}
+                    valueClass="text-slate-300"
                   />
-                ) : (
-                  <div className="flex h-40 items-center justify-center text-sm text-slate-600">
-                    No capture yet
-                  </div>
-                )}
-                {online ? (
-                  <span className="absolute left-2 top-2 rounded-full border border-brand-500/40 bg-brand-500/20 px-2 py-0.5 text-[10px] font-bold text-brand-400">
-                    LIVE
-                  </span>
                 ) : null}
               </div>
-            </div>
-          </>
-        )}
 
-        {tab === "analytics" && (
-          <div className="py-8 text-center text-sm text-slate-500">
-            <Link to="/reports" className="text-brand-400 hover:underline">
-              Open Reports
-            </Link>{" "}
-            for analytics.
-          </div>
-        )}
-
-        {tab === "history" && (
-          <div className="py-8 text-center text-sm text-slate-500">
-            <Link
-              to={`/bins/${device.id}`}
-              className="text-brand-400 hover:underline"
-            >
-              View full history
-            </Link>
-          </div>
-        )}
-
-        {(tab === "overview" || tab === "alerts") && binAlerts.length > 0 && (
-          <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Recent Alerts
-            </div>
-            <ul className="space-y-2">
-              {binAlerts.map((a, i) => {
-                const tone = alertTone[a.tone] || alertTone.info;
-                return (
-                  <li
-                    key={`${a.title}-${i}`}
-                    className={`flex items-start gap-2 rounded-lg px-2.5 py-2 ${tone.bg}`}
-                  >
-                    <AlertTriangle
-                      className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tone.fg}`}
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Live Feed
+                </div>
+                <div className="relative aspect-video overflow-hidden rounded-xl border border-slate-800/60 bg-slate-950">
+                  {device.latest_captured_at ? (
+                    <img
+                      src={imageUrl}
+                      alt={`${formatBinCode(device.id)} camera`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
-                    <div className="min-w-0">
-                      <div className={`text-xs font-semibold ${tone.fg}`}>
-                        {a.title}
-                      </div>
-                      <div className="truncate text-[11px] text-slate-500">
-                        {a.sub}
-                      </div>
+                  ) : (
+                    <div className="flex h-full min-h-[8rem] items-center justify-center text-sm text-slate-600">
+                      No capture yet
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+                  )}
+                  {online ? (
+                    <span className="absolute left-2 top-2 rounded-full border border-brand-500/40 bg-brand-500/20 px-2 py-0.5 text-[10px] font-bold text-brand-400">
+                      LIVE
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          )}
 
-        {tab === "alerts" && binAlerts.length === 0 && (
-          <div className="py-8 text-center text-sm text-slate-500">
-            No recent alerts for this bin.
-          </div>
-        )}
+          {tab === "analytics" && (
+            <div className="flex min-h-[10rem] items-center justify-center text-sm text-slate-500">
+              <Link to="/reports" className="text-brand-400 hover:underline">
+                Open Reports
+              </Link>{" "}
+              for analytics.
+            </div>
+          )}
+
+          {tab === "history" && (
+            <div className="flex min-h-[10rem] items-center justify-center text-sm text-slate-500">
+              <Link
+                to={`/bins/${device.id}`}
+                className="text-brand-400 hover:underline"
+              >
+                View full history
+              </Link>
+            </div>
+          )}
+
+          {(tab === "overview" || tab === "alerts") && binAlerts.length > 0 && (
+            <div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Recent Alerts
+              </div>
+              <ul className="space-y-2">
+                {binAlerts.map((a, i) => {
+                  const tone = alertTone[a.tone] || alertTone.info;
+                  return (
+                    <li
+                      key={`${a.title}-${i}`}
+                      className={`flex items-start gap-2 rounded-lg px-2.5 py-2 ${tone.bg}`}
+                    >
+                      <AlertTriangle
+                        className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tone.fg}`}
+                      />
+                      <div className="min-w-0">
+                        <div className={`text-xs font-semibold ${tone.fg}`}>
+                          {a.title}
+                        </div>
+                        <div className="truncate text-[11px] text-slate-500">
+                          {a.sub}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {tab === "alerts" && binAlerts.length === 0 && (
+            <div className="flex min-h-[10rem] items-center justify-center text-sm text-slate-500">
+              No recent alerts for this bin.
+            </div>
+          )}
+        </div>
       </Card.Body>
 
       <Card.Footer>

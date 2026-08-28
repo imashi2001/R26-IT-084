@@ -1,4 +1,14 @@
-/** Shared dark-dashboard styling tokens (VisionWaste monitoring UI). */
+/** Shared layout tokens for dashboard grids and panels. */
+
+export const LAYOUT = {
+  page: "mx-auto flex w-full max-w-[1680px] flex-col gap-5",
+  kpiGrid:
+    "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5",
+  opsGrid:
+    "grid grid-cols-1 items-stretch gap-5 xl:grid-cols-12 xl:min-h-[30rem]",
+  analyticsGrid:
+    "grid grid-cols-1 items-stretch gap-5 lg:grid-cols-12 lg:min-h-[24rem]",
+};
 
 export const CHART = {
   grid: "#1e293b",

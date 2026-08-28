@@ -46,7 +46,11 @@ async function updateDevice(id, patch) {
   return row.toJSON();
 }
 
-async function findDeviceIdForPredict(esp32Id, incomingBridgeRaw) {
+async function findDeviceIdForPredict(
+  esp32Id,
+  incomingBridgeRaw,
+  { bypassBridgeCheck = false } = {}
+) {
   const models = ensureModels();
   if (!models || !esp32Id) return null;
 
@@ -63,8 +67,8 @@ async function findDeviceIdForPredict(esp32Id, incomingBridgeRaw) {
     ? String(row.bridge_instance_id).trim()
     : "";
 
-  // Bin locked to a laptop: incoming bridge must match.
-  if (bound && bound !== incoming) {
+  // Bin locked to a laptop: incoming bridge must match (unless direct ESP32/mobile/admin).
+  if (bound && bound !== incoming && !bypassBridgeCheck) {
     return null;
   }
 

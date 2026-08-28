@@ -9,29 +9,7 @@ import {
   Leaf,
 } from "lucide-react";
 import Card from "../Card";
-
-/*
- * Recent Alerts card.
- *
- * Synthesizes a feed from the captures history we already fetched. Each
- * alert is a derived event (one capture can produce multiple alerts):
- *
- *   risk_level === HIGH/CRITICAL          -> "High risk detected"
- *   animal_count > 0                       -> "Animal activity"
- *   bin_fill === Overflow OR pct >= 70     -> "Bin overflowing"
- *   source_type === "mobile"               -> "Mobile report received"
- *   waste_label === organic                -> "Organic waste detected"
- *   else                                   -> "Capture recorded" (low-noise)
- *
- * Last 6 alerts shown so the card height stays reasonable inside the grid.
- */
-
-const ALERT_TONE = {
-  high: { bg: "bg-red-50", fg: "text-red-700", icon: AlertTriangle, ring: "bg-red-500" },
-  warn: { bg: "bg-amber-50", fg: "text-amber-700", icon: AlertTriangle, ring: "bg-amber-500" },
-  info: { bg: "bg-sky-50", fg: "text-sky-700", icon: Bell, ring: "bg-sky-500" },
-  ok: { bg: "bg-brand-50", fg: "text-brand-700", icon: Leaf, ring: "bg-brand-500" },
-};
+import { alertTone } from "../dashboardTheme";
 
 function isoTime(iso) {
   if (!iso) return "";
@@ -50,15 +28,19 @@ function buildAlerts(captures) {
 
   for (const c of captures) {
     const ts = c.captured_at;
-    const binId = c.device_id != null ? `BIN${String(c.device_id).padStart(3, "0")}` : "BIN—";
+    const binId =
+      c.device_id != null ? `BIN-${String(c.device_id).padStart(2, "0")}` : "BIN—";
 
     const lvl = String(c.risk_level || "").toUpperCase();
     if (lvl === "HIGH" || lvl === "CRITICAL") {
       alerts.push({
         ts,
         binId,
-        title: `${lvl === "CRITICAL" ? "Critical" : "High"} risk detected`,
-        sub: `${binId} flagged ${lvl} (${c.risk_case || "rule fired"})`,
+        title:
+          lvl === "CRITICAL"
+            ? "Critical risk detected"
+            : "High fill level detected",
+        sub: `${binId} flagged ${lvl}${c.risk_case ? ` · ${c.risk_case}` : ""}`,
         Icon: AlertTriangle,
         tone: lvl === "CRITICAL" ? "high" : "warn",
       });
@@ -68,7 +50,7 @@ function buildAlerts(captures) {
       alerts.push({
         ts,
         binId,
-        title: "Animal activity",
+        title: "Animal detected",
         sub: `${c.animal_count} animal${c.animal_count > 1 ? "s" : ""} near ${binId}`,
         Icon: PawPrint,
         tone: "warn",
@@ -80,13 +62,15 @@ function buildAlerts(captures) {
       fillTier === "overflow" ||
       (Number.isFinite(Number(c.fill_percentage)) &&
         Number(c.fill_percentage) >= 70);
-    if (overflowing) {
+    if (overflowing && lvl !== "HIGH" && lvl !== "CRITICAL") {
       alerts.push({
         ts,
         binId,
-        title: "Bin overflowing",
+        title: "Overflow risk",
         sub: `${binId} reached ${
-          c.fill_percentage != null ? Math.round(c.fill_percentage) + "%" : "Overflow"
+          c.fill_percentage != null
+            ? Math.round(c.fill_percentage) + "%"
+            : "Overflow"
         }`,
         Icon: Trash2,
         tone: "high",
@@ -115,7 +99,7 @@ function buildAlerts(captures) {
         ts,
         binId,
         title: "Organic waste detected",
-        sub: `${binId} - keep covered`,
+        sub: `${binId} — keep covered`,
         Icon: Leaf,
         tone: "ok",
       });
@@ -135,12 +119,12 @@ export default function RecentAlertsCard({ history, dbDisabled }) {
     <Card className="min-h-[320px]">
       <Card.Header
         icon={Bell}
-        accent="text-amber-500"
+        accent="text-amber-400"
         title="Recent Alerts"
         right={
           <Link
             to="/alerts"
-            className="text-[11px] font-semibold text-brand-600 hover:underline"
+            className="text-[11px] font-semibold text-brand-400 hover:text-brand-300"
           >
             View All
           </Link>
@@ -149,25 +133,25 @@ export default function RecentAlertsCard({ history, dbDisabled }) {
 
       <Card.Body>
         {dbDisabled ? (
-          <div className="text-xs text-ink-500">
+          <div className="text-xs text-slate-500">
             DB off — alerts will appear once captures are persisted.
           </div>
         ) : alerts.length === 0 ? (
-          <div className="text-xs text-ink-500">
+          <div className="text-xs text-slate-500">
             No alert-worthy events in the last 100 captures.
           </div>
         ) : (
           <ul className="space-y-2">
             {alerts.map((a, i) => {
-              const tone = ALERT_TONE[a.tone] || ALERT_TONE.info;
-              const Icon = a.Icon || tone.icon;
+              const tone = alertTone[a.tone] || alertTone.info;
+              const Icon = a.Icon || Bell;
               return (
                 <li
                   key={`${a.ts || i}-${a.title}-${i}`}
-                  className={`flex items-start gap-3 rounded-lg ${tone.bg} px-3 py-2`}
+                  className={`flex items-start gap-3 rounded-xl px-3 py-2.5 ${tone.bg}`}
                 >
                   <span
-                    className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${tone.ring} text-white`}
+                    className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${tone.ring}`}
                   >
                     <Icon className="h-3.5 w-3.5" />
                   </span>
@@ -178,11 +162,13 @@ export default function RecentAlertsCard({ history, dbDisabled }) {
                       <span className="truncate text-sm font-semibold">
                         {a.title}
                       </span>
-                      <span className="shrink-0 text-[11px] text-ink-500">
+                      <span className="shrink-0 text-[11px] text-slate-500">
                         {isoTime(a.ts)}
                       </span>
                     </div>
-                    <div className="text-xs text-ink-500 truncate">{a.sub}</div>
+                    <div className="truncate text-xs text-slate-500">
+                      {a.sub}
+                    </div>
                   </div>
                 </li>
               );
@@ -193,3 +179,6 @@ export default function RecentAlertsCard({ history, dbDisabled }) {
     </Card>
   );
 }
+
+/** Exported for sidebar badge count. */
+export { buildAlerts };

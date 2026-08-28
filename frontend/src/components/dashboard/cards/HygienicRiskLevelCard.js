@@ -2,15 +2,6 @@ import { ShieldAlert, Smile, Meh, Frown, AlertOctagon } from "lucide-react";
 import Card from "../Card";
 import computeRiskScore, { RISK_TONE } from "../../../utils/riskScore";
 
-/*
- * Hygienic Risk Level card.
- *
- * - Headline: LOW / MEDIUM / HIGH / CRITICAL with a face icon.
- * - Score: 0-100 derived in `utils/riskScore.js` (engine stays untouched).
- * - Bar: thin progress bar showing the score within its band.
- * - Footer: risk case key + short status word.
- */
-
 const FACE_BY_TONE = {
   low: Smile,
   medium: Meh,
@@ -21,9 +12,40 @@ const FACE_BY_TONE = {
 const STATUS_WORD = {
   low: "Safe",
   medium: "Watch",
-  high: "Action needed",
-  critical: "Urgent",
+  high: "High Risk",
+  critical: "Critical",
 };
+
+function RiskGauge({ score, color }) {
+  const pct = Math.max(0, Math.min(100, score));
+  const rotation = -90 + (pct / 100) * 180;
+  return (
+    <div className="relative mx-auto h-20 w-40 overflow-hidden">
+      <div
+        className="absolute bottom-0 left-1/2 h-16 w-32 -translate-x-1/2 rounded-t-full border-[10px] border-slate-800"
+        style={{
+          borderBottomColor: "transparent",
+          background: `conic-gradient(from 180deg at 50% 100%, #22c55e 0deg, #f59e0b 72deg, #ef4444 144deg, #ef4444 180deg)`,
+          WebkitMaskImage:
+            "radial-gradient(circle at 50% 100%, transparent 58%, black 59%)",
+          maskImage:
+            "radial-gradient(circle at 50% 100%, transparent 58%, black 59%)",
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-1/2 h-14 w-0.5 origin-bottom -translate-x-1/2 rounded-full bg-white shadow-lg transition-transform duration-700"
+        style={{
+          transform: `translateX(-50%) rotate(${rotation}deg)`,
+          boxShadow: `0 0 8px ${color}`,
+        }}
+      />
+      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-center">
+        <div className="text-2xl font-bold text-white">{score}</div>
+        <div className="text-[10px] text-slate-500">/ 100</div>
+      </div>
+    </div>
+  );
+}
 
 export default function HygienicRiskLevelCard({ snapshot }) {
   const extras = snapshot?.extras || {};
@@ -32,15 +54,15 @@ export default function HygienicRiskLevelCard({ snapshot }) {
   const theme = tone ? RISK_TONE[tone] : null;
   const Face = tone ? FACE_BY_TONE[tone] : null;
 
-  const message = extras.risk_case
-    ? `Case: ${extras.risk_case}`
-    : "No risk evaluation yet.";
-
   return (
-    <Card>
+    <Card glow={tone === "high" || tone === "critical"}>
       <Card.Header
         icon={ShieldAlert}
-        accent={tone === "high" || tone === "critical" ? "text-red-600" : "text-brand-600"}
+        accent={
+          tone === "high" || tone === "critical"
+            ? "text-red-400"
+            : "text-brand-400"
+        }
         title="Hygienic Risk Level"
         right={
           result ? (
@@ -57,35 +79,43 @@ export default function HygienicRiskLevelCard({ snapshot }) {
         {result ? (
           <>
             <div className="flex items-center gap-2">
-              {Face ? <Face className="h-5 w-5" style={{ color: theme.ring }} /> : null}
+              {Face ? (
+                <Face className="h-5 w-5" style={{ color: theme.ring }} />
+              ) : null}
               <div
-                className="text-2xl font-extrabold"
+                className="text-lg font-extrabold tracking-wide"
                 style={{ color: theme.ring }}
               >
                 {result.band} RISK
               </div>
             </div>
-
-            <div className="mt-3 flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold text-ink-900">
-                {result.score}
-              </span>
-              <span className="text-sm text-ink-400">/ 100</span>
-            </div>
-
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <RiskGauge score={result.score} color={theme.ring} />
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
               <div
                 className={`h-full rounded-full ${theme.barBg}`}
-                style={{ width: `${result.score}%` }}
+                style={{
+                  width: `${result.score}%`,
+                  boxShadow: `0 0 8px ${theme.ring}66`,
+                }}
               />
             </div>
           </>
         ) : (
-          <div className="text-sm text-ink-400">No risk evaluation yet.</div>
+          <div className="py-8 text-sm text-slate-500">
+            No risk evaluation yet.
+          </div>
         )}
       </Card.Body>
 
-      <Card.Footer>{message}</Card.Footer>
+      <Card.Footer>
+        {extras.risk_case ? (
+          <span className="text-red-400">
+            Immediate attention recommended · {extras.risk_case}
+          </span>
+        ) : (
+          "Risk computed from waste, animals, and weather."
+        )}
+      </Card.Footer>
     </Card>
   );
 }

@@ -15,13 +15,6 @@ import RiskTrend7dCard from "../components/dashboard/cards/RiskTrend7dCard";
 import useSystemSnapshot from "../hooks/useSystemSnapshot";
 import useCaptureHistory from "../hooks/useCaptureHistory";
 
-/*
- * System dashboard layout (currently mounted at /system; promoted to / in PR 6).
- *
- * All 11 cards wired. PR 6 will swap routes so this page lives at `/` and the
- * old upload UI moves to `/live-monitoring`, plus add stub pages for the
- * sidebar items that currently 404.
- */
 export default function SystemDashboardPage() {
   const { data: snapshot, loading, error, stale, refresh } = useSystemSnapshot();
   const history = useCaptureHistory();
@@ -37,13 +30,13 @@ export default function SystemDashboardPage() {
     if (!snapshot) {
       return {
         tone: "info",
-        text: "No capture received yet. Send an image through the bridge or POST /predict.",
+        text: "No capture received yet. Send an image from the ESP32-CAM or POST /predict.",
       };
     }
     if (stale) {
       return {
         tone: "warn",
-        text: "Snapshot is stale - the last refresh did not return a new capture.",
+        text: "Snapshot is stale — waiting for a fresh capture from the field device.",
       };
     }
     return null;
@@ -53,12 +46,12 @@ export default function SystemDashboardPage() {
     <DashboardLayout>
       {banner ? (
         <div
-          className={`mb-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-2 text-sm ${
+          className={`mb-5 flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm backdrop-blur-sm ${
             banner.tone === "error"
-              ? "border-red-200 bg-red-50 text-red-700"
+              ? "border-red-500/30 bg-red-500/10 text-red-300"
               : banner.tone === "warn"
-                ? "border-amber-200 bg-amber-50 text-amber-700"
-                : "border-slate-200 bg-slate-50 text-ink-700"
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                : "border-slate-700/60 bg-slate-900/60 text-slate-300"
           }`}
         >
           <div className="flex items-center gap-2">
@@ -68,23 +61,21 @@ export default function SystemDashboardPage() {
           <button
             type="button"
             onClick={refresh}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-ink-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
           >
             <RefreshCw className="h-3 w-3" /> Refresh
           </button>
         </div>
       ) : null}
 
-      {/* Row 1 - Latest capture summary */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <LatestCaptureCard snapshot={snapshot} stale={stale} />
         <BinFillLevelCard snapshot={snapshot} />
         <WasteClassificationCard snapshot={snapshot} />
         <AnimalDetectionCard snapshot={snapshot} />
       </div>
 
-      {/* Row 2 - Risk + environment */}
-      <div className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <HygienicRiskLevelCard snapshot={snapshot} />
         <RottingPredictionCard snapshot={snapshot} />
         <EnvironmentalConditionsCard
@@ -95,8 +86,7 @@ export default function SystemDashboardPage() {
         <NextCollectionCard snapshot={snapshot} />
       </div>
 
-      {/* Row 3 - Fleet view (map spans 2 cols on lg+) */}
-      <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3 xl:grid-cols-4">
         <div className="lg:col-span-2 xl:col-span-2">
           <LiveBinMapCard />
         </div>

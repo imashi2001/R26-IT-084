@@ -22,20 +22,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { apiUrl } from "../../utils/apiBase";
-
-/*
- * Sidebar for the new system-wide dashboard.
- *
- * - Order matches the locked spec (Scatter Detection removed; Bin Fill Level
- *   and Mobile Reports added).
- * - Each nav item has a route. Routes that don't exist yet (`/live-monitoring`,
- *   `/bin-fill`, `/animals`, `/forecast`, `/alerts`, `/reports`, `/history`)
- *   will be added as stubs in PR 6 — until then NavLink will still render but
- *   the click target is a 404 inside the SPA. This keeps the sidebar visually
- *   complete from PR 2 forward.
- * - System Status footer pings GET /health every 30s and surfaces the worst
- *   service state.
- */
+import useAlertBadgeCount from "../../hooks/useAlertBadgeCount";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", end: true },
@@ -47,7 +34,7 @@ const NAV_ITEMS = [
   { to: "/animals", icon: PawPrint, label: "Animal Detection" },
   { to: "/litter-severity", icon: ScanSearch, label: "Litter Severity" },
   { to: "/forecast", icon: TrendingUp, label: "Forecasting" },
-  { to: "/alerts", icon: Bell, label: "Alerts & Notifications" },
+  { to: "/alerts", icon: Bell, label: "Alerts & Notifications", badge: true },
   { to: "/reports", icon: FileText, label: "Reports" },
   { to: "/history", icon: History, label: "History" },
   { to: "/mobile-report", icon: Smartphone, label: "Mobile Reports" },
@@ -80,7 +67,7 @@ function useSystemHealth(intervalMs = 30_000) {
           setState({
             status: "ok",
             label: "All systems operational",
-            detail: dbOk ? "Models + DB online" : "Models online (DB off)",
+            detail: dbOk ? "Models + DB online" : "Models online",
           });
         } else if (anyModelDown) {
           const down = Object.entries(models)
@@ -124,65 +111,98 @@ function StatusFooter() {
   const { status, label, detail } = useSystemHealth();
 
   const styles = {
-    loading: { bg: "bg-ink-800", dot: "bg-ink-400", icon: CircleAlert, fg: "text-ink-300" },
-    ok: { bg: "bg-brand-50", dot: "bg-brand-500", icon: CircleCheck, fg: "text-brand-700" },
-    warn: { bg: "bg-amber-50", dot: "bg-amber-500", icon: CircleAlert, fg: "text-amber-700" },
-    error: { bg: "bg-red-50", dot: "bg-red-500", icon: CircleAlert, fg: "text-red-700" },
+    loading: {
+      wrap: "border-slate-700/60 bg-slate-800/50",
+      fg: "text-slate-400",
+      dot: "bg-slate-500",
+    },
+    ok: {
+      wrap: "border-brand-500/30 bg-brand-500/10 shadow-glow-brand",
+      fg: "text-brand-400",
+      dot: "bg-brand-500",
+    },
+    warn: {
+      wrap: "border-amber-500/30 bg-amber-500/10",
+      fg: "text-amber-400",
+      dot: "bg-amber-500",
+    },
+    error: {
+      wrap: "border-red-500/30 bg-red-500/10",
+      fg: "text-red-400",
+      dot: "bg-red-500",
+    },
   }[status];
 
-  const Icon = styles.icon;
   const pulse = status === "ok" ? "animate-pulse" : "";
 
   return (
-    <div className={`mx-3 mb-4 rounded-lg p-3 ${styles.bg}`}>
+    <div className={`mx-3 mb-4 rounded-xl border p-3 ${styles.wrap}`}>
       <div className="flex items-center gap-2">
-        <span className={`relative flex h-2.5 w-2.5`}>
-          <span className={`absolute inline-flex h-full w-full rounded-full ${styles.dot} opacity-60 ${pulse}`} />
-          <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${styles.dot}`} />
+        <span className="relative flex h-2.5 w-2.5">
+          <span
+            className={`absolute inline-flex h-full w-full rounded-full ${styles.dot} opacity-50 ${pulse}`}
+          />
+          <span
+            className={`relative inline-flex h-2.5 w-2.5 rounded-full ${styles.dot}`}
+          />
         </span>
-        <Icon className={`h-4 w-4 ${styles.fg}`} />
+        {status === "ok" ? (
+          <CircleCheck className={`h-4 w-4 ${styles.fg}`} />
+        ) : (
+          <CircleAlert className={`h-4 w-4 ${styles.fg}`} />
+        )}
         <div className={`text-sm font-semibold ${styles.fg}`}>System Status</div>
       </div>
       <div className={`mt-1 text-xs font-medium ${styles.fg}`}>{label}</div>
-      {detail ? <div className="text-[11px] text-ink-500">{detail}</div> : null}
-      <div className="mt-1 text-[10px] text-ink-400">
-        {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-      </div>
+      {detail ? (
+        <div className="text-[11px] text-slate-500">{detail}</div>
+      ) : null}
     </div>
   );
 }
 
 export default function Sidebar() {
+  const alertCount = useAlertBadgeCount();
+
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-100">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500">
+    <aside className="relative z-10 flex h-screen w-64 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
+      <div className="flex items-center gap-3 border-b border-slate-800/80 px-5 py-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 shadow-glow-brand">
           <Leaf className="h-5 w-5 text-white" />
         </div>
         <div>
-          <div className="text-base font-bold leading-tight text-ink-900">VisionWaste</div>
-          <div className="text-[11px] leading-tight text-ink-500">Smart Waste Monitoring</div>
+          <div className="text-base font-bold leading-tight text-white">
+            VisionWaste
+          </div>
+          <div className="text-[11px] leading-tight text-slate-500">
+            Smart Waste Monitoring
+          </div>
         </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3">
         <ul className="space-y-0.5 px-3">
-          {NAV_ITEMS.map(({ to, icon: Icon, label, end }) => (
+          {NAV_ITEMS.map(({ to, icon: Icon, label, end, badge }) => (
             <li key={to}>
               <NavLink
                 to={to}
                 end={end}
                 className={({ isActive }) =>
                   [
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                     isActive
-                      ? "bg-brand-50 text-brand-700"
-                      : "text-ink-500 hover:bg-slate-50 hover:text-ink-900",
+                      ? "border border-brand-500/35 bg-brand-500/15 text-brand-400 shadow-glow-brand"
+                      : "border border-transparent text-slate-400 hover:border-slate-700/50 hover:bg-slate-800/50 hover:text-slate-200",
                   ].join(" ")
                 }
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{label}</span>
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                {badge && alertCount > 0 ? (
+                  <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-glow-red">
+                    {alertCount > 99 ? "99+" : alertCount}
+                  </span>
+                ) : null}
               </NavLink>
             </li>
           ))}

@@ -18,29 +18,20 @@ import {
 import axios from "axios";
 import { apiUrl } from "../../utils/apiBase";
 import { useAuth } from "../../context/AuthContext";
-
-/*
- * Top bar for the system dashboard.
- *
- * - Date + time tick every second (cheap; only re-renders header).
- * - Weather chips pull from GET /weather (current temp / humidity / condition).
- *   This endpoint always returns data — live from OpenWeather when the backend
- *   has OPENWEATHER_API_KEY, otherwise a deterministic stub. We do NOT depend
- *   on /latest here, so chips populate even before the first capture.
- * - Bell badge reserved for PR 5 (Recent Alerts feed); shows a static "0" now.
- * - Profile shows AuthContext.user (or "Guest") so admins see their email.
- */
+import useAlertBadgeCount from "../../hooks/useAlertBadgeCount";
 
 function StatChip({ icon: Icon, label, value, sub }) {
   return (
-    <div className="flex items-center gap-3 px-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
-        <Icon className="h-4 w-4 text-ink-500" />
+    <div className="flex items-center gap-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 px-3 py-1.5">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/80">
+        <Icon className="h-4 w-4 text-brand-400" />
       </div>
       <div className="leading-tight">
-        <div className="text-[11px] font-medium text-ink-400">{label}</div>
-        <div className="text-sm font-semibold text-ink-900">{value || "—"}</div>
-        {sub ? <div className="text-[10px] text-ink-400">{sub}</div> : null}
+        <div className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+          {label}
+        </div>
+        <div className="text-sm font-semibold text-slate-100">{value || "—"}</div>
+        {sub ? <div className="text-[10px] text-slate-500">{sub}</div> : null}
       </div>
     </div>
   );
@@ -60,11 +51,8 @@ function useCurrentWeather(intervalMs = 60_000) {
           temp_c: data.temp_c ?? null,
           humidity_pct: data.humidity_pct ?? null,
           condition: data.condition ?? null,
-          source: data.source ?? null,
         });
       } catch {
-        // If /weather is unreachable, try the latest-capture extras as a
-        // last-resort fallback so we still show something.
         try {
           const { data: latest } = await axios.get(apiUrl("/latest"), {
             timeout: 5000,
@@ -80,11 +68,10 @@ function useCurrentWeather(intervalMs = 60_000) {
               temp_c: extras.temp_c ?? null,
               humidity_pct: extras.humidity_pct ?? null,
               condition: extras.weather_condition ?? null,
-              source: "latest-capture",
             });
           }
         } catch {
-          /* keep prior value */
+          /* keep prior */
         }
       }
     }
@@ -136,20 +123,24 @@ export default function TopBar({ onToggleSidebar }) {
     user?.adminName ||
     user?.name ||
     (user?.email ? user.email.split("@")[0] : "Admin");
-  const initials = (displayName || "A")
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((s) => s[0].toUpperCase())
-    .join("") || "A";
+  const initials =
+    (displayName || "A")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s) => s[0].toUpperCase())
+      .join("") || "A";
   const subtitle =
     user?.municipalCouncil ||
-    (user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Administrator");
+    (user?.role
+      ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+      : "Administrator");
 
   const weather = useCurrentWeather();
+  const alertCount = useAlertBadgeCount();
 
   const dateText = now.toLocaleDateString([], {
-    month: "long",
+    month: "short",
     day: "numeric",
     year: "numeric",
   });
@@ -157,16 +148,18 @@ export default function TopBar({ onToggleSidebar }) {
 
   const tempText = weather?.temp_c != null ? `${weather.temp_c}°C` : "—";
   const humText =
-    weather?.humidity_pct != null ? `${Math.round(weather.humidity_pct)}%` : "—";
+    weather?.humidity_pct != null
+      ? `${Math.round(weather.humidity_pct)}%`
+      : "—";
   const condText = weather?.condition || "—";
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4">
-      <div className="flex items-center gap-1 divide-x divide-slate-200">
+    <header className="relative z-20 flex min-h-[4rem] flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-950/90 px-4 py-2 backdrop-blur-md">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="mr-2 flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 hover:bg-slate-100"
+          className="mr-1 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800/80 hover:text-slate-200"
           aria-label="Toggle sidebar"
         >
           <Menu className="h-5 w-5" />
@@ -174,36 +167,39 @@ export default function TopBar({ onToggleSidebar }) {
 
         <StatChip icon={Calendar} label="Today" value={dateText} />
         <StatChip icon={Clock} label="Time" value={timeText} />
-        <StatChip icon={Thermometer} label="Temperature" value={tempText} />
+        <StatChip icon={Thermometer} label="Temp" value={tempText} />
         <StatChip icon={Droplets} label="Humidity" value={humText} />
-        <StatChip icon={CloudSun} label="Weather" value={condText} />
+        <StatChip icon={CloudSun} label="Weather" value={condText} sub="Colombo" />
       </div>
 
-      <div className="flex items-center gap-3 pl-3">
+      <div className="flex items-center gap-2 pl-2">
         <Link
           to="/litter-severity"
-          className="hidden md:inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-ink-800 hover:bg-slate-50 transition"
+          className="hidden items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:text-white md:inline-flex"
         >
           <ScanSearch className="h-4 w-4 shrink-0" />
-          Litter severity
+          Litter
         </Link>
         <Link
           to="/forecast"
-          className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100 transition"
+          className="hidden items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-sm font-semibold text-violet-300 transition hover:bg-violet-500/20 sm:inline-flex"
         >
           <TrendingUp className="h-4 w-4 shrink-0" />
           Tourism forecast
         </Link>
-        <button
-          type="button"
-          className="relative flex h-10 w-10 items-center justify-center rounded-lg text-ink-500 hover:bg-slate-100"
+
+        <Link
+          to="/alerts"
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800/80 bg-slate-900/60 text-slate-400 hover:text-slate-200"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
-            0
-          </span>
-        </button>
+          {alertCount > 0 ? (
+            <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {alertCount > 99 ? "99+" : alertCount}
+            </span>
+          ) : null}
+        </Link>
 
         <div className="relative" ref={menuRef}>
           <button
@@ -211,21 +207,21 @@ export default function TopBar({ onToggleSidebar }) {
             onClick={() => setMenuOpen((o) => !o)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="flex items-center gap-2 rounded-lg bg-slate-50 px-2 py-1.5 hover:bg-slate-100 transition"
+            className="flex items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-900/60 px-2 py-1.5 transition hover:border-slate-700"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-600 text-sm font-bold text-white shadow-glow-brand">
               {initials}
             </div>
-            <div className="leading-tight pr-1 text-left">
-              <div className="text-sm font-semibold text-ink-900 max-w-[10rem] truncate">
+            <div className="hidden leading-tight pr-1 text-left sm:block">
+              <div className="max-w-[10rem] truncate text-sm font-semibold text-slate-100">
                 {displayName}
               </div>
-              <div className="text-[11px] text-ink-400 max-w-[10rem] truncate">
+              <div className="max-w-[10rem] truncate text-[11px] text-slate-500">
                 {subtitle}
               </div>
             </div>
             <ChevronDown
-              className={`h-4 w-4 text-ink-400 transition-transform ${
+              className={`h-4 w-4 text-slate-500 transition-transform ${
                 menuOpen ? "rotate-180" : ""
               }`}
             />
@@ -234,39 +230,42 @@ export default function TopBar({ onToggleSidebar }) {
           {menuOpen ? (
             <div
               role="menu"
-              className="absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden z-40"
+              className="absolute right-0 z-40 mt-2 w-72 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900 shadow-card"
             >
-              <div className="px-4 py-3 border-b border-slate-100">
-                <div className="text-sm font-semibold text-ink-900 truncate">
+              <div className="border-b border-slate-800 px-4 py-3">
+                <div className="truncate text-sm font-semibold text-slate-100">
                   {displayName}
                 </div>
                 {user?.email ? (
-                  <div className="text-xs text-ink-500 truncate">{user.email}</div>
+                  <div className="truncate text-xs text-slate-500">
+                    {user.email}
+                  </div>
                 ) : null}
               </div>
 
-              {(user?.municipalCouncil || user?.coveredArea || user?.role) ? (
-                <div className="px-4 py-3 space-y-2 border-b border-slate-100">
+              {(user?.municipalCouncil || user?.coveredArea || user?.role) && (
+                <div className="space-y-2 border-b border-slate-800 px-4 py-3">
                   {user?.municipalCouncil ? (
-                    <ProfileRow icon={Building2} label="Council" value={user.municipalCouncil} />
+                    <ProfileRow
+                      icon={Building2}
+                      label="Council"
+                      value={user.municipalCouncil}
+                    />
                   ) : null}
                   {user?.coveredArea ? (
-                    <ProfileRow icon={UserIcon} label="Area" value={user.coveredArea} />
-                  ) : null}
-                  {user?.role ? (
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="inline-flex rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-700 uppercase tracking-wider">
-                        {user.role}
-                      </span>
-                    </div>
+                    <ProfileRow
+                      icon={UserIcon}
+                      label="Area"
+                      value={user.coveredArea}
+                    />
                   ) : null}
                 </div>
-              ) : null}
+              )}
 
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
                 role="menuitem"
               >
                 <LogOut className="h-4 w-4" />
@@ -283,12 +282,12 @@ export default function TopBar({ onToggleSidebar }) {
 function ProfileRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-2 text-xs">
-      <Icon className="h-3.5 w-3.5 text-ink-400 mt-0.5 shrink-0" />
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-ink-400">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">
           {label}
         </div>
-        <div className="text-ink-700 truncate">{value}</div>
+        <div className="truncate text-slate-300">{value}</div>
       </div>
     </div>
   );

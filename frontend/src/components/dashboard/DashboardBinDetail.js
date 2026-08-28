@@ -10,6 +10,8 @@ import {
   Wifi,
   Battery,
   AlertTriangle,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import Card from "./Card";
 import { apiUrl } from "../../utils/apiBase";
@@ -30,6 +32,18 @@ const TABS = [
   { id: "history", label: "History", icon: History },
   { id: "alerts", label: "Alerts", icon: Bell },
 ];
+
+function MetaRow({ icon: Icon, label, value, valueClass = "text-slate-200" }) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs">
+      <span className="flex items-center gap-1.5 text-slate-500">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </span>
+      <span className={`font-semibold ${valueClass}`}>{value}</span>
+    </div>
+  );
+}
 
 export default function DashboardBinDetail({ device, history }) {
   const [tab, setTab] = useState("overview");
@@ -59,6 +73,7 @@ export default function DashboardBinDetail({ device, history }) {
   const status = binStatusMeta(device);
   const imageUrl = `${apiUrl(`/devices/${device.id}/image/latest`)}?t=${encodeURIComponent(device.latest_captured_at || Date.now())}`;
   const online = device.camera_online;
+  const zone = device.location || device.address || "—";
 
   return (
     <Card className="min-h-[420px]" glow={status.tone === "danger"}>
@@ -71,7 +86,7 @@ export default function DashboardBinDetail({ device, history }) {
               ? "text-amber-400"
               : "text-brand-400"
         }
-        title={`${formatBinCode(device.id)}${device.name ? ` · ${device.name}` : ""}`}
+        title={formatBinCode(device.id)}
         right={
           <span
             className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STATUS_PILL[status.tone]}`}
@@ -80,6 +95,9 @@ export default function DashboardBinDetail({ device, history }) {
           </span>
         }
       />
+      <div className="mt-1 text-xs text-slate-500">
+        {device.name || zone}
+      </div>
 
       <div className="mt-3 flex flex-wrap gap-1 border-b border-slate-800/80 pb-2">
         {TABS.map(({ id, label, icon: Icon }) => (
@@ -88,7 +106,7 @@ export default function DashboardBinDetail({ device, history }) {
             type="button"
             onClick={() => setTab(id)}
             className={[
-              "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition",
+              "inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition",
               tab === id
                 ? "bg-brand-500/15 text-brand-400"
                 : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
@@ -101,99 +119,96 @@ export default function DashboardBinDetail({ device, history }) {
       </div>
 
       <Card.Body className="space-y-4">
-        {tab === "overview" || tab === "live" ? (
+        {(tab === "overview" || tab === "live") && (
           <>
-            <div className="flex items-end justify-between">
-              <div>
-                <div className="text-xs text-slate-500">Fill Level</div>
-                <div
-                  className={`text-4xl font-bold ${
-                    status.tone === "danger"
-                      ? "text-red-400"
-                      : status.tone === "warn"
-                        ? "text-amber-400"
-                        : "text-brand-400"
-                  }`}
-                >
-                  {pct != null ? `${pct}%` : "—"}
-                </div>
-              </div>
-              <div className="text-right text-xs text-slate-500">
-                <div>{device.location || "No location set"}</div>
-                <div className="mt-0.5">
-                  Updated {relativeFromNow(device.latest_captured_at)}
-                </div>
+            <div>
+              <div className="text-xs text-slate-500">Fill Level</div>
+              <div
+                className={`text-5xl font-bold tracking-tight ${
+                  status.tone === "danger"
+                    ? "text-red-400"
+                    : status.tone === "warn"
+                      ? "text-amber-400"
+                      : "text-brand-400"
+                }`}
+              >
+                {pct != null ? `${pct}%` : "—"}
               </div>
             </div>
 
+            <div className="space-y-2 rounded-xl border border-slate-800/60 bg-slate-950/40 p-3">
+              <MetaRow icon={MapPin} label="Zone" value={zone} />
+              <MetaRow
+                icon={Clock}
+                label="Last Updated"
+                value={relativeFromNow(device.latest_captured_at)}
+              />
+              <MetaRow
+                icon={Wifi}
+                label="Device Status"
+                value={online ? "Online" : "Offline"}
+                valueClass={online ? "text-brand-400" : "text-slate-500"}
+              />
+              {device.esp32_id ? (
+                <MetaRow
+                  icon={Battery}
+                  label="ESP32"
+                  value={device.esp32_id}
+                  valueClass="text-slate-300"
+                />
+              ) : null}
+            </div>
+
             <div>
-              <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
-                <span>Live Feed</span>
-                <span className="flex items-center gap-1">
-                  <Wifi
-                    className={`h-3 w-3 ${online ? "text-brand-400" : "text-slate-600"}`}
-                  />
-                  {online ? "Online" : "Offline"}
-                </span>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Live Feed
               </div>
               <div className="relative overflow-hidden rounded-xl border border-slate-800/80 bg-slate-950/80">
                 {device.latest_captured_at ? (
                   <img
                     src={imageUrl}
-                    alt={`${formatBinCode(device.id)} latest capture`}
-                    className="h-36 w-full object-cover"
+                    alt={`${formatBinCode(device.id)} camera`}
+                    className="h-40 w-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}
                   />
                 ) : (
-                  <div className="flex h-36 items-center justify-center text-sm text-slate-600">
+                  <div className="flex h-40 items-center justify-center text-sm text-slate-600">
                     No capture yet
                   </div>
                 )}
+                {online ? (
+                  <span className="absolute left-2 top-2 rounded-full border border-brand-500/40 bg-brand-500/20 px-2 py-0.5 text-[10px] font-bold text-brand-400">
+                    LIVE
+                  </span>
+                ) : null}
               </div>
-            </div>
-
-            <div className="flex gap-4 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Wifi
-                  className={`h-3.5 w-3.5 ${online ? "text-brand-400" : "text-slate-600"}`}
-                />
-                Device: {online ? "Online" : "Offline"}
-              </div>
-              {device.esp32_id ? (
-                <div className="flex items-center gap-1.5 text-slate-400">
-                  <Battery className="h-3.5 w-3.5 text-brand-400" />
-                  ESP32 · {device.esp32_id}
-                </div>
-              ) : null}
             </div>
           </>
-        ) : null}
+        )}
 
-        {tab === "analytics" ? (
-          <div className="py-6 text-center text-sm text-slate-500">
-            Open{" "}
+        {tab === "analytics" && (
+          <div className="py-8 text-center text-sm text-slate-500">
             <Link to="/reports" className="text-brand-400 hover:underline">
-              Reports
+              Open Reports
             </Link>{" "}
-            for full analytics on this bin.
+            for analytics.
           </div>
-        ) : null}
+        )}
 
-        {tab === "history" ? (
-          <div className="py-6 text-center text-sm text-slate-500">
+        {tab === "history" && (
+          <div className="py-8 text-center text-sm text-slate-500">
             <Link
               to={`/bins/${device.id}`}
               className="text-brand-400 hover:underline"
             >
-              View capture history
-            </Link>{" "}
-            on the bin detail page.
+              View full history
+            </Link>
           </div>
-        ) : null}
+        )}
 
-        {(tab === "overview" || tab === "alerts") && binAlerts.length > 0 ? (
+        {(tab === "overview" || tab === "alerts") && binAlerts.length > 0 && (
           <div>
             <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
               Recent Alerts
@@ -206,7 +221,9 @@ export default function DashboardBinDetail({ device, history }) {
                     key={`${a.title}-${i}`}
                     className={`flex items-start gap-2 rounded-lg px-2.5 py-2 ${tone.bg}`}
                   >
-                    <AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tone.fg}`} />
+                    <AlertTriangle
+                      className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tone.fg}`}
+                    />
                     <div className="min-w-0">
                       <div className={`text-xs font-semibold ${tone.fg}`}>
                         {a.title}
@@ -220,17 +237,19 @@ export default function DashboardBinDetail({ device, history }) {
               })}
             </ul>
           </div>
-        ) : tab === "alerts" && binAlerts.length === 0 ? (
+        )}
+
+        {tab === "alerts" && binAlerts.length === 0 && (
           <div className="py-8 text-center text-sm text-slate-500">
             No recent alerts for this bin.
           </div>
-        ) : null}
+        )}
       </Card.Body>
 
       <Card.Footer>
         <Link
           to={`/bins/${device.id}`}
-          className="inline-flex items-center gap-1 font-semibold text-brand-400 hover:text-brand-300"
+          className="inline-flex w-full items-center justify-center gap-1 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white shadow-glow-brand hover:bg-brand-500"
         >
           View Full Details
           <ChevronRight className="h-4 w-4" />

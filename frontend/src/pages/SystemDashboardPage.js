@@ -12,6 +12,7 @@ import useSystemSnapshot from "../hooks/useSystemSnapshot";
 import useCaptureHistory from "../hooks/useCaptureHistory";
 import useDevicesOverview from "../hooks/useDevicesOverview";
 import useAlertBadgeCount from "../hooks/useAlertBadgeCount";
+import useDashboardSettings from "../hooks/useDashboardSettings";
 import { binStatusMeta } from "../utils/dashboardBins";
 
 export default function SystemDashboardPage() {
@@ -19,6 +20,7 @@ export default function SystemDashboardPage() {
   const history = useCaptureHistory();
   const fleet = useDevicesOverview();
   const alertCount = useAlertBadgeCount();
+  const { heroUrl } = useDashboardSettings();
   const [selectedBinId, setSelectedBinId] = useState(null);
 
   const animalsToday = useMemo(() => {
@@ -106,6 +108,7 @@ export default function SystemDashboardPage() {
         devices={fleet.devices}
         alertCount={alertCount}
         animalsToday={animalsToday}
+        heroUrl={heroUrl}
       />
 
       <DashboardKpiRow
@@ -131,18 +134,22 @@ export default function SystemDashboardPage() {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-1">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-5">
           <LiveBinMapCard />
         </div>
-        <RecentAlertsCard
-          history={history.captures}
-          dbDisabled={history.dbDisabled}
-        />
-        <RiskTrend7dCard
-          history={history.last7d}
-          dbDisabled={history.dbDisabled}
-        />
+        <div className="lg:col-span-4">
+          <RecentAlertsCard
+            history={history.captures}
+            dbDisabled={history.dbDisabled}
+          />
+        </div>
+        <div className="lg:col-span-3">
+          <RiskTrend7dCard
+            history={history.last7d}
+            dbDisabled={history.dbDisabled}
+          />
+        </div>
       </div>
     </DashboardLayout>
   );

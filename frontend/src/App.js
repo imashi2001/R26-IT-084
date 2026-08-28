@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import MapPage from "./pages/MapPage";
 import BinDetailPage from "./pages/BinDetailPage";
+import DashboardSettingsPage from "./pages/DashboardSettingsPage";
 import AdminPage from "./pages/AdminPage";
 import HygienicRiskDashboardPage from "./pages/HygienicRiskDashboardPage";
 import MobileReportPage from "./pages/MobileReportPage";
@@ -143,7 +144,11 @@ export default function App() {
               </LegacyShell>
             )}
           />
-          <Route path="/admin" element={legacyProtected(AdminPage)} />
+          <Route path="/admin" element={protectedShell(<DashboardSettingsPage />)} />
+          <Route
+            path="/admin/bins"
+            element={legacyProtected(AdminPage)}
+          />
 
           {/* ---- Stub routes (sidebar placeholders) ---- */}
           <Route

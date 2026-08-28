@@ -37,8 +37,23 @@ function requireAuth(req, res, next) {
       role: payload.role,
     };
     return next();
-  } catch {
-    return res.status(401).json({ error: "Invalid or expired token" });
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({
+        error: "Session expired. Please sign in again.",
+        code: "token_expired",
+      });
+    }
+    if (err.name === "JsonWebTokenError") {
+      return res.status(401).json({
+        error: "Invalid token. Please sign in again.",
+        code: "token_invalid",
+      });
+    }
+    return res.status(401).json({
+      error: "Invalid or expired token",
+      code: "token_error",
+    });
   }
 }
 

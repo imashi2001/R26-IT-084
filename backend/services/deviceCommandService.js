@@ -7,6 +7,7 @@ const { Op } = require("sequelize");
 
 const db = require("../config/db");
 const modelsRegistry = require("../models");
+const { AUDIO_TRIGGER_COOLDOWN_MS } = require("../config/env");
 
 const ACTIVE_STATUSES = ["pending", "sent"];
 
@@ -63,6 +64,36 @@ async function cancelActiveCommands(esp32Id, reason) {
     }
   );
   return count;
+}
+
+/**
+ * Skip auto PLAY_AUDIO if a command is already in flight or played recently.
+ */
+async function shouldSkipAutoPlay(esp32IdRaw) {
+  const models = ensureModels();
+  if (!models) return true;
+  const { DeviceCommand } = models;
+  const esp32Id = String(esp32IdRaw || "").trim();
+  if (!esp32Id) return true;
+
+  const active = await DeviceCommand.findOne({
+    where: {
+      esp32_id: esp32Id,
+      status: { [Op.in]: ACTIVE_STATUSES },
+    },
+  });
+  if (active) return true;
+
+  const since = new Date(Date.now() - AUDIO_TRIGGER_COOLDOWN_MS);
+  const recent = await DeviceCommand.findOne({
+    where: {
+      esp32_id: esp32Id,
+      command: "PLAY_AUDIO",
+      created_at: { [Op.gte]: since },
+    },
+    order: [["created_at", "DESC"]],
+  });
+  return Boolean(recent);
 }
 
 async function createPlayAudioCommand(device, { track = 1 } = {}) {
@@ -244,6 +275,7 @@ async function getCommandById(commandId) {
 }
 
 module.exports = {
+  shouldSkipAutoPlay,
   createPlayAudioCommand,
   createStopAudioCommand,
   pollNextCommand,

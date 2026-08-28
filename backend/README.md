@@ -165,6 +165,18 @@ Play: `{ "command_id", "command": "PLAY_AUDIO", "track": 1 }`.
 
 Stop: `{ "command_id", "command": "STOP_AUDIO", "track": null }`.
 
+**Auto audio after `/predict`** (ESP32 uploads with `source_type=esp32`, env `AUTO_AUDIO_ON_PREDICT=true`):
+
+| Risk level | DFPlayer track |
+|------------|----------------|
+| HIGH | 2 → `/MP3/0002.mp3` |
+| CRITICAL | 3 → `/MP3/0003.mp3` |
+| LOW / MEDIUM | no auto queue |
+
+Cooldown: `AUDIO_TRIGGER_COOLDOWN_SECONDS` (default 60) per `esp32_id`. Manual **Test Audio** still queues track 1 via `POST /devices/:id/audio-test`.
+
+Direct ESP32 `/predict` uploads bypass `devices.bridge_instance_id` laptop lock when `source_type=esp32` (same as mobile/admin).
+
 Appendix — additive columns if you manage schema manually (Postgres):
 
 ```sql

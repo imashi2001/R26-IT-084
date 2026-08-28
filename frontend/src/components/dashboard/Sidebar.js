@@ -107,6 +107,25 @@ function useSystemHealth(intervalMs = 30_000) {
   return state;
 }
 
+function PromoFooter() {
+  return (
+    <div className="mx-3 mb-3 overflow-hidden rounded-xl border border-brand-500/20 bg-gradient-to-br from-brand-500/10 via-slate-900/80 to-slate-950 p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-emerald-700 shadow-glow-brand">
+          <Trash2 className="h-6 w-6 text-white" />
+        </div>
+        <div>
+          <div className="text-sm font-bold text-white">Cleaner City,</div>
+          <div className="text-sm font-bold text-brand-400">Better Tomorrow</div>
+          <div className="mt-1 text-[10px] text-slate-500">
+            Smart waste for sustainable cities
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatusFooter() {
   const { status, label, detail } = useSystemHealth();
 
@@ -209,6 +228,7 @@ export default function Sidebar() {
         </ul>
       </nav>
 
+      <PromoFooter />
       <StatusFooter />
     </aside>
   );

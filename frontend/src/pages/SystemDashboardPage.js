@@ -1,33 +1,63 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
-import LatestCaptureCard from "../components/dashboard/cards/LatestCaptureCard";
-import BinFillLevelCard from "../components/dashboard/cards/BinFillLevelCard";
-import WasteClassificationCard from "../components/dashboard/cards/WasteClassificationCard";
-import AnimalDetectionCard from "../components/dashboard/cards/AnimalDetectionCard";
-import HygienicRiskLevelCard from "../components/dashboard/cards/HygienicRiskLevelCard";
-import RottingPredictionCard from "../components/dashboard/cards/RottingPredictionCard";
-import EnvironmentalConditionsCard from "../components/dashboard/cards/EnvironmentalConditionsCard";
-import NextCollectionCard from "../components/dashboard/cards/NextCollectionCard";
+import DashboardHero from "../components/dashboard/DashboardHero";
+import DashboardKpiRow from "../components/dashboard/DashboardKpiRow";
+import DashboardBinsTable from "../components/dashboard/DashboardBinsTable";
+import DashboardBinDetail from "../components/dashboard/DashboardBinDetail";
 import LiveBinMapCard from "../components/dashboard/cards/LiveBinMapCard";
 import RecentAlertsCard from "../components/dashboard/cards/RecentAlertsCard";
 import RiskTrend7dCard from "../components/dashboard/cards/RiskTrend7dCard";
 import useSystemSnapshot from "../hooks/useSystemSnapshot";
 import useCaptureHistory from "../hooks/useCaptureHistory";
+import useDevicesOverview from "../hooks/useDevicesOverview";
+import useAlertBadgeCount from "../hooks/useAlertBadgeCount";
+import { binStatusMeta } from "../utils/dashboardBins";
 
 export default function SystemDashboardPage() {
   const { data: snapshot, loading, error, stale, refresh } = useSystemSnapshot();
   const history = useCaptureHistory();
+  const fleet = useDevicesOverview();
+  const alertCount = useAlertBadgeCount();
+  const [selectedBinId, setSelectedBinId] = useState(null);
+
+  const animalsToday = useMemo(() => {
+    const today = new Date();
+    return (history.captures || []).filter((c) => {
+      const t = new Date(c.captured_at);
+      return (
+        t.getFullYear() === today.getFullYear() &&
+        t.getMonth() === today.getMonth() &&
+        t.getDate() === today.getDate() &&
+        (c.animal_count || 0) > 0
+      );
+    }).length;
+  }, [history.captures]);
+
+  const selectedDevice = useMemo(() => {
+    if (selectedBinId == null) return null;
+    return (fleet.devices || []).find((d) => d.id === selectedBinId) || null;
+  }, [fleet.devices, selectedBinId]);
+
+  useEffect(() => {
+    if (selectedBinId != null) return;
+    const urgent = (fleet.devices || []).find((d) => {
+      const s = binStatusMeta(d);
+      return s.tone === "danger" || s.tone === "warn";
+    });
+    const pick = urgent || fleet.devices?.[0];
+    if (pick?.id != null) setSelectedBinId(pick.id);
+  }, [fleet.devices, selectedBinId]);
 
   const banner = useMemo(() => {
-    if (loading) return null;
+    if (loading && !snapshot) return null;
     if (error) {
       return {
         tone: "error",
         text: `Backend error: ${error}. Will retry automatically.`,
       };
     }
-    if (!snapshot) {
+    if (!snapshot && !fleet.devices?.length) {
       return {
         tone: "info",
         text: "No capture received yet. Send an image from the ESP32-CAM or POST /predict.",
@@ -36,11 +66,11 @@ export default function SystemDashboardPage() {
     if (stale) {
       return {
         tone: "warn",
-        text: "Snapshot is stale — waiting for a fresh capture from the field device.",
+        text: "Latest snapshot is stale — waiting for a fresh field capture.",
       };
     }
     return null;
-  }, [loading, error, snapshot, stale]);
+  }, [loading, error, snapshot, stale, fleet.devices]);
 
   return (
     <DashboardLayout>
@@ -60,7 +90,11 @@ export default function SystemDashboardPage() {
           </div>
           <button
             type="button"
-            onClick={refresh}
+            onClick={() => {
+              refresh();
+              fleet.refresh();
+              history.refresh();
+            }}
             className="inline-flex items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
           >
             <RefreshCw className="h-3 w-3" /> Refresh
@@ -68,26 +102,37 @@ export default function SystemDashboardPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <LatestCaptureCard snapshot={snapshot} stale={stale} />
-        <BinFillLevelCard snapshot={snapshot} />
-        <WasteClassificationCard snapshot={snapshot} />
-        <AnimalDetectionCard snapshot={snapshot} />
+      <DashboardHero
+        devices={fleet.devices}
+        alertCount={alertCount}
+        animalsToday={animalsToday}
+      />
+
+      <DashboardKpiRow
+        devices={fleet.devices}
+        history={history.captures}
+      />
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <DashboardBinsTable
+            devices={fleet.devices}
+            loading={fleet.loading}
+            dbDisabled={fleet.dbDisabled}
+            selectedId={selectedBinId}
+            onSelect={setSelectedBinId}
+          />
+        </div>
+        <div className="xl:col-span-2">
+          <DashboardBinDetail
+            device={selectedDevice}
+            history={history.captures}
+          />
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <HygienicRiskLevelCard snapshot={snapshot} />
-        <RottingPredictionCard snapshot={snapshot} />
-        <EnvironmentalConditionsCard
-          snapshot={snapshot}
-          history={history.last24h}
-          dbDisabled={history.dbDisabled}
-        />
-        <NextCollectionCard snapshot={snapshot} />
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3 xl:grid-cols-4">
-        <div className="lg:col-span-2 xl:col-span-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-1">
           <LiveBinMapCard />
         </div>
         <RecentAlertsCard

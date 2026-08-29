@@ -530,75 +530,69 @@ export default function BinStatusPage() {
           <div className="space-y-5">
             <Card>
               <Card.Header
-                icon={Search}
-                title="Search & filters"
-                right={
-                  query || statusFilter !== "all" || fillFilter !== "all" || riskFilter !== "all" ? (
-                    <button
-                      type="button"
-                      onClick={clearFilters}
-                      className={btnGhost}
-                    >
-                      <XCircle className="h-3 w-3" />
-                      Clear
-                    </button>
-                  ) : null
-                }
-              />
-              <Card.Body className="space-y-3">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by name, ESP32 ID, location, address…"
-                    className={`${inputClass.replace("mt-1 ", "")} pl-9`}
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <SelectField
-                    label="Status"
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    options={[
-                      { id: "all", label: "All statuses" },
-                      ...STATUS_OPTIONS.map((s) => ({ id: s, label: s })),
-                    ]}
-                  />
-                  <SelectField
-                    label="Fill"
-                    value={fillFilter}
-                    onChange={setFillFilter}
-                    options={FILL_FILTERS}
-                  />
-                  <SelectField
-                    label="Risk"
-                    value={riskFilter}
-                    onChange={setRiskFilter}
-                    options={RISK_FILTERS}
-                  />
-                  <SelectField
-                    label="Sort"
-                    value={sortBy}
-                    onChange={setSortBy}
-                    options={SORT_OPTIONS}
-                  />
-                </div>
-              </Card.Body>
-            </Card>
-
-            <Card>
-              <Card.Header
                 icon={Database}
                 title={editingId ? "Bins" : "Bin registry"}
+                subtitle="Search and filter the list — edit or add bins using the panel on the right."
                 right={
-                  <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    {filtered.length} / {devices.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {query ||
+                    statusFilter !== "all" ||
+                    fillFilter !== "all" ||
+                    riskFilter !== "all" ? (
+                      <button type="button" onClick={clearFilters} className={btnGhost}>
+                        <XCircle className="h-3 w-3" />
+                        Clear
+                      </button>
+                    ) : null}
+                    <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      {filtered.length} / {devices.length}
+                    </span>
+                  </div>
                 }
               />
-              <Card.Body className="!mt-2">
+              <Card.Body className="!mt-2 space-y-3">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                  <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-950/50 px-3 py-2">
+                    <Search className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type="search"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search bins…"
+                      className="w-full border-0 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <CompactFilterSelect
+                      label="Status"
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                      options={[
+                        { id: "all", label: "All statuses" },
+                        ...STATUS_OPTIONS.map((s) => ({ id: s, label: s })),
+                      ]}
+                    />
+                    <CompactFilterSelect
+                      label="Fill"
+                      value={fillFilter}
+                      onChange={setFillFilter}
+                      options={FILL_FILTERS}
+                    />
+                    <CompactFilterSelect
+                      label="Risk"
+                      value={riskFilter}
+                      onChange={setRiskFilter}
+                      options={RISK_FILTERS}
+                    />
+                    <CompactFilterSelect
+                      label="Sort"
+                      value={sortBy}
+                      onChange={setSortBy}
+                      options={SORT_OPTIONS}
+                    />
+                  </div>
+                </div>
+
                 {loading ? (
                   <ListSkeleton />
                 ) : devices.length === 0 ? (
@@ -1189,6 +1183,26 @@ function BinRow({
         </div>
       </div>
     </li>
+  );
+}
+
+function CompactFilterSelect({ label, value, onChange, options }) {
+  return (
+    <label className="flex items-center gap-1.5 rounded-xl border border-slate-800/80 bg-slate-950/50 px-2 py-1.5 text-xs text-slate-400">
+      <span className="hidden sm:inline">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        className="max-w-[8.5rem] border-0 bg-transparent text-slate-300 outline-none sm:max-w-none"
+      >
+        {options.map((opt) => (
+          <option key={opt.id} value={opt.id} className="bg-slate-900">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

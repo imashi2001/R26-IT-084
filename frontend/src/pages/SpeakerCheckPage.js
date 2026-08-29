@@ -22,7 +22,7 @@ export default function SpeakerCheckPage() {
   const [msgs, setMsgs] = useState({});
   const [audioMsgs, setAudioMsgs] = useState({});
   const [busyId, setBusyId] = useState(null);
-  const [audioBusyId, setAudioBusyId] = useState(null);
+  const [audioBusyKey, setAudioBusyKey] = useState(null);
   const [stopBusyId, setStopBusyId] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -72,14 +72,16 @@ export default function SpeakerCheckPage() {
     }
   };
 
-  const onTestAudio = async (d) => {
+  const onTestAudio = async (d, track = 1) => {
     if (!d?.esp32_id) return;
-    setAudioBusyId(d.id);
+    const busyKey = `${d.id}:${track}`;
+    setAudioBusyKey(busyKey);
     setAudioMsgs((m) => ({ ...m, [d.id]: null }));
     try {
       await runRemoteAudioTest({
         authFetch,
         deviceId: d.id,
+        track,
         onStatus: (msg) => setAudioMsgs((m) => ({ ...m, [d.id]: msg })),
       });
       loadDevices();
@@ -89,7 +91,7 @@ export default function SpeakerCheckPage() {
         [d.id]: e.message || "Audio test failed.",
       }));
     } finally {
-      setAudioBusyId(null);
+      setAudioBusyKey(null);
     }
   };
 
@@ -111,7 +113,7 @@ export default function SpeakerCheckPage() {
       }));
     } finally {
       setStopBusyId(null);
-      setAudioBusyId(null);
+      setAudioBusyKey(null);
     }
   };
 
@@ -153,10 +155,11 @@ export default function SpeakerCheckPage() {
               <code>/speaker/test</code> (PCM5102 / legacy).
             </li>
             <li>
-              <strong>Test Audio</strong> — queues{" "}
-              <code>PLAY_AUDIO</code> track 1; ESP32 polls{" "}
+              <strong>Test Audio 0001 / 0002</strong> — queues{" "}
+              <code>PLAY_AUDIO</code> track 1 or 2; ESP32 polls{" "}
               <code>/devices/commands?esp32_id=…</code> and plays{" "}
-              <code>/MP3/0001.mp3</code> on the DFPlayer (no bridge required).
+              <code>/MP3/0001.mp3</code> or <code>/MP3/0002.mp3</code> on the
+              DFPlayer (0002 = HIGH risk alert, no bridge required).
             </li>
             <li>
               <strong>Stop</strong> — queues <code>STOP_AUDIO</code>; ESP32
@@ -263,14 +266,28 @@ export default function SpeakerCheckPage() {
                         disabled={
                           !isAdmin ||
                           !hasEsp32 ||
-                          audioBusyId === d.id ||
+                          audioBusyKey != null ||
                           stopBusyId === d.id
                         }
-                        onClick={() => onTestAudio(d)}
+                        onClick={() => onTestAudio(d, 1)}
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Volume2 className="h-4 w-4" aria-hidden />
-                        {audioBusyId === d.id ? "Testing…" : "Test Audio"}
+                        {audioBusyKey === `${d.id}:1` ? "Testing…" : "Test Audio 0001"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          !isAdmin ||
+                          !hasEsp32 ||
+                          audioBusyKey != null ||
+                          stopBusyId === d.id
+                        }
+                        onClick={() => onTestAudio(d, 2)}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Volume2 className="h-4 w-4" aria-hidden />
+                        {audioBusyKey === `${d.id}:2` ? "Testing…" : "Test Audio 0002"}
                       </button>
                       <button
                         type="button"

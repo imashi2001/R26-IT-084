@@ -40,17 +40,19 @@ async function waitForCommand({ authFetch, commandId, onStatus, successMsg }) {
 
 /**
  * Queue PLAY_AUDIO and poll until completed/failed/timeout.
- * @param {{ authFetch: Function, deviceId: number|string, onStatus?: (msg: string) => void }} opts
+ * @param {{ authFetch: Function, deviceId: number|string, track?: number, onStatus?: (msg: string) => void }} opts
  */
-export async function runRemoteAudioTest({ authFetch, deviceId, onStatus }) {
+export async function runRemoteAudioTest({ authFetch, deviceId, track = 1, onStatus }) {
   const say = (msg) => {
     if (typeof onStatus === "function") onStatus(msg);
   };
 
-  say("Sending audio test...");
+  const trackNum = Number.isFinite(Number(track)) ? Math.trunc(Number(track)) : 1;
+  const trackLabel = String(trackNum).padStart(4, "0");
+  say(`Sending audio test (${trackLabel})…`);
   const res = await authFetch(`/devices/${deviceId}/audio-test`, {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify({ track: trackNum }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
@@ -62,7 +64,7 @@ export async function runRemoteAudioTest({ authFetch, deviceId, onStatus }) {
     authFetch,
     commandId,
     onStatus,
-    successMsg: "Audio test completed successfully.",
+    successMsg: `Audio ${trackLabel} completed successfully.`,
   });
 }
 

@@ -68,7 +68,7 @@ litter_severity_detection/notebooks/.ipynb_checkpoints/
 
 # React / Node
 node_modules/
-frontend/build/
+frontend/dist/
 
 # Backend local
 backend/.env

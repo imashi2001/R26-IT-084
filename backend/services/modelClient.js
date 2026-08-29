@@ -218,7 +218,7 @@ async function inferAnimal({ fileBuffer, filename, mimetype }) {
   return normalizeAnimalPayload(data);
 }
 
-/** Litter severity microservice (YOLO + LSI). */
+/** Litter severity microservice (YOLO + LSI). Requires MODEL_LITTER_URL. */
 async function inferLitter({ fileBuffer, filename, mimetype }) {
   const base = getModelUrl("litter");
   if (!base) {

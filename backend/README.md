@@ -76,6 +76,8 @@ The backend works both **with** and **without** a database:
 | GET | /captures | Query `limit`, `offset`, optional **`device_id`** |
 | GET | /captures/:id | Capture metadata + predictions (`has_image` when JPEG stored; image blob omitted) |
 | GET | /captures/:id/image | Raw JPEG bytes for that capture row |
+| GET | /alerts | **JWT** — list alerts (auto-sync from recent captures); query **`status`** (`open` \| `acknowledged` \| `actioned` \| `rejected` \| `dismissed` \| `all`), **`limit`**, **`offset`** |
+| PATCH | /alerts/:id | **Admin JWT** — JSON **`{ status, admin_note? }`** to update workflow + audit note |
 | GET | /devices | All bins; add **`?latest=1`** for each bin’s resolved **`latest_fill_level`** / **`latest_fill_percentage`** (for dashboards without map coords) |
 | GET | /devices/map | Bins with coordinates + latest fill + image URL + latest source / fill % |
 | GET | /devices/nearest | Query `lat`, `lng`, `limit` |
@@ -86,6 +88,8 @@ The backend works both **with** and **without** a database:
 | POST | /devices | **Admin JWT** — create bin |
 | PATCH | /devices/:id | **Admin JWT** — update bin |
 | GET | /geo/search?q= | Nominatim proxy for admin UI |
+| GET | /api/waste-data | Query **`date`=`YYYY-MM-DD`** — holiday/long-weekend adjusted demo levels (`backend/holiday_cache.json`); **`geocode_cache`** in JSON mirrors **`backend/geocode_cache.json`** |
+| POST | /litter-severity | multipart **`image`** — proxies to litter microservice (**`MODEL_LITTER_URL`**); returns LSI, severity, detections, optional annotated JPEG |
 
 **`POST /predict` response — `animal`:** Each item in **`detections`** includes **`label`**, **`confidence`**, and **`box`** `[x1,y1,x2,y2]` (the gateway normalizes **`box_xyxy`** / **`class_name`** from the animal microservice). **`annotated_image_base64`** is a JPEG with bounding boxes rendered server-side (YOLO plot).
 
@@ -129,7 +133,8 @@ Multipart fields typical for the React **`/mobile-report`** flow:
 | Table | Key columns |
 |-------|-------------|
 | users | id, name, email, password_hash, role (`user` \| `admin`), timestamps |
-| devices | id, user_id, **name** (display “Bin name”), **esp32_id** (unique), **location** (“Location name”), address, latitude, longitude, **status** (`active` \| `inactive` \| `maintenance`), **bridge_instance_id** (optional laptop binding), timestamps |
+| devices | id, user_id, **name** (display “Bin name”), **esp32_id** (unique), **location** (“Location name”), address, latitude, longitude, **status** (`active` \| `inactive` \| `maintenance`), **bridge_instance_id** (optional laptop binding), **camera_base_url**, **pending_speaker_action**, **pending_speaker_at**, **last_seen_at** (ESP32 command poll), timestamps |
+| device_commands | **id** (UUID PK), **device_id**, **esp32_id**, **command** (e.g. `PLAY_AUDIO`), **track**, **status** (`pending` \| `sent` \| `completed` \| `failed`), **sent_at**, **completed_at**, **error_message**, timestamps |
 | captures | id, user_id, device_id, **bridge_instance_id**, image_url, image_buffer, image_mimetype, fill_level, model_name, captured_at, **source_type**, **latitude**, **longitude**, **fill_percentage**, **prediction_class**, waste_*, risk_*, weather fields, timestamps |
 | predictions | id, capture_id, label, confidence, box_x1..box_y2, timestamps |
 
@@ -137,19 +142,70 @@ Associations:
 
 - User 1—N Device, User 1—N Capture
 - Device 1—N Capture
+- Device 1—N DeviceCommand
 - Capture 1—N Prediction (cascade delete)
 
 Index on `(device_id, captured_at)` for latest-per-bin queries.
+
+### Remote audio test (ESP32 DFPlayer)
+
+Independent from the laptop-bridge speaker relay (`pending_speaker_*` / `/bridge/speaker-*`).
+
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/devices/:id/audio-test` | Admin JWT — queues `PLAY_AUDIO` track 1 |
+| POST | `/devices/:id/audio-stop` | Admin JWT — cancels pending commands, queues `STOP_AUDIO` |
+| GET | `/devices/commands?esp32_id=` | None — ESP32 poll; marks `pending`→`sent`; updates `last_seen_at` |
+| POST | `/devices/commands/:command_id/ack` | None — body `{ esp32_id, status: completed\|failed, error_message? }` |
+| GET | `/devices/commands/:command_id` | Admin JWT — status for dashboard UX |
+
+ESP32 response when idle: `{ "command": null }`.
+
+Play: `{ "command_id", "command": "PLAY_AUDIO", "track": 1 }`.
+
+Stop: `{ "command_id", "command": "STOP_AUDIO", "track": null }`.
+
+**Auto audio after `/predict`** (ESP32 uploads with `source_type=esp32`, env `AUTO_AUDIO_ON_PREDICT=true`):
+
+| Risk level | DFPlayer track |
+|------------|----------------|
+| HIGH | 2 → `/MP3/0002.mp3` |
+| CRITICAL | 3 → `/MP3/0003.mp3` |
+| LOW / MEDIUM | no auto queue |
+
+Cooldown: `AUDIO_TRIGGER_COOLDOWN_SECONDS` (default 60) per `esp32_id`. Manual **Test Audio** still queues track 1 via `POST /devices/:id/audio-test`.
+
+Direct ESP32 `/predict` uploads bypass `devices.bridge_instance_id` laptop lock when `source_type=esp32` (same as mobile/admin).
 
 Appendix — additive columns if you manage schema manually (Postgres):
 
 ```sql
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS status VARCHAR(255) DEFAULT 'active';
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS camera_base_url VARCHAR(255);
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS pending_speaker_action VARCHAR(16);
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS pending_speaker_at TIMESTAMPTZ;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS source_type VARCHAR(16);
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS fill_percentage DOUBLE PRECISION;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS prediction_class VARCHAR(160);
+
+CREATE TABLE IF NOT EXISTS device_commands (
+  id UUID PRIMARY KEY,
+  device_id INTEGER NOT NULL REFERENCES devices(id),
+  esp32_id VARCHAR(80) NOT NULL,
+  command VARCHAR(40) NOT NULL,
+  track INTEGER,
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  sent_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS device_commands_esp32_status_idx
+  ON device_commands (esp32_id, status, created_at);
 ```
 
 (Adjust lengths/types to match `backend/models`. Use **`DB_SYNC=true`** + **`DB_SYNC_ALTER=true`** once on Railway instead if preferred.)
@@ -165,6 +221,7 @@ See `.env.example`:
 | `MODEL_WASTE_URL` | `http://localhost:8001` | Waste classifier microservice; scheme added if omitted (except localhost) |
 | `MODEL_ANIMAL_URL` | `http://localhost:8002` | Animal / detection microservice |
 | `MODEL_YOLO_URL` | (empty) | Optional **`model-yolo`** bin-fill service (`POST /infer`, multipart **`image`**). When empty, **`bin_fill`** is omitted from **`inferAll`** |
+| `MODEL_LITTER_URL` | (empty) | Optional **`litter-severity-api`** (`POST /predict`, multipart **`file`** via gateway **`POST /litter-severity`** with **`image`**) |
 | `CORS_ORIGIN` | (empty) | Comma-separated allowed frontend origins; empty keeps permissive CORS |
 | `JWT_SECRET` | (empty) | Required for auth routes (min 8 chars recommended) |
 | `JWT_EXPIRES_IN` | `7d` | JWT expiry passed to `jsonwebtoken` |
@@ -196,7 +253,7 @@ Start the **waste** and **animal** FastAPI services (see repo `services/waste-ap
 - Root directory: `backend`
 - Start command: `npm start`
 - Variables:
-  - **`MODEL_WASTE_URL`**, **`MODEL_ANIMAL_URL`**, optional **`MODEL_YOLO_URL`** → public URLs of the deployed model services
+  - **`MODEL_WASTE_URL`**, **`MODEL_ANIMAL_URL`**, optional **`MODEL_YOLO_URL`**, optional **`MODEL_LITTER_URL`** → public URLs of the deployed model services
   - `DATABASE_URL` → referenced from Railway Postgres plugin
   - `JWT_SECRET` → random secret string
   - `DB_SYNC=true` only on first deploy to create tables; turn off afterwards

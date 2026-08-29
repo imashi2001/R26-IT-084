@@ -66,8 +66,32 @@ export default function computeRiskScore(extras) {
 }
 
 export const RISK_TONE = {
-  low: { ring: "#22c55e", chipBg: "bg-brand-50", chipFg: "text-brand-700", barBg: "bg-brand-500" },
-  medium: { ring: "#f59e0b", chipBg: "bg-amber-50", chipFg: "text-amber-700", barBg: "bg-amber-500" },
-  high: { ring: "#ef4444", chipBg: "bg-red-50", chipFg: "text-red-700", barBg: "bg-red-500" },
-  critical: { ring: "#b91c1c", chipBg: "bg-red-100", chipFg: "text-red-800", barBg: "bg-red-700" },
+  low: {
+    ring: "#22c55e",
+    chipBg: "bg-brand-500/15 border border-brand-500/30",
+    chipFg: "text-brand-400",
+    barBg: "bg-brand-500",
+    trackBg: "bg-slate-700/80",
+  },
+  medium: {
+    ring: "#f59e0b",
+    chipBg: "bg-amber-500/15 border border-amber-500/30",
+    chipFg: "text-amber-400",
+    barBg: "bg-amber-500",
+    trackBg: "bg-slate-700/80",
+  },
+  high: {
+    ring: "#ef4444",
+    chipBg: "bg-red-500/15 border border-red-500/30",
+    chipFg: "text-red-400",
+    barBg: "bg-red-500",
+    trackBg: "bg-slate-700/80",
+  },
+  critical: {
+    ring: "#f87171",
+    chipBg: "bg-red-600/20 border border-red-500/40",
+    chipFg: "text-red-300",
+    barBg: "bg-red-600",
+    trackBg: "bg-slate-700/80",
+  },
 };

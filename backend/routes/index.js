@@ -7,8 +7,13 @@ const latestRoutes = require("./latest.routes");
 const authRoutes = require("./auth.routes");
 const devicesRoutes = require("./devices.routes");
 const geoRoutes = require("./geo.routes");
+const wasteDataRoutes = require("./wastedata.routes");
 const forecastRoutes = require("./forecast.routes");
+const weatherRoutes = require("./weather.routes");
+const alertsRoutes = require("./alerts.routes");
 const litterRoutes = require("./litter.routes");
+const bridgeRoutes = require("./bridge.routes");
+const dashboardSettingsRoutes = require("./dashboardSettings.routes");
 
 const router = Router();
 
@@ -21,24 +26,39 @@ router.get("/", (_req, res) => {
       "POST /predict (multipart: image, bridge_instance_id, optional esp32_id/device_id, source_type, lat/lon, optional model=waste|animal|yolo|fill|bin_fill|all)",
     forecast:
       "GET /forecast?lat=&lon=&hours=24, GET /forecast/:deviceId?hours=24",
+    weather:
+      "GET /weather?lat=&lng= (or ?device_id=) — current temp/humidity/condition",
     captures: "GET /captures, GET /captures/:id, GET /captures/:id/image",
+    alerts: "GET /alerts?status=open|acknowledged|actioned|rejected|dismissed|all, PATCH /alerts/:id (admin)",
     devices:
-      "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures",
+      "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures, POST /devices/:id/speaker-test (admin, laptop bridge), POST /devices/:id/audio-test (admin, ESP32 DFPlayer queue), POST /devices/:id/audio-stop (admin, stop DFPlayer), GET /devices/commands?esp32_id=, POST /devices/commands/:command_id/ack, GET /devices/commands/:command_id (admin)",
+    bridge:
+      "GET /bridge/speaker-pending?bridge_instance_id=&esp32_id=, POST /bridge/speaker-ack",
     geo: "GET /geo/search?q=",
     latest: "GET /latest (JSON) and GET /latest/image (jpeg)",
+    waste_data:
+      "GET /api/waste-data?date=YYYY-MM-DD — tourism demo fills (holiday_cache.json + geocode_cache.json)",
     litter_severity:
-      "POST /litter-severity (multipart: image) — requires MODEL_LITTER_URL litter microservice",
+      "POST /litter-severity (multipart: image) — requires MODEL_LITTER_URL (litter microservice)",
+    dashboard:
+      "GET /dashboard/settings, POST /dashboard/settings/hero (admin), DELETE /dashboard/settings/hero (admin), POST /dashboard/settings/promo (admin), DELETE /dashboard/settings/promo (admin)",
   });
 });
+
+router.use("/dashboard", dashboardSettingsRoutes);
 
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
 router.use("/devices", devicesRoutes);
+router.use("/bridge", bridgeRoutes);
 router.use("/geo", geoRoutes);
+router.use("/api/waste-data", wasteDataRoutes);
 router.use("/predict", predictRoutes);
 router.use("/captures", captureRoutes);
 router.use("/latest", latestRoutes);
 router.use("/forecast", forecastRoutes);
+router.use("/weather", weatherRoutes);
+router.use("/alerts", alertsRoutes);
 router.use("/litter-severity", litterRoutes);
 
 module.exports = router;

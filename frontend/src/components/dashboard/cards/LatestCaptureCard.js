@@ -1,27 +1,18 @@
 import { Camera, Radio, ImageOff } from "lucide-react";
 import Card from "../Card";
-
-/*
- * Latest Capture (ESP32-CAM) card.
- *
- * - Uses the relative imageUrl from useSystemSnapshot so the CRA dev proxy
- *   forwards the GET to the Express /latest/image endpoint.
- * - Shows a green "Live" pill when stale === false (capture seen this poll).
- * - Falls back to a placeholder when there is no capture yet (404 case).
- */
+import { badge } from "../dashboardTheme";
 
 function formatBinId(deviceId) {
   if (deviceId == null) return "BIN—";
   const num = Number(deviceId);
-  if (!Number.isFinite(num)) return `BIN${deviceId}`;
-  return `BIN${String(num).padStart(3, "0")}`;
+  if (!Number.isFinite(num)) return String(deviceId);
+  return `BIN-${String(num).padStart(2, "0")}`;
 }
 
 function formatTimestamp(iso) {
   if (!iso) return "";
   try {
-    const d = new Date(iso);
-    return d.toLocaleString([], {
+    return new Date(iso).toLocaleString([], {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -38,44 +29,49 @@ export default function LatestCaptureCard({ snapshot, stale }) {
   const timeLabel = formatTimestamp(snapshot?.timestamp);
 
   return (
-    <Card>
+    <Card glow={hasImage && !stale}>
       <Card.Header
         icon={Camera}
-        title="Latest Capture (ESP32-CAM)"
+        title="Live Capture"
         right={
           hasImage && !stale ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+            <span className={badge.live}>
               <Radio className="h-3 w-3" />
-              Live
+              LIVE
             </span>
           ) : hasImage ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-              Stale
-            </span>
+            <span className={badge.stale}>Stale</span>
           ) : null
         }
       />
 
       <Card.Body className="flex flex-col gap-2">
-        <div className="relative h-32 w-full overflow-hidden rounded-lg bg-slate-100">
+        <div className="relative h-36 w-full overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950/80">
           {hasImage ? (
-            <img
-              alt="latest capture"
-              src={snapshot.imageUrl}
-              className="h-full w-full object-cover"
-            />
+            <>
+              <img
+                alt="Live ESP32 capture"
+                src={snapshot.imageUrl}
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-400">
+                  ESP32-CAM
+                </span>
+              </div>
+            </>
           ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-400">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-slate-500">
               <ImageOff className="h-6 w-6" />
-              <span className="text-[11px]">No capture yet</span>
+              <span className="text-[11px]">Waiting for capture…</span>
             </div>
           )}
         </div>
       </Card.Body>
 
       <Card.Footer>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-ink-700">{binLabel}</span>
+        <div className="flex items-center justify-between text-slate-400">
+          <span className="font-medium text-slate-300">{binLabel}</span>
           <span>{timeLabel || "—"}</span>
         </div>
       </Card.Footer>

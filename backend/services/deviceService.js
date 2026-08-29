@@ -46,7 +46,11 @@ async function updateDevice(id, patch) {
   return row.toJSON();
 }
 
-async function findDeviceIdForPredict(esp32Id, incomingBridgeRaw) {
+async function findDeviceIdForPredict(
+  esp32Id,
+  incomingBridgeRaw,
+  { bypassBridgeCheck = false } = {}
+) {
   const models = ensureModels();
   if (!models || !esp32Id) return null;
 
@@ -63,12 +67,68 @@ async function findDeviceIdForPredict(esp32Id, incomingBridgeRaw) {
     ? String(row.bridge_instance_id).trim()
     : "";
 
-  // Bin locked to a laptop: incoming bridge must match.
-  if (bound && bound !== incoming) {
+  // Bin locked to a laptop: incoming bridge must match (unless direct ESP32/mobile/admin).
+  if (bound && bound !== incoming && !bypassBridgeCheck) {
     return null;
   }
 
   return row.id;
+}
+
+async function findDeviceByEsp32Id(esp32Id) {
+  const models = ensureModels();
+  if (!models || !esp32Id) return null;
+  const { Device } = models;
+  const row = await Device.findOne({
+    where: { esp32_id: String(esp32Id).trim() },
+  });
+  return row ? row.toJSON() : null;
+}
+
+/**
+ * Find a device with a pending speaker action for this laptop + optional esp32_id.
+ */
+async function findPendingSpeakerCommand({ bridgeInstanceId, esp32Id }) {
+  const models = ensureModels();
+  if (!models) return null;
+  const { Device } = models;
+
+  const where = {
+    pending_speaker_action: { [Op.in]: ["test", "alarm"] },
+  };
+  if (esp32Id) {
+    where.esp32_id = String(esp32Id).trim();
+  }
+  if (bridgeInstanceId) {
+    const bridge = String(bridgeInstanceId).trim();
+    where[Op.or] = [
+      { bridge_instance_id: null },
+      { bridge_instance_id: "" },
+      { bridge_instance_id: bridge },
+    ];
+  }
+
+  const row = await Device.findOne({
+    where,
+    order: [["pending_speaker_at", "ASC"]],
+  });
+  return row ? row.toJSON() : null;
+}
+
+async function clearPendingSpeakerAction(deviceId) {
+  return updateDevice(deviceId, {
+    pending_speaker_action: null,
+    pending_speaker_at: null,
+  });
+}
+
+async function enqueueSpeakerAction(deviceId, action) {
+  const a = String(action || "").trim().toLowerCase();
+  if (a !== "test" && a !== "alarm") return null;
+  return updateDevice(deviceId, {
+    pending_speaker_action: a,
+    pending_speaker_at: new Date(),
+  });
 }
 
 async function getLatestCaptureForDevice(deviceId) {
@@ -111,6 +171,10 @@ module.exports = {
   createDevice,
   updateDevice,
   findDeviceIdForPredict,
+  findDeviceByEsp32Id,
+  findPendingSpeakerCommand,
+  clearPendingSpeakerAction,
+  enqueueSpeakerAction,
   getLatestCaptureForDevice,
   listDevicesWithCoordinates,
 };

@@ -2,6 +2,8 @@
  * captureService - persistence helper for image captures and their predictions.
  */
 
+const { Op } = require("sequelize");
+
 const db = require("../config/db");
 const modelsRegistry = require("../models");
 
@@ -71,6 +73,8 @@ async function listCaptures({
   offset = 0,
   userId = null,
   deviceId = null,
+  since = null,
+  until = null,
 } = {}) {
   const models = ensureModels();
   if (!models) return [];
@@ -81,6 +85,17 @@ async function listCaptures({
   if (userId !== null) where.user_id = userId;
   if (deviceId !== null && Number.isFinite(Number(deviceId))) {
     where.device_id = Number(deviceId);
+  }
+
+  const range = {};
+  if (since instanceof Date && !Number.isNaN(since.getTime())) {
+    range[Op.gte] = since;
+  }
+  if (until instanceof Date && !Number.isNaN(until.getTime())) {
+    range[Op.lte] = until;
+  }
+  if (Object.getOwnPropertySymbols(range).length > 0) {
+    where.captured_at = range;
   }
 
   const rows = await Capture.findAll({

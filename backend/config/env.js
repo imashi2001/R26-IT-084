@@ -24,7 +24,8 @@ const MODEL_YOLO_URL_RAW = process.env.MODEL_YOLO_URL || "";
 const MODEL_LITTER_URL_RAW = process.env.MODEL_LITTER_URL || "";
 
 /**
- * FastAPI microservices (waste, animal, litter) plus optional Flask model-yolo for bin fill.
+ * FastAPI services (waste, animal) plus optional Flask model-yolo (bin fill)
+ * and optional litter-severity-api (YOLO + LSI).
  */
 const MODEL_REGISTRY = {
   waste: normalizeModelServiceUrl(
@@ -92,4 +93,14 @@ module.exports = {
   DEFAULT_WEATHER_LON: parseFloatSafe(process.env.DEFAULT_WEATHER_LON, 79.8612),
   HIGH_TEMP_C: parseFloatSafe(process.env.HIGH_TEMP_C, 30),
   HIGH_HUMIDITY_PCT: parseFloatSafe(process.env.HIGH_HUMIDITY_PCT, 70),
+
+  /** Queue PLAY_AUDIO after /predict for ESP32 uploads when risk is HIGH/CRITICAL. */
+  AUTO_AUDIO_ON_PREDICT:
+    String(process.env.AUTO_AUDIO_ON_PREDICT ?? "true").toLowerCase() !==
+    "false",
+  AUDIO_TRIGGER_COOLDOWN_MS:
+    Math.max(
+      5,
+      Number(process.env.AUDIO_TRIGGER_COOLDOWN_SECONDS || 60) || 60
+    ) * 1000,
 };

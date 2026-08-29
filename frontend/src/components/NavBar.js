@@ -26,6 +26,9 @@ export default function NavBar() {
         <NavLink className="nav-link" to="/admin">
           Admin
         </NavLink>
+        <NavLink className="nav-link" to="/speaker">
+          Speaker check
+        </NavLink>
         {user && (
           <button type="button" className="btn btn-secondary nav-logout" onClick={logout}>
             Log out ({user.email})

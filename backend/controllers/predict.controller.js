@@ -34,6 +34,7 @@ const modelClient = require("../services/modelClient");
 const captureService = require("../services/captureService");
 const latestState = require("../services/latestState");
 const deviceService = require("../services/deviceService");
+const audioTriggerService = require("../services/audioTriggerService");
 const weatherService = require("../services/weatherService");
 const { computeRisk } = require("../services/riskEngine");
 const {
@@ -87,7 +88,9 @@ async function resolveDeviceId(body, { bypassBridgeCheck = false } = {}) {
   }
 
   if (rawEsp) {
-    return deviceService.findDeviceIdForPredict(rawEsp, bridgeRaw || null);
+    return deviceService.findDeviceIdForPredict(rawEsp, bridgeRaw || null, {
+      bypassBridgeCheck,
+    });
   }
 
   return null;
@@ -182,7 +185,9 @@ async function predict(req, res, next) {
     const body = req.body || {};
     const sourceType = inferSourceType(body);
     const bypassBridge =
-      sourceType === "mobile" || sourceType === "admin";
+      sourceType === "mobile" ||
+      sourceType === "admin" ||
+      sourceType === "esp32";
 
     const bridgeInstanceId =
       trimBridgeInstanceId(body) !== ""
@@ -358,6 +363,16 @@ async function predict(req, res, next) {
       if (capture) res.set("X-Capture-Id", String(capture.id));
     } catch (saveErr) {
       console.error("[predict] failed to persist capture:", saveErr.message);
+    }
+
+    try {
+      await audioTriggerService.maybeQueueFromPredict({
+        device,
+        risk,
+        sourceType,
+      });
+    } catch (audioErr) {
+      console.error("[predict] audio trigger skipped:", audioErr.message);
     }
 
     return res.json({

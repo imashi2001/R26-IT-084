@@ -1,8 +1,8 @@
 # Dependencies
 node_modules/
 
-# Production build (CRA)
-build/
+# Production build (Vite)
+dist/
 
 # Logs
 *.log
@@ -15,6 +15,12 @@ pnpm-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Large local hero media (keep on disk; do not commit ~100MB+ clips)
+public/videos/*.mov
+public/videos/*.mp4
+public/videos/*.webm
+!public/videos/.gitkeep
 
 # Editor / OS
 .vscode/*

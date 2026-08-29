@@ -1,10 +1,25 @@
 const db = require("../config/db");
 const deviceService = require("../services/deviceService");
+const deviceCommandService = require("../services/deviceCommandService");
 const captureService = require("../services/captureService");
 const latestState = require("../services/latestState");
 const { deriveFillLevel } = require("../utils/fillLevel");
 const { haversineMeters } = require("../utils/geo");
 const { getPublicBaseUrl } = require("../utils/publicUrl");
+
+/** ESP32 considered Online for UI if last poll within this window. */
+const ONLINE_MS = 20_000;
+
+function withPresence(device) {
+  if (!device || typeof device !== "object") return device;
+  const last = device.last_seen_at ? new Date(device.last_seen_at).getTime() : 0;
+  const online = Boolean(last && Date.now() - last <= ONLINE_MS);
+  return {
+    ...device,
+    camera_online: online,
+    last_seen_at: device.last_seen_at || null,
+  };
+}
 
 function dbRequired(res) {
   if (!db.isDbEnabled()) {
@@ -124,14 +139,14 @@ async function list(req, res, next) {
       String(req.query.latest || "").trim() === "1" ||
       String(req.query.latest || "").toLowerCase() === "true";
     if (!wantLatest) {
-      return res.json({ devices: rows });
+      return res.json({ devices: rows.map(withPresence) });
     }
 
     const devices = await Promise.all(
       rows.map(async (d) => {
         const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
         const mem = latestState.getLatestForDevice(d.id);
-        return {
+        return withPresence({
           ...d,
           latest_fill_level: resolveLatestFillLevel({ latestCap, mem }),
           latest_fill_percentage: resolveLatestFillPercentage({
@@ -142,7 +157,7 @@ async function list(req, res, next) {
             latestCap?.source_type || mem?.extras?.source_type || null,
           latest_captured_at:
             latestCap?.captured_at || mem?.timestamp || null,
-        };
+        });
       })
     );
 
@@ -179,6 +194,10 @@ async function create(req, res, next) {
       bridge_instance_id:
         body.bridge_instance_id != null
           ? String(body.bridge_instance_id).trim() || null
+          : null,
+      camera_base_url:
+        body.camera_base_url != null
+          ? String(body.camera_base_url).trim().replace(/\/+$/, "") || null
           : null,
       status: normalizeDeviceStatus(body.status) || "active",
     };
@@ -265,6 +284,12 @@ async function patch(req, res, next) {
           ? null
           : String(body.bridge_instance_id).trim();
     }
+    if (body.camera_base_url !== undefined) {
+      patch.camera_base_url =
+        body.camera_base_url == null || body.camera_base_url === ""
+          ? null
+          : String(body.camera_base_url).trim().replace(/\/+$/, "");
+    }
     if (body.status !== undefined) {
       const st = normalizeDeviceStatus(body.status);
       if (!st) {
@@ -315,7 +340,7 @@ async function getOne(req, res, next) {
       return res.status(404).json({ error: "Device not found" });
     }
 
-    return res.json(row);
+    return res.json(withPresence(row));
   } catch (e) {
     return next(e);
   }
@@ -554,7 +579,7 @@ async function latestDetail(req, res, next) {
     }
 
     return res.json({
-      device,
+      device: withPresence(device),
       latest: {
         captured_at,
         fill_level,
@@ -607,6 +632,170 @@ async function latestImage(req, res, next) {
   }
 }
 
+async function speakerTest(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "Invalid device id" });
+    }
+
+    const existing = await deviceService.getDeviceById(id);
+    if (!existing) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    const updated = await deviceService.enqueueSpeakerAction(id, "test");
+    return res.json({
+      ok: true,
+      device_id: id,
+      pending_speaker_action: updated?.pending_speaker_action || "test",
+      pending_speaker_at: updated?.pending_speaker_at || null,
+      message:
+        "Speaker test queued. Keep the VisionWaste bridge running on the same Wi‑Fi; the ESP32 should sound within one poll cycle.",
+    });
+  } catch (e) {
+    return next(e);
+  }
+}
+
+/**
+ * Admin: queue PLAY_AUDIO track 1 for ESP32 DFPlayer (poll-based, no LAN).
+ * Independent from POST /:id/speaker-test (laptop bridge).
+ */
+async function audioTest(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "Invalid device id" });
+    }
+
+    const device = await deviceService.getDeviceById(id);
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+    if (!device.esp32_id || !String(device.esp32_id).trim()) {
+      return res.status(400).json({
+        error: "Device has no esp32_id. Set ESP32 ID on the bin first.",
+      });
+    }
+
+    const track =
+      req.body?.track !== undefined && req.body?.track !== ""
+        ? req.body.track
+        : 1;
+
+    const cmd = await deviceCommandService.createPlayAudioCommand(device, {
+      track,
+    });
+    return res.status(201).json(cmd);
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return next(e);
+  }
+}
+
+/**
+ * Admin: queue STOP_AUDIO for ESP32 DFPlayer (stops current playback).
+ */
+async function audioStop(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "Invalid device id" });
+    }
+
+    const device = await deviceService.getDeviceById(id);
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+    if (!device.esp32_id || !String(device.esp32_id).trim()) {
+      return res.status(400).json({
+        error: "Device has no esp32_id. Set ESP32 ID on the bin first.",
+      });
+    }
+
+    const cmd = await deviceCommandService.createStopAudioCommand(device);
+    return res.status(201).json(cmd);
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return next(e);
+  }
+}
+
+/**
+ * ESP32 poll: GET /devices/commands?esp32_id=esp-cam-1
+ * No auth (same trust model as /bridge/speaker-pending).
+ */
+async function pollCommands(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const esp32Id = req.query.esp32_id;
+    if (!esp32Id || !String(esp32Id).trim()) {
+      return res.status(400).json({ error: "esp32_id query parameter is required" });
+    }
+
+    const result = await deviceCommandService.pollNextCommand(esp32Id);
+    if (!result.command) {
+      return res.json({ command: null });
+    }
+    return res.json(result.command);
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return next(e);
+  }
+}
+
+/**
+ * ESP32 ACK: POST /devices/commands/:command_id/ack
+ */
+async function ackCommand(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const commandId = req.params.command_id;
+    const body = req.body || {};
+    const updated = await deviceCommandService.ackCommand(commandId, {
+      esp32Id: body.esp32_id,
+      status: body.status,
+      errorMessage: body.error_message,
+    });
+    return res.json({
+      ok: true,
+      command: updated,
+    });
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return next(e);
+  }
+}
+
+/**
+ * Admin status poll for Test Audio UX.
+ * GET /devices/commands/:command_id
+ */
+async function getCommand(req, res, next) {
+  try {
+    if (!dbRequired(res)) return;
+    const cmd = await deviceCommandService.getCommandById(req.params.command_id);
+    if (!cmd) {
+      return res.status(404).json({ error: "Command not found" });
+    }
+    return res.json(cmd);
+  } catch (e) {
+    return next(e);
+  }
+}
+
 module.exports = {
   list,
   create,
@@ -617,4 +806,10 @@ module.exports = {
   listCapturesForDevice,
   latestDetail,
   latestImage,
+  speakerTest,
+  audioTest,
+  audioStop,
+  pollCommands,
+  ackCommand,
+  getCommand,
 };

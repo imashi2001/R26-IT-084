@@ -37,7 +37,7 @@ Set **`BACKEND_PREDICT_URL`** to your real Express service (must start with `htt
 
 ```powershell
 $env:ESP32_CAPTURE_URL = "http://10.134.126.191/capture"
-$env:BACKEND_PREDICT_URL = "https://your-backend.up.railway.app/predict"
+$env:BACKEND_PREDICT_URL = "https://caring-light-production.up.railway.app/predict"
 $env:DEVICE_ESP32_ID = "esp-cam-1"
 python bridge.py
 ```
@@ -46,7 +46,7 @@ python bridge.py
 
 ```bash
 export ESP32_CAPTURE_URL=http://10.134.126.191/capture
-export BACKEND_PREDICT_URL=https://your-backend.up.railway.app/predict
+export BACKEND_PREDICT_URL=https://caring-light-production.up.railway.app/predict
 export DEVICE_ESP32_ID=esp-cam-1
 python bridge.py
 ```
@@ -63,8 +63,23 @@ python bridge.py
 | `BACKEND_TIMEOUT` | `120` | POST /predict timeout (YOLO can be slow) |
 | `BACKEND_MAX_RETRIES` | `3` | Retries if backend returns 5xx or network error |
 | `BACKEND_RETRY_DELAY_SEC` | `2` | Pause between retries |
+| `ESP32_ALARM_ENABLED` | `1` | Set `0` to disable auto `/alarm` after HIGH risk |
+| `ALARM_ON_RISK` | `HIGH,CRITICAL` | Risk levels that trigger `/alarm` |
+| `SPEAKER_POLL_SEC` | `5` | How often to poll `/bridge/speaker-pending` |
+| `SPEAKER_TIMEOUT` | `8` | Timeout for ESP32 `/speaker/test` and `/alarm` |
 
 (JPEG files under `captures/` are gitignored; **`.bridge_id`** is gitignored — stable laptop bridge UUID.)
+
+## Speaker / alarm (buzzer on ESP32)
+
+HTTPS Railway **cannot** call the camera on Wi‑Fi. This bridge:
+
+1. After each successful `/predict`, if `risk.level` is HIGH/CRITICAL (or animals are detected), calls **`GET {ESP32_BASE}/alarm`**.
+2. Every `SPEAKER_POLL_SEC` seconds, polls **`GET /bridge/speaker-pending`** and relays website **Test speaker** commands to **`GET /speaker/test`** (or `/alarm`), then **`POST /bridge/speaker-ack`**.
+
+ESP32 firmware helpers live in [`../esp32-cam/`](../esp32-cam/). Flash those routes first and verify `http://<IP>/speaker/test` on the same Wi‑Fi.
+
+Admin: set **Camera base URL** (e.g. `http://10.158.245.191`) and matching **ESP32 ID**. Website: **Speaker check** → Test speaker while this bridge is running.
 
 ## Laptop bridge ID (`bridge_instance_id`)
 

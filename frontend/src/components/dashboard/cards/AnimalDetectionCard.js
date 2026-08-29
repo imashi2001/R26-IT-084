@@ -1,18 +1,8 @@
-import { PawPrint, Check } from "lucide-react";
+import { Link } from "react-router-dom";
+import { PawPrint, Check, AlertTriangle } from "lucide-react";
 import Card from "../Card";
+import { badge } from "../dashboardTheme";
 import { partitionPredictions } from "../../../hooks/useSystemSnapshot";
-
-/*
- * Animal Detection card.
- *
- * Two visual states:
- *   - count > 0  : show count + per-class chips with confidence
- *   - count == 0 : "No Animal Attacks Detected" with green check
- *
- * Source of truth for count is `extras.animal_count` (set by the gateway from
- * the YOLO animal microservice). The chips come from `predictions[]` filtered
- * to animal labels (anything that's not Empty/Half/Overflow).
- */
 
 function aggregateClasses(predictions) {
   const map = new Map();
@@ -38,20 +28,14 @@ export default function AnimalDetectionCard({ snapshot }) {
   const danger = count != null && count > 0;
 
   return (
-    <Card>
+    <Card glow={danger}>
       <Card.Header
         icon={PawPrint}
-        accent={danger ? "text-red-600" : "text-brand-600"}
+        accent={danger ? "text-red-400" : "text-brand-400"}
         title="Animal Detection"
         right={
           count != null ? (
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                danger
-                  ? "bg-red-50 text-red-700"
-                  : "bg-brand-50 text-brand-700"
-              }`}
-            >
+            <span className={danger ? badge.danger : badge.brand}>
               {count} detected
             </span>
           ) : null
@@ -61,42 +45,49 @@ export default function AnimalDetectionCard({ snapshot }) {
       <Card.Body className="flex flex-col items-center justify-center text-center">
         {safe ? (
           <>
-            <div className="text-xl font-bold text-brand-700">
-              No Animal Attacks Detected
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/20 text-brand-400 shadow-glow-brand">
+              <Check className="h-6 w-6" strokeWidth={3} />
             </div>
-            <div className="mt-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-white">
-              <Check className="h-4 w-4" strokeWidth={3} />
+            <div className="mt-3 text-base font-bold text-brand-400">
+              No animals detected
             </div>
+            <p className="mt-1 text-xs text-slate-500">Bin perimeter is clear</p>
           </>
         ) : danger ? (
           <>
-            <div className="text-2xl font-bold text-red-700">
-              {count} animal{count > 1 ? "s" : ""} detected
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-500/20 text-red-400 shadow-glow-red">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <div className="mt-3 text-xl font-bold text-red-300">
+              {count} animal{count > 1 ? "s" : ""} near bin
             </div>
             {classes.length ? (
               <div className="mt-2 flex flex-wrap justify-center gap-1.5">
-                {classes.slice(0, 4).map((c) => (
-                  <span
-                    key={c.label}
-                    className="rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-medium text-red-700"
-                  >
+                {classes.slice(0, 3).map((c) => (
+                  <span key={c.label} className={badge.danger}>
                     {c.label} · {(c.confidence * 100).toFixed(0)}%
                   </span>
                 ))}
               </div>
             ) : null}
+            <Link
+              to="/animals"
+              className="mt-3 text-xs font-semibold text-brand-400 hover:underline"
+            >
+              View details →
+            </Link>
           </>
         ) : (
-          <div className="text-ink-400 text-sm">No detection yet</div>
+          <div className="text-sm text-slate-500">Waiting for detection…</div>
         )}
       </Card.Body>
 
       <Card.Footer>
-        {safe
-          ? "No animals detected around the bin."
-          : danger
-            ? "Activate deterrence and verify on the live feed."
-            : "Waiting for the next capture from animal-api."}
+        {danger
+          ? "High hygienic risk — audio deterrence may trigger automatically."
+          : safe
+            ? "No animal activity in the latest capture."
+            : "Powered by animal-api YOLO detections."}
       </Card.Footer>
     </Card>
   );

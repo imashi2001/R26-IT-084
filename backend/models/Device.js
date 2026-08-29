@@ -47,6 +47,25 @@ module.exports = (sequelize) =>
         allowNull: false,
         defaultValue: "active",
       },
+      /** LAN base URL for the camera, e.g. http://10.158.245.191 (no /capture). */
+      camera_base_url: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
+      /** Queued bridge relay: test | alarm | null */
+      pending_speaker_action: {
+        type: DataTypes.STRING(16),
+        allowNull: true,
+      },
+      pending_speaker_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      /** Updated when ESP32 polls GET /devices/commands (presence / Online UI). */
+      last_seen_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
     },
     {
       tableName: "devices",

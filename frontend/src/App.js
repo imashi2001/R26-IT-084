@@ -6,33 +6,54 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import MapPage from "./pages/MapPage";
 import BinDetailPage from "./pages/BinDetailPage";
+import DashboardSettingsPage from "./pages/DashboardSettingsPage";
 import AdminPage from "./pages/AdminPage";
 import HygienicRiskDashboardPage from "./pages/HygienicRiskDashboardPage";
 import MobileReportPage from "./pages/MobileReportPage";
 import SystemDashboardPage from "./pages/SystemDashboardPage";
-import StubPage from "./pages/StubPage";
+import ForecastPage from "./pages/ForecastPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import LiveMonitoringPage from "./pages/LiveMonitoringPage";
+import BinStatusPage from "./pages/BinStatusPage";
+import AnimalDetectionPage from "./pages/AnimalDetectionPage";
+import AlertsNotificationsPage from "./pages/AlertsNotificationsPage";
+import ReportsPage from "./pages/ReportsPage";
+import HistoryPage from "./pages/HistoryPage";
 import LitterSeverityPage from "./pages/LitterSeverityPage";
+import SpeakerCheckPage from "./pages/SpeakerCheckPage";
 import "./App.css";
 
 /*
  * App routing.
  *
  * Public surface (no auth required):
- *   /            -> LandingPage         (marketing + product overview)
+ *   /            -> LandingPage         (public citizen UX: find nearest bin)
  *   /login       -> LoginPage           (email + password)
  *   /register    -> RegisterPage        (admin profile + password)
  *
- * Authenticated surface (everything below `<ProtectedRoute>`):
- *   /dashboard           -> SystemDashboardPage   (new dashboard shell)
- *   /system              -> redirects to /dashboard (legacy alias)
- *   /live-monitoring     -> legacy HomePage upload UI       (LegacyShell)
- *   /hygienic-risk       -> Imashi's risk dashboard         (LegacyShell)
- *   /map, /bins/:id, /admin, /mobile-report -> teammates' pages (LegacyShell)
- *   /bin-fill, /animals, /forecast, /alerts, /reports,
- *   /history, /devices, /bins                                (StubPage)
+ * Authenticated surface (everything wrapped in `<ProtectedRoute>`):
+ *   /dashboard            -> SystemDashboardPage      (dashboard shell)
+ *   /system               -> redirects to /dashboard  (legacy alias)
+ *   /live-monitoring      -> LiveMonitoringPage       (dashboard shell, map)
+ *   /hygienic-risk        -> HygienicRiskDashboardPage(dashboard shell)
+ *   /bin-level-detector   -> HomePage                 (dashboard shell, upload UI;
+ *                                                      formerly mounted at
+ *                                                      /live-monitoring before
+ *                                                      the rename)
+ *   /bin-fill             -> redirects to /bin-level-detector (back-compat)
+ *   /map                  -> MapPage                  (dashboard shell, collection map)
+ *   /bins/:id, /admin -> teammates' pages (LegacyShell)
+ *   /mobile-report        -> MobileReportPage         (dashboard shell, field photo + GPS)
+ *   /bins                 -> BinStatusPage             (dashboard shell, registry + form)
+ *   /animals              -> AnimalDetectionPage       (dashboard shell, sightings + buzzer log)
+ *   /litter-severity      -> LitterSeverityPage        (litter YOLO + LSI; MODEL_LITTER_URL)
+ *   /alerts               -> AlertsNotificationsPage   (dashboard shell, alerts + admin workflow)
+ *   /reports              -> ReportsPage               (dashboard shell, aggregations + CSV export)
+ *   /history              -> HistoryPage               (dashboard shell, unified event timeline)
+ *   /devices              -> redirects to /bins        (bin registry replaces legacy stub)
+ *   /forecast               -> ForecastPage            (holiday / tourism demand demo)
  *
  * Two shells, by intent:
  *
@@ -40,9 +61,11 @@ import "./App.css";
  *                    These pages are teammate-owned and use class-based
  *                    `App.css`; we keep them visually identical.
  *
- *   SystemDashboardPage / StubPage  - opt INTO `DashboardLayout` (sidebar
- *                    + topbar), so the new dashboard surface stays self-
- *                    contained from legacy CSS.
+ *   DashboardLayout (used by SystemDashboardPage, LiveMonitoringPage,
+ *                    MapPage, BinStatusPage, AnimalDetectionPage,
+ *                    AlertsNotificationsPage, ForecastPage, LitterSeverityPage,
+ *                    MobileReportPage, HomePage at /bin-level-detector, etc.)
+ *                    — sidebar + topbar shell, Tailwind-only, isolated from legacy CSS.
  */
 function LegacyShell({ children }) {
   return (
@@ -84,17 +107,35 @@ export default function App() {
             element={<Navigate to="/dashboard" replace />}
           />
 
-          {/* ---- Legacy pages (top NavBar) ---- */}
-          <Route path="/live-monitoring" element={legacyProtected(HomePage)} />
+          {/* ---- Live monitoring (new map view, dashboard shell) ---- */}
+          <Route
+            path="/live-monitoring"
+            element={protectedShell(<LiveMonitoringPage />)}
+          />
+
+          {/* ---- Bin Level Detector (dashboard shell, redesigned) ---- */}
+          <Route
+            path="/bin-level-detector"
+            element={protectedShell(<HomePage />)}
+          />
+          {/* Back-compat: old /bin-fill stub now points at the renamed page. */}
+          <Route
+            path="/bin-fill"
+            element={<Navigate to="/bin-level-detector" replace />}
+          />
+
+          {/* ---- Risk Dashboard (dashboard shell, redesigned) ---- */}
           <Route
             path="/hygienic-risk"
-            element={legacyProtected(HygienicRiskDashboardPage)}
+            element={protectedShell(<HygienicRiskDashboardPage />)}
           />
+
+          {/* ---- Legacy pages (top NavBar) ---- */}
           <Route
             path="/mobile-report"
-            element={legacyProtected(MobileReportPage)}
+            element={protectedShell(<MobileReportPage />)}
           />
-          <Route path="/map" element={legacyProtected(MapPage)} />
+          <Route path="/map" element={protectedShell(<MapPage />)} />
           <Route
             path="/bins/:id"
             element={protectedShell(
@@ -103,101 +144,49 @@ export default function App() {
               </LegacyShell>
             )}
           />
-          <Route path="/admin" element={legacyProtected(AdminPage)} />
-
+          <Route path="/admin" element={protectedShell(<DashboardSettingsPage />)} />
           <Route
-            path="/litter-severity"
-            element={protectedShell(<LitterSeverityPage />)}
+            path="/admin/bins"
+            element={legacyProtected(AdminPage)}
           />
 
           {/* ---- Stub routes (sidebar placeholders) ---- */}
           <Route
-            path="/bin-fill"
-            element={protectedShell(
-              <StubPage
-                title="Bin Fill Level"
-                description="Per-bin Empty / Half / Overflow tier history with YOLO confidence and a 7-day trend. Backend already exposes /devices and /captures with fill_level + fill_percentage; this page just hasn't been built yet."
-                suggestionTo="/dashboard"
-                suggestionLabel="See current fill on the dashboard"
-              />
-            )}
+            path="/animals"
+            element={protectedShell(<AnimalDetectionPage />)}
           />
           <Route
-            path="/animals"
-            element={protectedShell(
-              <StubPage
-                title="Animal Detection"
-                description="Captures filtered to events where the YOLO animal model returned at least one detection. Useful for exporting evidence and tuning deterrence."
-                suggestionTo="/hygienic-risk"
-                suggestionLabel="See animals on the Risk Dashboard for now"
-              />
-            )}
+            path="/litter-severity"
+            element={protectedShell(<LitterSeverityPage />)}
           />
           <Route
             path="/forecast"
-            element={protectedShell(
-              <StubPage
-                title="Forecasting"
-                description="24-hour rule-based forecast (already implemented under GET /forecast). The Risk Dashboard renders the timeline today; a dedicated page with deeper controls is planned."
-                suggestionTo="/hygienic-risk"
-                suggestionLabel="Open the forecast on the Risk Dashboard"
-              />
-            )}
+            element={protectedShell(<ForecastPage />)}
           />
           <Route
             path="/alerts"
-            element={protectedShell(
-              <StubPage
-                title="Alerts & Notifications"
-                description="Full alerts feed, filters, and acknowledgement flow. The dashboard's Recent Alerts card shows the last 6 events; this page will paginate through everything."
-                suggestionTo="/dashboard"
-                suggestionLabel="See recent alerts on the dashboard"
-              />
-            )}
+            element={protectedShell(<AlertsNotificationsPage />)}
           />
           <Route
             path="/reports"
-            element={protectedShell(
-              <StubPage
-                title="Reports"
-                description="Aggregated reports + CSV export over /captures: risk timeline, fill events, animal sightings."
-                suggestionTo="/hygienic-risk"
-                suggestionLabel="View capture history on the Risk Dashboard"
-              />
-            )}
+            element={protectedShell(<ReportsPage />)}
           />
           <Route
             path="/history"
-            element={protectedShell(
-              <StubPage
-                title="History"
-                description="Full timeline of every capture (the table currently shown on the Risk Dashboard, expanded with image previews and per-bin filters)."
-                suggestionTo="/hygienic-risk"
-                suggestionLabel="Open Risk Dashboard history"
-              />
-            )}
+            element={protectedShell(<HistoryPage />)}
           />
           <Route
+            path="/speaker"
+            element={protectedShell(<SpeakerCheckPage />)}
+          />
+          {/* IoT Devices replaced by /bins — keep route as redirect for legacy links. */}
+          <Route
             path="/devices"
-            element={protectedShell(
-              <StubPage
-                title="IoT Devices"
-                description="Bin (device) registry with bridge bindings, ESP32 ids, and last-seen timestamps. Backend already returns /devices?latest=1; this page wraps it in a manageable list/table."
-                suggestionTo="/admin"
-                suggestionLabel="Add devices via Admin"
-              />
-            )}
+            element={<Navigate to="/bins" replace />}
           />
           <Route
             path="/bins"
-            element={protectedShell(
-              <StubPage
-                title="Bin Status"
-                description="Bin list with current fill, risk, and last-capture thumbnails. Click through to /bins/:id for the detail page."
-                suggestionTo="/admin"
-                suggestionLabel="Manage bins via Admin"
-              />
-            )}
+            element={protectedShell(<BinStatusPage />)}
           />
 
           {/* Anything else falls back to the landing page. */}

@@ -16,7 +16,7 @@ async function listCaptures(req, res, next) {
       });
     }
 
-    const limit = clamp(req.query.limit ?? 20, 1, 100);
+    const limit = clamp(req.query.limit ?? 20, 1, 500);
     const offset = clamp(req.query.offset ?? 0, 0, 1_000_000);
     const deviceIdRaw = req.query.device_id;
     const deviceId =
@@ -31,10 +31,27 @@ async function listCaptures(req, res, next) {
       return res.status(400).json({ error: "device_id must be a number" });
     }
 
+    function parseDate(raw) {
+      if (raw == null || raw === "") return null;
+      const d = new Date(String(raw));
+      if (Number.isNaN(d.getTime())) return undefined;
+      return d;
+    }
+    const since = parseDate(req.query.since);
+    const until = parseDate(req.query.until);
+    if (since === undefined) {
+      return res.status(400).json({ error: "since must be an ISO date string" });
+    }
+    if (until === undefined) {
+      return res.status(400).json({ error: "until must be an ISO date string" });
+    }
+
     const captures = await captureService.listCaptures({
       limit,
       offset,
       deviceId: Number.isFinite(deviceId) ? deviceId : null,
+      since,
+      until,
     });
     const sanitized = captures.map((c) => {
       const buf = c.image_buffer;

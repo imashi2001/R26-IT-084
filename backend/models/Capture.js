@@ -108,6 +108,23 @@ module.exports = (sequelize) =>
         type: DataTypes.STRING(160),
         allowNull: true,
       },
+
+      littering_event_detected: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+      },
+      littering_event_count: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      littering_max_confidence: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+      },
+      littering_action_summary: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+      },
     },
     {
       tableName: "captures",

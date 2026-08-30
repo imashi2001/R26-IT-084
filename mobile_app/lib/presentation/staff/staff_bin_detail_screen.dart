@@ -232,6 +232,25 @@ class _DetailBody extends StatelessWidget {
             ),
           ),
         ],
+        if (extras?.litteringEventDetected == true) ...[
+          const SizedBox(height: 12),
+          StaffCard(
+            child: Row(
+              children: [
+                const Icon(Icons.report_outlined, color: AppColors.riskMedium, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Littering detected'
+                    '${extras?.litteringMaxConfidence != null ? ' (${(extras!.litteringMaxConfidence! * 100).round()}%)' : ''}'
+                    '${extras?.litteringEventCount != null ? ' · ${extras!.litteringEventCount} event(s)' : ''}',
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         GlowPrimaryButton(
           label: 'Add to Route',

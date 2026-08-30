@@ -67,6 +67,7 @@ const TYPE_LABELS = {
   risk_high: "High risk",
   buzzer: "Deterrence / buzzer",
   overflow: "Bin overflow",
+  littering_detected: "Littering event",
   animal: "Animal activity",
 };
 

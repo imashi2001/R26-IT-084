@@ -586,6 +586,9 @@ async function latestDetail(req, res, next) {
         capture_longitude: capture.longitude,
         fill_percentage: capture.fill_percentage,
         prediction_class: capture.prediction_class,
+        littering_event_detected: capture.littering_event_detected,
+        littering_event_count: capture.littering_event_count,
+        littering_max_confidence: capture.littering_max_confidence,
       };
     }
 

@@ -8,6 +8,7 @@ services/
   waste-api/           -> TensorFlow MobileNetV2 (organic / non_organic)
   animal-api/          -> Ultralytics YOLOv8     (cat / crow / dog / monkey)
   litter-severity-api/ -> Ultralytics YOLO + LSI (litter severity; see `MODEL_LITTER_URL` on Express)
+  littering-action-api/ -> Ultralytics YOLO11 littering-event detector (`MODEL_LITTERING_ACTION_URL`)
 ```
 
 Each service exposes `GET /health` and `POST /predict` (multipart `file`).  

@@ -46,11 +46,19 @@ function isBinFillLabel(label) {
   return BIN_FILL_LABELS.has(String(label || "").trim().toLowerCase());
 }
 
+function isLitteringActionPrediction(p) {
+  return (
+    p?.model_type === "littering_action" ||
+    String(p?.label || "").trim().toLowerCase() === "littering"
+  );
+}
+
 /** Filter predictions[] into animal vs bin_fill subsets (label-based). */
 export function partitionPredictions(predictions) {
   const animals = [];
   const binFill = [];
   for (const p of predictions || []) {
+    if (isLitteringActionPrediction(p)) continue;
     if (isBinFillLabel(p.label)) {
       binFill.push(p);
     } else {

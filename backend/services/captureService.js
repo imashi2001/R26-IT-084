@@ -60,6 +60,7 @@ async function saveCaptureWithPredictions({
         box_y1: Array.isArray(p.box) ? p.box[1] : 0,
         box_x2: Array.isArray(p.box) ? p.box[2] : 0,
         box_y2: Array.isArray(p.box) ? p.box[3] : 0,
+        model_type: p.model_type || null,
       }));
       await Prediction.bulkCreate(rows, { transaction: t });
     }

@@ -519,15 +519,13 @@ export default function MapPage() {
       <div className="flex min-h-0 flex-1 flex-col gap-5 p-4 lg:p-6">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-ink-900">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-100">
               Map &amp; collection routes
             </h1>
-            <p className="mt-0.5 max-w-3xl text-sm text-ink-500">
-              Plan truck runs: see bins that need pickup soon, find the{" "}
-              <strong>nearest urgent</strong> stop from your current location
-              (driving preview), or locate the nearest bin with{" "}
-              <strong>spare capacity</strong> for disposal crews. Open Google Maps
-              for turn-by-turn navigation.
+            <p className="mt-0.5 max-w-3xl text-sm text-slate-400">
+              Use <strong className="text-slate-200">Generate collection route</strong> for
+              all Half + Overflow bins (empty excluded). Start from GPS or a depot pin.
+              Single-stop tools below for nearest urgent / capacity bins.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -549,12 +547,17 @@ export default function MapPage() {
         </header>
 
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-800">
+          <span className="inline-flex items-center gap-2 rounded-lg border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-300">
+            <Truck className="h-3.5 w-3.5" />
+            <span className="uppercase tracking-wider opacity-80">Collection</span>
+            <span className="font-semibold">Half + Overflow</span>
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/25 px-3 py-1.5 text-xs font-medium text-red-300">
             <ListOrdered className="h-3.5 w-3.5" />
             <span className="uppercase tracking-wider opacity-70">Urgent</span>
             <span className="font-semibold">{urgentBins.length}</span>
           </span>
-          <span className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-ink-700">
+          <span className="inline-flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-slate-300">
             <Database className="h-3.5 w-3.5" />
             <span className="uppercase tracking-wider opacity-70">On map</span>
             <span className="font-semibold">{binsOnMap.length}</span>
@@ -576,7 +579,7 @@ export default function MapPage() {
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 lg:grid-cols-[minmax(280px,380px)_1fr] lg:items-stretch">
           {/* Left column */}
-          <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto lg:max-h-[calc(100vh-11rem)] lg:pr-1">
             {toast ? (
               <div
                 className={`flex items-start justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${
@@ -598,8 +601,119 @@ export default function MapPage() {
               </div>
             ) : null}
 
-            <Card className="min-h-0 !min-h-0 flex-shrink-0">
-              <Card.Header icon={Navigation} title="Route tools" />
+            <Card glow className="flex-shrink-0 shrink-0">
+              <Card.Header
+                icon={Truck}
+                title="Collection route"
+                subtitle="Multi-stop plan · smart + virtual bins"
+              />
+              <Card.Body className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-1 rounded-xl border border-slate-800/60 bg-slate-950/40 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setStartMode("gps")}
+                    className={[
+                      "flex-1 rounded-lg px-2 py-2 text-[11px] font-semibold",
+                      startMode === "gps"
+                        ? "bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/30"
+                        : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                    ].join(" ")}
+                  >
+                    My location
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartMode("depot");
+                      setDepotPickActive(true);
+                    }}
+                    className={[
+                      "flex-1 rounded-lg px-2 py-2 text-[11px] font-semibold",
+                      startMode === "depot"
+                        ? "bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/30"
+                        : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                    ].join(" ")}
+                  >
+                    Depot on map
+                  </button>
+                </div>
+                {startMode === "depot" ? (
+                  <p className="text-[11px] text-slate-400">
+                    {depotLatLng
+                      ? `Depot: ${depotLatLng[0].toFixed(5)}, ${depotLatLng[1].toFixed(5)}`
+                      : depotPickActive
+                        ? "Click the map to place the purple depot pin…"
+                        : "Choose Depot, then click the map to set start."}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={collectionBusy || loading}
+                  onClick={runCollectionRoute}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-glow-brand hover:bg-brand-500 disabled:opacity-50"
+                >
+                  <ListOrdered className="h-4 w-4" />
+                  {collectionBusy ? "Planning route…" : "Generate collection route"}
+                </button>
+                <p className="text-[11px] leading-snug text-slate-500">
+                  Includes all <strong className="text-slate-300">Half</strong> and{" "}
+                  <strong className="text-slate-300">Overflow</strong> bins. Empty bins
+                  are excluded. Priority: overflow → half.
+                </p>
+                {collectionMeta ? (
+                  <p className="text-[11px] font-semibold text-brand-400">
+                    {collectionMeta.total} stops · {collectionMeta.excluded} empty
+                    excluded
+                  </p>
+                ) : null}
+              </Card.Body>
+            </Card>
+
+            {collectionStops.length > 0 ? (
+              <Card className="flex-shrink-0 shrink-0">
+                <Card.Header
+                  icon={ListOrdered}
+                  title="Route stops"
+                  right={
+                    <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      {collectionStops.length} bins
+                    </span>
+                  }
+                />
+                <Card.Body className="max-h-48 overflow-y-auto !mt-2">
+                  <ul className="space-y-1.5">
+                    {collectionStops.map((stop) => {
+                      const tier = effectiveFillTier(stop);
+                      const tierKey = normalizeFill(tier) || "unknown";
+                      return (
+                        <li key={stop.id}>
+                          <button
+                            type="button"
+                            onClick={() => setFocusBinId(stop.id)}
+                            className="flex w-full items-center gap-2 rounded-lg border border-slate-800/60 bg-slate-950/40 px-2 py-1.5 text-left hover:border-brand-500/30 hover:bg-brand-500/10"
+                          >
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                              {stop.order}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-200">
+                              {stop.name}
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold capitalize ${fillBadgeClass(tierKey)}`}
+                            >
+                              {fillLabel(tier === "unknown" ? "" : tier)}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </Card.Body>
+              </Card>
+            ) : null}
+
+            <Card className="min-h-0 shrink-0 flex-shrink-0">
+              <Card.Header icon={Navigation} title="Quick route tools" subtitle="Single nearest bin" />
               <Card.Body className="flex flex-col gap-2">
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -646,113 +760,6 @@ export default function MapPage() {
                 </p>
               </Card.Body>
             </Card>
-
-            <Card className="flex-shrink-0 border-brand-500/20">
-              <Card.Header icon={Truck} title="Collection route" />
-              <Card.Body className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setStartMode("gps")}
-                    className={[
-                      "flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold",
-                      startMode === "gps"
-                        ? "bg-brand-600 text-white"
-                        : "text-ink-600 hover:bg-white",
-                    ].join(" ")}
-                  >
-                    My location
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStartMode("depot");
-                      setDepotPickActive(true);
-                    }}
-                    className={[
-                      "flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold",
-                      startMode === "depot"
-                        ? "bg-brand-600 text-white"
-                        : "text-ink-600 hover:bg-white",
-                    ].join(" ")}
-                  >
-                    Depot on map
-                  </button>
-                </div>
-                {startMode === "depot" ? (
-                  <p className="text-[11px] text-ink-500">
-                    {depotLatLng
-                      ? `Depot: ${depotLatLng[0].toFixed(5)}, ${depotLatLng[1].toFixed(5)}`
-                      : depotPickActive
-                        ? "Click the map to place the depot start pin…"
-                        : "Switch here, then click the map to set depot."}
-                  </p>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={collectionBusy || loading}
-                  onClick={runCollectionRoute}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
-                >
-                  <ListOrdered className="h-3.5 w-3.5" />
-                  {collectionBusy ? "Planning…" : "Generate collection route"}
-                </button>
-                <p className="text-[11px] leading-snug text-ink-500">
-                  Includes all <strong>Half</strong> and <strong>Overflow</strong> bins
-                  (smart + virtual). Empty bins are excluded. Order: overflow first,
-                  then half by urgency.
-                </p>
-                {collectionMeta ? (
-                  <p className="text-[11px] text-brand-800">
-                    {collectionMeta.total} stops · {collectionMeta.excluded} empty
-                    excluded
-                  </p>
-                ) : null}
-              </Card.Body>
-            </Card>
-
-            {collectionStops.length > 0 ? (
-              <Card className="flex-shrink-0">
-                <Card.Header
-                  icon={ListOrdered}
-                  title="Route stops"
-                  right={
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
-                      {collectionStops.length} bins
-                    </span>
-                  }
-                />
-                <Card.Body className="max-h-48 overflow-y-auto !mt-2">
-                  <ul className="space-y-1.5">
-                    {collectionStops.map((stop) => {
-                      const tier = effectiveFillTier(stop);
-                      const tierKey = normalizeFill(tier) || "unknown";
-                      return (
-                        <li key={stop.id}>
-                          <button
-                            type="button"
-                            onClick={() => setFocusBinId(stop.id)}
-                            className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-left hover:bg-slate-50"
-                          >
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">
-                              {stop.order}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-900">
-                              {stop.name}
-                            </span>
-                            <span
-                              className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold capitalize ${fillBadgeClass(tierKey)}`}
-                            >
-                              {fillLabel(tier === "unknown" ? "" : tier)}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </Card.Body>
-              </Card>
-            ) : null}
 
             {routeSummary ? (
               <Card className="flex-shrink-0 border-brand-200 bg-brand-50/40">
@@ -856,7 +863,7 @@ export default function MapPage() {
               </Card>
             ) : null}
 
-            <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <Card className="shrink-0 flex-shrink-0">
               <Card.Header
                 icon={ListOrdered}
                 title="Collect ASAP"
@@ -866,7 +873,7 @@ export default function MapPage() {
                   </span>
                 }
               />
-              <Card.Body className="min-h-0 flex-1 overflow-y-auto !mt-2">
+              <Card.Body className="max-h-64 overflow-y-auto !mt-2">
                 {!binsOnMap.length && !loading ? (
                   <p className="text-sm text-ink-500">
                     No bins with coordinates. Add lat/lng in Admin.

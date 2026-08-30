@@ -85,11 +85,21 @@ flutter pub get
 Maps use **MapTiler** when you pass your API key at run/build time; otherwise free **CARTO/OpenStreetMap** tiles are used.
 
 1. Get a key: [MapTiler Cloud → API keys](https://cloud.maptiler.com/account/keys/)
-2. Run or build with:
+2. Copy `dart_defines.example.json` → `dart_defines.json` and paste your key
+3. Run with:
    ```powershell
-   flutter run --dart-define=MAPTILER_KEY=your_key_here
-   flutter build apk --release --dart-define=MAPTILER_KEY=your_key_here
+   flutter run --dart-define-from-file=dart_defines.json
    ```
+   Or use the helper script:
+   ```powershell
+   .\run_with_maps.ps1
+   ```
+4. Release APK:
+   ```powershell
+   flutter build apk --release --dart-define-from-file=dart_defines.json
+   ```
+
+`dart_defines.json` is gitignored — do not commit your API key.
 
 Config: `lib/config/map_config.dart` · shared layer: `lib/config/map_layers.dart`
 

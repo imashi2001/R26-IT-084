@@ -68,6 +68,9 @@ mobile_app/android/**/build/
 mobile_app/.dart_tool/
 mobile_app/build/
 
+# MapTiler / local Flutter secrets (never commit real keys)
+mobile_app/dart_defines.json
+
 # Backend local
 backend/.env
 backend/.device_id

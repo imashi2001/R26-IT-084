@@ -29,29 +29,45 @@ class StaffShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
-        backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.brand.withValues(alpha: 0.18),
-        destinations: [
-          for (var i = 0; i < _tabs.length; i++)
-            NavigationDestination(
-              icon: i == 3 && openCount > 0
-                  ? Badge(
-                      label: Text('$openCount'),
-                      child: Icon(_tabs[i].icon),
-                    )
-                  : Icon(_tabs[i].icon),
-              selectedIcon: Icon(_tabs[i].selectedIcon, color: AppColors.brand),
-              label: _tabs[i].label,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: AppColors.border.withValues(alpha: 0.4)),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
             ),
-        ],
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: navigationShell.currentIndex,
+          onDestinationSelected: (index) {
+            navigationShell.goBranch(
+              index,
+              initialLocation: index == navigationShell.currentIndex,
+            );
+          },
+          backgroundColor: AppColors.surface,
+          indicatorColor: AppColors.brand.withValues(alpha: 0.18),
+          height: 68,
+          destinations: [
+            for (var i = 0; i < _tabs.length; i++)
+              NavigationDestination(
+                icon: i == 3 && openCount > 0
+                    ? Badge(
+                        label: Text('$openCount'),
+                        backgroundColor: AppColors.riskHigh,
+                        child: Icon(_tabs[i].icon),
+                      )
+                    : Icon(_tabs[i].icon),
+                selectedIcon: Icon(_tabs[i].selectedIcon, color: AppColors.brand),
+                label: _tabs[i].label,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -65,6 +81,48 @@ class _TabItem {
   const _TabItem(this.icon, this.selectedIcon, this.label, this.path);
 }
 
+/// VisionWaste brand mark with leaf icon (mockup header).
+class VisionWasteLogo extends StatelessWidget {
+  final double size;
+  const VisionWasteLogo({super.key, this.size = 28});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.brandGlow, AppColors.brand],
+            ),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.brand.withValues(alpha: 0.35),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: const Icon(Icons.eco, color: Colors.white, size: 18),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'VisionWaste',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Shared staff app bar matching mockup header.
 class StaffAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
@@ -72,6 +130,7 @@ class StaffAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
   final bool showMenu;
   final bool showBack;
+  final bool showBrand;
   final VoidCallback? onBack;
 
   const StaffAppBar({
@@ -81,6 +140,7 @@ class StaffAppBar extends ConsumerWidget implements PreferredSizeWidget {
     this.actions,
     this.showMenu = true,
     this.showBack = false,
+    this.showBrand = false,
     this.onBack,
   });
 
@@ -110,27 +170,42 @@ class StaffAppBar extends ConsumerWidget implements PreferredSizeWidget {
                   onPressed: () => Scaffold.of(context).openDrawer(),
                 )
               : null,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+      title: showBrand
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const VisionWasteLogo(),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+              ],
             ),
-          ),
-          if (subtitle != null)
-            Text(
-              subtitle!,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
-            ),
-        ],
-      ),
       actions: [
         ...?actions,
         IconButton(
@@ -138,6 +213,7 @@ class StaffAppBar extends ConsumerWidget implements PreferredSizeWidget {
           onPressed: () => context.go('/staff/alerts'),
           icon: Badge(
             isLabelVisible: badge > 0,
+            backgroundColor: AppColors.riskHigh,
             label: Text('$badge'),
             child: const Icon(Icons.notifications_outlined),
           ),
@@ -146,7 +222,7 @@ class StaffAppBar extends ConsumerWidget implements PreferredSizeWidget {
           padding: const EdgeInsets.only(right: 8),
           child: CircleAvatar(
             radius: 16,
-            backgroundColor: AppColors.card,
+            backgroundColor: AppColors.brand.withValues(alpha: 0.15),
             child: Text(
               (auth.user?.name ?? 'S')[0].toUpperCase(),
               style: const TextStyle(
@@ -179,15 +255,8 @@ class StaffDrawer extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'VisionWaste Staff',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.brand,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  const VisionWasteLogo(size: 32),
+                  const SizedBox(height: 12),
                   Text(
                     auth.user?.name ?? auth.user?.email ?? 'Staff',
                     style: const TextStyle(color: AppColors.textSecondary),

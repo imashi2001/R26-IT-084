@@ -102,21 +102,19 @@ String binCode(int id) => 'BIN-${id.toString().padLeft(3, '0')}';
 class StaffCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final Color? tint;
   const StaffCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
+    this.tint,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: padding,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
-      ),
+      decoration: AppColors.glassCard(tint: tint),
       child: child,
     );
   }
@@ -161,6 +159,7 @@ class KpiStatCard extends StatelessWidget {
   final String value;
   final Color color;
   final IconData icon;
+  final double width;
 
   const KpiStatCard({
     super.key,
@@ -168,49 +167,52 @@ class KpiStatCard extends StatelessWidget {
     required this.value,
     required this.color,
     required this.icon,
+    this.width = 160,
   });
 
   @override
   Widget build(BuildContext context) {
-    return StaffCard(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+    return SizedBox(
+      width: width,
+      height: 118,
+      child: StaffCard(
+        padding: const EdgeInsets.all(14),
+        tint: color.withValues(alpha: 0.08),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 18),
             ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+            const Spacer(),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: color,
+                height: 1,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -219,26 +221,43 @@ class KpiStatCard extends StatelessWidget {
 class SummaryMiniCard extends StatelessWidget {
   final String label;
   final String value;
-  const SummaryMiniCard({super.key, required this.label, required this.value});
+  final IconData? icon;
+  final Color? accent;
+
+  const SummaryMiniCard({
+    super.key,
+    required this.label,
+    required this.value,
+    this.icon,
+    this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final color = accent ?? AppColors.brand;
     return StaffCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      tint: color.withValues(alpha: 0.06),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (icon != null) ...[
+            Icon(icon, size: 16, color: color),
+            const SizedBox(height: 6),
+          ],
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: color == AppColors.brand ? AppColors.textPrimary : color,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
           ),
         ],
@@ -251,12 +270,14 @@ class SegmentedFilterRow extends StatelessWidget {
   final List<(String, String)> options;
   final String selected;
   final ValueChanged<String> onSelected;
+  final Map<String, Color>? accentById;
 
   const SegmentedFilterRow({
     super.key,
     required this.options,
     required this.selected,
     required this.onSelected,
+    this.accentById,
   });
 
   @override
@@ -272,6 +293,7 @@ class SegmentedFilterRow extends StatelessWidget {
                 label: label,
                 selected: selected == id,
                 onTap: () => onSelected(id),
+                activeColor: accentById?[id],
               ),
             ),
           ],
@@ -286,6 +308,7 @@ class FilterPill extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final int? count;
+  final Color? activeColor;
 
   const FilterPill({
     super.key,
@@ -293,24 +316,28 @@ class FilterPill extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.count,
+    this.activeColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final accent = activeColor ?? AppColors.brand;
     return Material(
-      color: selected
-          ? AppColors.brand.withValues(alpha: 0.18)
-          : AppColors.surface,
-      borderRadius: BorderRadius.circular(100),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(100),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(100),
+            color: selected
+                ? accent.withValues(alpha: 0.18)
+                : AppColors.surfaceElevated,
             border: Border.all(
-              color: selected ? AppColors.brand : AppColors.border,
+              color: selected ? accent : AppColors.border.withValues(alpha: 0.5),
+              width: selected ? 1.5 : 1,
             ),
           ),
           child: Text(
@@ -318,7 +345,7 @@ class FilterPill extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: selected ? AppColors.brand : AppColors.textSecondary,
+              color: selected ? accent : AppColors.textSecondary,
             ),
           ),
         ),
@@ -344,25 +371,21 @@ class PriorityBinTile extends StatelessWidget {
                 : 10);
 
     return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
+          decoration: AppColors.glassCard(tint: color.withValues(alpha: 0.06)),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(Icons.delete_outline, color: color, size: 22),
               ),
@@ -375,9 +398,11 @@ class PriorityBinTile extends StatelessWidget {
                       binCode(bin.id),
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
+                        fontSize: 15,
                         color: AppColors.textPrimary,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       bin.address ?? bin.location ?? bin.name,
                       maxLines: 1,
@@ -393,18 +418,31 @@ class PriorityBinTile extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '$pct%',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: color,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(color: color.withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      '$pct%',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: color,
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     timeAgo(bin.latestCapturedAt),
                     style: const TextStyle(
                       fontSize: 10,
-                      color: AppColors.textSecondary,
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -438,28 +476,32 @@ class AlertFeedTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _color;
     return Material(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(14),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withValues(alpha: 0.35)),
-          ),
+          decoration: AppColors.glassCard(tint: color.withValues(alpha: 0.1)),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                alert.severity == 'critical'
-                    ? Icons.error_outline
-                    : alert.severity == 'warning'
-                        ? Icons.warning_amber_outlined
-                        : Icons.info_outline,
-                color: color,
-                size: 22,
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  alert.severity == 'critical'
+                      ? Icons.error_outline
+                      : alert.severity == 'warning'
+                          ? Icons.warning_amber_outlined
+                          : Icons.info_outline,
+                  color: color,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -470,6 +512,7 @@ class AlertFeedTile extends StatelessWidget {
                       alert.title,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
+                        fontSize: 14,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -518,22 +561,29 @@ class RouteStopTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = fillColor(stop.latestFillLevel);
     return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
+          decoration: AppColors.glassCard(tint: color.withValues(alpha: 0.06)),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: color,
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
                 child: Text(
                   '${stop.order}',
                   style: const TextStyle(
@@ -567,12 +617,20 @@ class RouteStopTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                fillLabel(stop.latestFillLevel),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: color,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: color.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  fillLabel(stop.latestFillLevel),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
               ),
             ],
@@ -630,26 +688,36 @@ class BinFillMarker extends StatelessWidget {
 }
 
 class MapFillLegend extends StatelessWidget {
-  const MapFillLegend({super.key});
+  final bool compact;
+  const MapFillLegend({super.key, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 6 : 8,
       ),
-      child: const Column(
+      decoration: AppColors.glassCard(radius: compact ? 10 : 12),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _LegendRow(color: AppColors.fillEmpty, label: 'Empty'),
-          SizedBox(height: 4),
-          _LegendRow(color: AppColors.fillHalf, label: 'Half'),
-          SizedBox(height: 4),
-          _LegendRow(color: AppColors.fillOverflow, label: 'Overflow'),
+          if (!compact)
+            const Text(
+              'Fill level',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          if (!compact) const SizedBox(height: 4),
+          const _LegendRow(color: AppColors.fillOverflow, label: 'Full'),
+          SizedBox(height: compact ? 3 : 4),
+          const _LegendRow(color: AppColors.fillHalf, label: 'Half'),
+          SizedBox(height: compact ? 3 : 4),
+          const _LegendRow(color: AppColors.fillEmpty, label: 'Empty'),
         ],
       ),
     );
@@ -882,6 +950,62 @@ class BinLevelCard extends StatelessWidget {
             color: AppColors.textSecondary),
       ),
     );
+  }
+}
+
+// ── GlowPrimaryButton ─────────────────────────────────────────────────────────
+
+class GlowPrimaryButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool fullWidth;
+
+  const GlowPrimaryButton({
+    super.key,
+    required this.label,
+    this.icon = Icons.play_arrow_rounded,
+    this.onPressed,
+    this.fullWidth = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: onPressed == null
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: AppColors.card,
+                )
+              : AppColors.glowButton(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: TextStyle(
+                  color: onPressed == null
+                      ? AppColors.textMuted
+                      : Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return fullWidth ? SizedBox(width: double.infinity, child: child) : child;
   }
 }
 

@@ -1,5 +1,21 @@
 /** Shared layout tokens for dashboard grids and panels. */
 
+import {
+  MAP_TILE,
+  MAP_TILE_DARK,
+  MAP_TILE_LIGHT,
+  MAP_ATTRIBUTION,
+  MAP_PROVIDER,
+} from "../../config/mapConfig.js";
+
+export {
+  MAP_TILE,
+  MAP_TILE_DARK,
+  MAP_TILE_LIGHT,
+  MAP_ATTRIBUTION,
+  MAP_PROVIDER,
+};
+
 export const LAYOUT = {
   page: "mx-auto flex w-full max-w-[1680px] flex-col gap-5",
   kpiGrid:
@@ -21,9 +37,6 @@ export const CHART = {
     fontSize: 12,
   },
 };
-
-export const MAP_TILE_DARK =
-  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 export const badge = {
   live: "inline-flex items-center gap-1 rounded-full border border-brand-500/40 bg-brand-500/15 px-2 py-0.5 text-[11px] font-semibold text-brand-400 shadow-glow-brand",
@@ -87,6 +100,3 @@ export const emptyState =
 
 export const skeletonPulse =
   "animate-pulse rounded-xl border border-slate-700/40 bg-slate-900/60";
-
-/** Standard dark map basemap — use everywhere instead of Voyager light. */
-export const MAP_TILE = MAP_TILE_DARK;

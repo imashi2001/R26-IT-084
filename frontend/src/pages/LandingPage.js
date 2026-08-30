@@ -14,6 +14,7 @@ import {
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { MAP_TILE_LIGHT, MAP_ATTRIBUTION } from "../config/mapConfig";
 import {
   Leaf,
   MapPin,
@@ -51,11 +52,6 @@ import {
 
 const HERO_VIDEO = "/videos/hero-bg.mov";
 const HERO_VIDEO_TYPE = "video/quicktime";
-
-const TILE_URL =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const TILE_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 const NAV_LINKS = [
   { href: "#home", label: "Home" },
@@ -293,7 +289,7 @@ export default function LandingPage() {
                   className="h-full w-full"
                   scrollWheelZoom
                 >
-                  <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
+                  <TileLayer url={MAP_TILE_LIGHT} attribution={MAP_ATTRIBUTION} />
                   <FitBounds points={mapPoints} />
                   {userPos && (
                     <CircleMarker

@@ -74,6 +74,7 @@ class _StaffAlertsScreenState extends ConsumerState<StaffAlertsScreen> {
                         count: alerts.length,
                         selected: _filter == 'all',
                         onTap: () => setState(() => _filter = 'all'),
+                        activeColor: AppColors.brand,
                       ),
                       const SizedBox(width: 8),
                       FilterPill(
@@ -81,6 +82,7 @@ class _StaffAlertsScreenState extends ConsumerState<StaffAlertsScreen> {
                         count: critical,
                         selected: _filter == 'critical',
                         onTap: () => setState(() => _filter = 'critical'),
+                        activeColor: AppColors.riskHigh,
                       ),
                       const SizedBox(width: 8),
                       FilterPill(
@@ -88,6 +90,7 @@ class _StaffAlertsScreenState extends ConsumerState<StaffAlertsScreen> {
                         count: warning,
                         selected: _filter == 'warning',
                         onTap: () => setState(() => _filter = 'warning'),
+                        activeColor: AppColors.riskMedium,
                       ),
                       const SizedBox(width: 8),
                       FilterPill(
@@ -95,6 +98,7 @@ class _StaffAlertsScreenState extends ConsumerState<StaffAlertsScreen> {
                         count: info,
                         selected: _filter == 'info',
                         onTap: () => setState(() => _filter = 'info'),
+                        activeColor: AppColors.accentBlue,
                       ),
                     ],
                   ),

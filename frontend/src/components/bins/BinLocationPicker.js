@@ -17,12 +17,10 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { apiUrl } from "../../utils/apiBase";
-import { MAP_TILE_DARK } from "../dashboard/dashboardTheme";
+import { MAP_TILE_DARK, MAP_ATTRIBUTION } from "../dashboard/dashboardTheme";
 import { btnGhost, btnSecondary, inputClass, labelClass } from "./binStatusUi";
 
 const DEFAULT_CENTER = [7.8731, 80.7718];
-const TILE_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 const MODES = [
   { id: "map", label: "Click map", icon: MousePointerClick },
@@ -306,7 +304,7 @@ export default function BinLocationPicker({
             scrollWheelZoom
             style={{ height: "100%", width: "100%" }}
           >
-            <TileLayer url={MAP_TILE_DARK} attribution={TILE_ATTR} />
+            <TileLayer url={MAP_TILE_DARK} attribution={MAP_ATTRIBUTION} />
             <MapRecenter center={mapCenter} zoom={mapZoom} />
             <MapClickHandler onPick={onPick} disabled={disabled || mode !== "map"} />
             {hasCoords ? (

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/map_layers.dart';
 import '../../data/bin_repository.dart';
 import '../../data/osrm_service.dart';
 import '../../domain/models.dart';
@@ -112,10 +115,39 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen> {
     await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
+  double _estimateDistanceKm(CollectionPlan plan) {
+    if (plan.stops.isEmpty) return 0;
+    var total = 0.0;
+    var lat = plan.startLat;
+    var lng = plan.startLng;
+    for (final stop in plan.stops) {
+      total += _haversineKm(lat, lng, stop.latitude, stop.longitude);
+      lat = stop.latitude;
+      lng = stop.longitude;
+    }
+    return total;
+  }
+
+  int _estimateDurationMin(double km) => (km / 35 * 60).ceil().clamp(5, 999);
+
+  double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
+    const r = 6371.0;
+    final dLat = (lat2 - lat1) * math.pi / 180;
+    final dLng = (lng2 - lng1) * math.pi / 180;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+  }
+
   @override
   Widget build(BuildContext context) {
     final plan = _plan;
     final stops = plan?.stops ?? [];
+    final distanceKm = plan != null ? _estimateDistanceKm(plan) : 0.0;
+    final durationMin = _estimateDurationMin(distanceKm);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -123,6 +155,7 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen> {
       appBar: StaffAppBar(
         title: 'Collection Routes',
         showMenu: true,
+        showBack: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
@@ -158,6 +191,7 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: StaffCard(
+                tint: AppColors.brand.withValues(alpha: 0.06),
                 child: Row(
                   children: [
                     Expanded(
@@ -167,24 +201,28 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen> {
                           Row(
                             children: [
                               const Text(
-                                'Active route',
+                                'Route 01',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
+                                  fontSize: 16,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
+                                  horizontal: 10,
+                                  vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.brand.withValues(alpha: 0.15),
+                                  color: AppColors.brand.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(100),
+                                  border: Border.all(
+                                    color: AppColors.brand.withValues(alpha: 0.5),
+                                  ),
                                 ),
                                 child: const Text(
-                                  'In progress',
+                                  'In Progress',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -194,20 +232,29 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Text(
-                            '${stops.length} stops · ${plan.excludedEmptyCount} empty skipped',
+                            '${stops.length} stops · ~$durationMin min · ${distanceKm.toStringAsFixed(1)} km',
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
                             ),
                           ),
+                          if (plan.excludedEmptyCount > 0)
+                            Text(
+                              '${plan.excludedEmptyCount} empty bins skipped',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                         ],
                       ),
                     ),
                     IconButton(
                       onPressed: _loadRoute,
                       icon: const Icon(Icons.refresh),
+                      tooltip: 'Refresh route',
                     ),
                   ],
                 ),
@@ -219,11 +266,20 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: _MapPreview(
-                  polyline: _polyline,
-                  stops: stops,
-                  userPos: _userPos,
-                  onStopTap: (id) => context.push('/staff/bins/$id'),
+                child: Stack(
+                  children: [
+                    _MapPreview(
+                      polyline: _polyline,
+                      stops: stops,
+                      userPos: _userPos,
+                      onStopTap: (id) => context.push('/staff/bins/$id'),
+                    ),
+                    const Positioned(
+                      right: 10,
+                      bottom: 10,
+                      child: MapFillLegend(compact: true),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -253,10 +309,10 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.all(16),
-                  child: ElevatedButton.icon(
+                  child: GlowPrimaryButton(
+                    label: 'Start Navigation',
+                    icon: Icons.navigation_outlined,
                     onPressed: stops.isEmpty ? null : _startNavigation,
-                    icon: const Icon(Icons.navigation_outlined),
-                    label: const Text('Start Navigation'),
                   ),
                 ),
               ],
@@ -293,12 +349,7 @@ class _MapPreview extends StatelessWidget {
     return FlutterMap(
       options: MapOptions(initialCenter: center, initialZoom: 13),
       children: [
-        TileLayer(
-          urlTemplate:
-              'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
-          userAgentPackageName: 'com.visionwaste.app',
-        ),
+        visionWasteTileLayer(dark: true),
         if (polyline.length >= 2)
           PolylineLayer(
             polylines: [

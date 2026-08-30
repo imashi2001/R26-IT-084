@@ -28,7 +28,7 @@ import DashboardSection from "../components/dashboard/DashboardSection";
 import Card from "../components/dashboard/Card";
 import EmptyState from "../components/dashboard/EmptyState";
 import StatusBanner from "../components/dashboard/StatusBanner";
-import { LAYOUT, MAP_TILE_DARK } from "../components/dashboard/dashboardTheme";
+import { LAYOUT, MAP_TILE_DARK, MAP_ATTRIBUTION } from "../components/dashboard/dashboardTheme";
 import {
   btnGhost,
   btnSecondary,
@@ -257,7 +257,7 @@ export default function ForecastPage() {
                 >
                   <TileLayer
                     url={MAP_TILE_DARK}
-                    attribution='&copy; <a href="https://carto.com">CARTO</a>'
+                    attribution={MAP_ATTRIBUTION}
                     maxZoom={19}
                   />
                   {data?.locations?.map((loc) => (

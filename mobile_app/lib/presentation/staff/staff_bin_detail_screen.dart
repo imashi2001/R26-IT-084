@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/map_layers.dart';
 import '../../data/providers.dart';
 import '../../domain/models.dart';
 import '../../theme/app_theme.dart';
+import '../shared/staff_charts.dart';
 import '../shared/widgets.dart';
+import 'staff_shell.dart';
 
 class StaffBinDetailScreen extends ConsumerWidget {
   final int binId;
@@ -20,22 +23,17 @@ class StaffBinDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/staff/bins');
-            }
-          },
-        ),
-        title: const Text(
-          'Bin Details',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
+      appBar: StaffAppBar(
+        title: 'Bin Details',
+        showMenu: false,
+        showBack: true,
+        onBack: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/staff/bins');
+          }
+        },
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert),
@@ -80,27 +78,35 @@ class _DetailBody extends StatelessWidget {
     final pct = extras?.fillPercentage ?? device.latestFillPercentage;
     final color = fillColor(fill);
     final pctLabel = pct != null ? '${pct.round()}%' : fillLabel(fill);
+    final spark = sparklineFromFill(fill, pct);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         StaffCard(
+          tint: color.withValues(alpha: 0.08),
           child: Column(
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.25),
+                      blurRadius: 16,
+                    ),
+                  ],
                 ),
-                child: Icon(Icons.delete_outline, color: color, size: 32),
+                child: Icon(Icons.delete_outline, color: color, size: 36),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
                 binCode(device.id),
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
@@ -114,16 +120,16 @@ class _DetailBody extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(100),
                   border: Border.all(color: color.withValues(alpha: 0.5)),
                 ),
                 child: Text(
-                  '$pctLabel · ${fillLabel(fill)}',
+                  '$pctLabel Full',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: color,
@@ -140,13 +146,14 @@ class _DetailBody extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.35,
+          childAspectRatio: 1.25,
           children: [
             _StatGridTile(
               label: 'Fill level',
               value: pctLabel,
               icon: Icons.water_drop_outlined,
               color: color,
+              sparkline: spark,
             ),
             _StatGridTile(
               label: 'Status',
@@ -162,7 +169,7 @@ class _DetailBody extends StatelessWidget {
             ),
             _StatGridTile(
               label: 'Bin type',
-              value: device.latestSourceType ?? 'Smart bin',
+              value: device.latestSourceType ?? 'General Waste',
               icon: Icons.category_outlined,
               color: AppColors.brand,
             ),
@@ -187,7 +194,7 @@ class _DetailBody extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: SizedBox(
-                  height: 120,
+                  height: 140,
                   child: FlutterMap(
                     options: MapOptions(
                       initialCenter: LatLng(device.latitude, device.longitude),
@@ -196,19 +203,14 @@ class _DetailBody extends StatelessWidget {
                           const InteractionOptions(flags: InteractiveFlag.none),
                     ),
                     children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                        subdomains: const ['a', 'b', 'c', 'd'],
-                        userAgentPackageName: 'com.visionwaste.app',
-                      ),
+                      visionWasteTileLayer(dark: true),
                       MarkerLayer(
                         markers: [
                           Marker(
                             point: LatLng(device.latitude, device.longitude),
-                            width: 32,
-                            height: 32,
-                            child: Icon(Icons.location_on, color: color, size: 32),
+                            width: 36,
+                            height: 36,
+                            child: Icon(Icons.location_on, color: color, size: 36),
                           ),
                         ],
                       ),
@@ -230,17 +232,23 @@ class _DetailBody extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: () => _openMaps(device),
-          icon: const Icon(Icons.add_road_outlined),
-          label: const Text('Navigate to bin'),
+        const SizedBox(height: 20),
+        GlowPrimaryButton(
+          label: 'Add to Route',
+          icon: Icons.add,
+          onPressed: () => context.go('/staff/routes'),
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
-          onPressed: () => context.go('/staff/routes'),
-          icon: const Icon(Icons.route_outlined),
-          label: const Text('View collection route'),
+          onPressed: () => context.go('/staff/alerts'),
+          icon: const Icon(Icons.bar_chart_outlined),
+          label: const Text('View History'),
+        ),
+        const SizedBox(height: 10),
+        TextButton.icon(
+          onPressed: () => _openMaps(device),
+          icon: const Icon(Icons.navigation_outlined, size: 18),
+          label: const Text('Navigate to bin'),
         ),
         const SizedBox(height: 24),
       ],
@@ -253,22 +261,35 @@ class _StatGridTile extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final List<double>? sparkline;
 
   const _StatGridTile({
     required this.label,
     required this.value,
     required this.icon,
     required this.color,
+    this.sparkline,
   });
 
   @override
   Widget build(BuildContext context) {
     return StaffCard(
       padding: const EdgeInsets.all(12),
+      tint: color.withValues(alpha: 0.06),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const Spacer(),
+              if (sparkline != null)
+                Expanded(
+                  flex: 2,
+                  child: SparklineChart(points: sparkline!, color: color),
+                ),
+            ],
+          ),
           const Spacer(),
           Text(
             value,
@@ -276,7 +297,7 @@ class _StatGridTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontWeight: FontWeight.w800,
-              fontSize: 15,
+              fontSize: 16,
               color: color,
             ),
           ),

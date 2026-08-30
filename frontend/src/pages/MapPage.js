@@ -27,7 +27,7 @@ import {
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
-import { MAP_TILE_DARK } from "../components/dashboard/dashboardTheme";
+import { MAP_TILE_DARK, MAP_ATTRIBUTION } from "../components/dashboard/dashboardTheme";
 import {
   btnPrimary,
   btnSecondary,
@@ -67,9 +67,6 @@ import {
  *     (overflow / fill % / hygienic risk); crews can focus the map from a row click.
  *   - Keeps GET /devices/map + GET /devices/nearest — no backend changes.
  */
-
-const TILE_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 const LEGEND = [
   { color: "#22c55e", label: "Empty" },
@@ -1017,7 +1014,7 @@ export default function MapPage() {
               className="z-0"
               style={{ height: "100%", width: "100%", minHeight: "min(62vh,560px)" }}
             >
-              <TileLayer attribution={TILE_ATTR} url={MAP_TILE_DARK} />
+              <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_DARK} />
               <MapDepotPicker
                 active={depotPickActive && startMode === "depot"}
                 onPick={(lat, lng) => {

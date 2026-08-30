@@ -80,6 +80,19 @@ cd mobile_app
 flutter pub get
 ```
 
+### MapTiler (optional)
+
+Maps use **MapTiler** when you pass your API key at run/build time; otherwise free **CARTO/OpenStreetMap** tiles are used.
+
+1. Get a key: [MapTiler Cloud → API keys](https://cloud.maptiler.com/account/keys/)
+2. Run or build with:
+   ```powershell
+   flutter run --dart-define=MAPTILER_KEY=your_key_here
+   flutter build apk --release --dart-define=MAPTILER_KEY=your_key_here
+   ```
+
+Config: `lib/config/map_config.dart` · shared layer: `lib/config/map_layers.dart`
+
 ## 4. Run on a device / emulator
 ```powershell
 flutter run

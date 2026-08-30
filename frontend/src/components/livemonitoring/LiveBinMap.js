@@ -9,13 +9,9 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Activity, Crosshair } from "lucide-react";
-import { MAP_TILE_DARK } from "../dashboard/dashboardTheme";
+import { MAP_TILE_DARK, MAP_ATTRIBUTION } from "../dashboard/dashboardTheme";
 import { markerFillFromBin, fillLabel } from "../../utils/fillTier";
 import { isVirtualBin } from "../../utils/collectionRoute";
-
-const TILE_URL = MAP_TILE_DARK;
-const TILE_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 const LEGEND = [
   { color: "#22c55e", label: "Empty (low risk)" },
@@ -81,7 +77,7 @@ export default function LiveBinMap({
         scrollWheelZoom
         style={{ height: "100%", width: "100%" }}
       >
-        <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
+        <TileLayer url={MAP_TILE_DARK} attribution={MAP_ATTRIBUTION} />
 
         <FocusController
           bins={bins}

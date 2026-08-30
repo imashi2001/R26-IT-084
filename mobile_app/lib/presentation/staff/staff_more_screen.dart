@@ -135,16 +135,18 @@ class _MenuTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        child: ListTile(
-          leading: Icon(icon, color: color),
-          title: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-          trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+        color: Colors.transparent,
+        child: InkWell(
           onTap: onTap,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: AppColors.border.withValues(alpha: 0.6)),
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            decoration: AppColors.glassCard(),
+            child: ListTile(
+              leading: Icon(icon, color: color),
+              title: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+              trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
           ),
         ),
       ),

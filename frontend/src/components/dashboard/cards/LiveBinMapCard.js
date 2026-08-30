@@ -10,13 +10,10 @@ import "leaflet/dist/leaflet.css";
 import axios from "axios";
 import { Map as MapIcon, Database, ExternalLink } from "lucide-react";
 import Card from "../Card";
-import { MAP_TILE_DARK } from "../dashboardTheme";
+import { MAP_TILE_DARK, MAP_ATTRIBUTION } from "../dashboardTheme";
 import { apiUrl } from "../../../utils/apiBase";
 import { markerFillFromBin, fillLabel } from "../../../utils/fillTier";
 import { isVirtualBin } from "../../../utils/collectionRoute";
-
-const TILE_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 const SRI_LANKA_CENTER = [7.8731, 80.7718];
 
@@ -129,7 +126,7 @@ export default function LiveBinMapCard() {
               scrollWheelZoom={false}
               style={{ height: "100%", width: "100%" }}
             >
-              <TileLayer url={MAP_TILE_DARK} attribution={TILE_ATTR} />
+              <TileLayer url={MAP_TILE_DARK} attribution={MAP_ATTRIBUTION} />
               {bins.map((b) => {
                 if (
                   b.latitude == null ||

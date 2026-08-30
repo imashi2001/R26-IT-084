@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../data/providers.dart';
 import '../../domain/models.dart';
+import '../../config/map_layers.dart';
 import '../../theme/app_theme.dart';
 import '../shared/widgets.dart';
 import 'staff_shell.dart';
@@ -40,16 +41,9 @@ class _StaffBinsScreenState extends ConsumerState<StaffBinsScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       drawer: const StaffDrawer(),
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        title: const Text(
-          'Bins',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
+      appBar: StaffAppBar(
+        title: 'Bins',
+        showMenu: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -57,16 +51,6 @@ class _StaffBinsScreenState extends ConsumerState<StaffBinsScreen>
             onPressed: () => ref.invalidate(mapBinsProvider),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabs,
-          indicatorColor: AppColors.brand,
-          labelColor: AppColors.brand,
-          unselectedLabelColor: AppColors.textSecondary,
-          tabs: const [
-            Tab(icon: Icon(Icons.list_alt_outlined), text: 'List'),
-            Tab(icon: Icon(Icons.map_outlined), text: 'Map'),
-          ],
-        ),
       ),
       body: async.when(
         loading: () => const CentredLoader(label: 'Loading bins…'),
@@ -74,11 +58,27 @@ class _StaffBinsScreenState extends ConsumerState<StaffBinsScreen>
           message: e.toString(),
           onRetry: () => ref.invalidate(mapBinsProvider),
         ),
-        data: (bins) => TabBarView(
-          controller: _tabs,
+        data: (bins) => Column(
           children: [
-            _BinList(bins: bins),
-            _BinMap(bins: bins),
+            TabBar(
+              controller: _tabs,
+              indicatorColor: AppColors.brand,
+              labelColor: AppColors.brand,
+              unselectedLabelColor: AppColors.textSecondary,
+              tabs: const [
+                Tab(icon: Icon(Icons.list_alt_outlined), text: 'List'),
+                Tab(icon: Icon(Icons.map_outlined), text: 'Map'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabs,
+                children: [
+                  _BinList(bins: bins),
+                  _BinMap(bins: bins),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -220,6 +220,14 @@ class _SummaryChip extends StatelessWidget {
               color: color.withValues(alpha: selected ? 0.9 : 0.4),
               width: selected ? 1.5 : 1,
             ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             children: [
@@ -275,12 +283,7 @@ class _BinMap extends StatelessWidget {
             initialZoom: validBins.length <= 1 ? 14 : 10,
           ),
           children: [
-            TileLayer(
-              urlTemplate:
-                  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-              subdomains: const ['a', 'b', 'c', 'd'],
-              userAgentPackageName: 'com.visionwaste.app',
-            ),
+            visionWasteTileLayer(dark: true),
             MarkerLayer(
               markers: validBins.map((bin) {
                 return Marker(
@@ -297,8 +300,8 @@ class _BinMap extends StatelessWidget {
                 );
               }).toList(),
             ),
-            const RichAttributionWidget(attributions: [
-              TextSourceAttribution('© OpenStreetMap contributors'),
+            RichAttributionWidget(attributions: [
+              TextSourceAttribution(visionWasteMapAttribution),
             ]),
           ],
         ),

@@ -54,7 +54,21 @@ For production builds set `VITE_API_URL` to the deployed backend URL —
 `src/utils/apiBase.js` resolves it automatically.
 
 Copy [`.env.example`](.env.example) to `.env.local` for local overrides
-(`VITE_API_URL`, `VITE_ESP32_CAPTURE_URL`, `VITE_LIVE_DEVICE_ID`).
+(`VITE_API_URL`, `VITE_MAPTILER_KEY`, `VITE_ESP32_CAPTURE_URL`, `VITE_LIVE_DEVICE_ID`).
+
+### MapTiler (optional)
+
+Maps use **MapTiler** when `VITE_MAPTILER_KEY` is set at build time; otherwise free **CARTO/OpenStreetMap** tiles are used.
+
+1. Create a key at [MapTiler Cloud](https://cloud.maptiler.com/account/keys/)
+2. Add to `frontend/.env.local`:
+   ```env
+   VITE_MAPTILER_KEY=your_key_here
+   ```
+3. Restart `npm run dev` (or redeploy on Railway with the env var set)
+
+Dark dashboard maps use `dataviz-dark`; public landing uses `streets-v2`.
+Config: `src/config/mapConfig.js`
 
 ## Build
 

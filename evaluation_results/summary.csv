@@ -1,0 +1,31 @@
+model,metric,value,split,class_name,notes
+waste_mobilenetv2,test_images,372,test,,
+waste_mobilenetv2,accuracy,97.58,test,,percent
+waste_mobilenetv2,precision_organic,0.9721,test,,
+waste_mobilenetv2,recall_organic,0.9775,test,,
+waste_mobilenetv2,f1_organic,0.9748,test,,
+waste_mobilenetv2,precision,0.9793,test,non_organic,
+waste_mobilenetv2,recall,0.9742,test,non_organic,
+waste_mobilenetv2,f1,0.9767,test,non_organic,
+waste_mobilenetv2,precision,0.9721,test,organic,
+waste_mobilenetv2,recall,0.9775,test,organic,
+waste_mobilenetv2,f1,0.9748,test,organic,
+animal_yolov8,mAP50,0.8806,test,,
+animal_yolov8,mAP50-95,0.6101,test,,
+animal_yolov8,precision,0.8641,test,,
+animal_yolov8,recall,0.7959,test,,
+animal_yolov8,mAP50-95,0.6183,test,cat,
+animal_yolov8,mAP50-95,0.6279,test,crow,
+animal_yolov8,mAP50-95,0.6630,test,dog,
+animal_yolov8,mAP50-95,0.5311,test,monkey,
+bin_fill_yolov8,mAP50,0.5919,val,,"From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\Users\Charuka\Desktop\garbage-project\dataset\data.yaml"
+bin_fill_yolov8,mAP50-95,0.3650,val,,"From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\Users\Charuka\Desktop\garbage-project\dataset\data.yaml"
+bin_fill_yolov8,precision,0.5275,val,,"From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\Users\Charuka\Desktop\garbage-project\dataset\data.yaml"
+bin_fill_yolov8,recall,0.6183,val,,"From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\Users\Charuka\Desktop\garbage-project\dataset\data.yaml"
+bin_fill_yolov8,best_epoch,6,val,,"From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\Users\Charuka\Desktop\garbage-project\dataset\data.yaml"
+bin_fill_yolov8,class,Empty,val,,class list from checkpoint (per-class mAP needs dataset re-val)
+bin_fill_yolov8,class,Half,val,,class list from checkpoint (per-class mAP needs dataset re-val)
+bin_fill_yolov8,class,Overflow,val,,class list from checkpoint (per-class mAP needs dataset re-val)
+risk_engine_rules,scenario_accuracy,100.00,test,,6/6 scenarios; percent
+risk_engine_rules,scenarios_total,6,test,,
+risk_engine_rules,scenarios_passed,6,test,,

@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../data/providers.dart';
 import '../presentation/home_screen.dart';
 import '../presentation/public/public_nearest_screen.dart';
+import '../presentation/shared/in_app_navigation_screen.dart';
+import '../domain/navigation_args.dart';
 import '../presentation/staff/staff_alerts_screen.dart';
 import '../presentation/staff/staff_bin_detail_screen.dart';
 import '../presentation/staff/staff_bins_screen.dart';
@@ -48,6 +50,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/public',
         builder: (_, __) => const PublicNearestScreen(),
+      ),
+      GoRoute(
+        path: '/navigate',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, state) {
+          final args = state.extra as InAppNavigationArgs?;
+          if (args == null) {
+            return const Scaffold(
+              body: Center(child: Text('No navigation target')),
+            );
+          }
+          return InAppNavigationScreen(args: args);
+        },
       ),
       GoRoute(
         path: '/staff/login',

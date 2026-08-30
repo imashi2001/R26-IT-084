@@ -64,6 +64,11 @@ class BinRepository {
     return {};
   }
 
+  Future<DashboardSettings> dashboardSettings() async {
+    final res = await _dio.get('/dashboard/settings');
+    return DashboardSettings.fromJson(res.data as Map<String, dynamic>);
+  }
+
   Future<CollectionPlan> collectionPlan({
     required double latitude,
     required double longitude,

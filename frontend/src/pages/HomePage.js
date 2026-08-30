@@ -19,6 +19,16 @@ import {
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
+import PageShell from "../components/dashboard/PageShell";
+import PageHeader from "../components/dashboard/PageHeader";
+import {
+  btnGhost,
+  btnSecondary,
+  btnPrimary,
+  bannerTone,
+  fillBadgeClass,
+  inputClass,
+} from "../components/dashboard/dashboardUi";
 import ImageCanvas from "../components/ImageCanvas";
 import {
   getApiBaseUrl,
@@ -125,32 +135,19 @@ function predictionsFromPredictResponse(data) {
 /* ---------------- styling helpers ---------------- */
 
 const LABEL_PALETTE = [
-  { match: /^risk:critical$/i, chip: "bg-red-100 text-red-800 border-red-200" },
-  { match: /^risk:high$/i, chip: "bg-red-50 text-red-700 border-red-200" },
-  { match: /^risk:medium$/i, chip: "bg-amber-50 text-amber-700 border-amber-200" },
-  { match: /^risk:low$/i, chip: "bg-brand-50 text-brand-700 border-brand-200" },
-  { match: /^overflow$/i, chip: "bg-red-50 text-red-700 border-red-200" },
-  { match: /^half$/i, chip: "bg-amber-50 text-amber-700 border-amber-200" },
-  { match: /^empty$/i, chip: "bg-brand-50 text-brand-700 border-brand-200" },
+  { match: /^risk:critical$/i, chip: "bg-red-500/15 text-red-300 border-red-500/30" },
+  { match: /^risk:high$/i, chip: "bg-red-500/10 text-red-300 border-red-500/30" },
+  { match: /^risk:medium$/i, chip: "bg-amber-500/10 text-amber-300 border-amber-500/30" },
+  { match: /^risk:low$/i, chip: "bg-brand-500/10 text-brand-300 border-brand-500/30" },
+  { match: /^overflow$/i, chip: "bg-red-500/10 text-red-300 border-red-500/30" },
+  { match: /^half$/i, chip: "bg-amber-500/10 text-amber-300 border-amber-500/30" },
+  { match: /^empty$/i, chip: "bg-brand-500/10 text-brand-300 border-brand-500/30" },
 ];
 
 function labelChipClass(label) {
   const hit = LABEL_PALETTE.find((p) => p.match.test(String(label)));
   if (hit) return hit.chip;
-  return "bg-slate-100 text-ink-700 border-slate-200";
-}
-
-function fillBadgeClass(tier) {
-  switch (tier) {
-    case "overflow":
-      return "bg-red-50 text-red-700 border-red-200";
-    case "half":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "empty":
-      return "bg-brand-50 text-brand-700 border-brand-200";
-    default:
-      return "bg-slate-100 text-ink-500 border-slate-200";
-  }
+  return "bg-slate-900/40 text-slate-300 border-slate-700/50";
 }
 
 export default function HomePage() {
@@ -377,8 +374,40 @@ export default function HomePage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 lg:p-6 space-y-6">
-        <PageHeader />
+      <PageShell>
+        <PageHeader
+          title="Bin Level Detector"
+          subtitle={
+            <>
+              Upload an image or pull one from an ESP32-CAM to run waste
+              classification, animal detection, and bin-fill detection. Same models
+              the{" "}
+              <Link
+                to="/live-monitoring"
+                className="font-semibold text-brand-400 hover:text-brand-300"
+              >
+                Live Monitoring
+              </Link>{" "}
+              map uses behind the scenes.
+            </>
+          }
+          actions={
+            <>
+              <Link to="/live-monitoring" className={btnGhost}>
+                Live Monitoring
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link to="/hygienic-risk" className={btnGhost}>
+                Risk Dashboard
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link to="/mobile-report" className={btnGhost}>
+                Phone report
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </>
+          }
+        />
 
         {error ? (
           <Banner
@@ -430,72 +459,18 @@ export default function HomePage() {
         {imageUrl && hasAnnotations ? (
           <AnnotationsCard lastPredict={lastPredict} />
         ) : null}
-      </div>
+      </PageShell>
     </DashboardLayout>
-  );
-}
-
-/* ============================ Page header ============================ */
-
-function PageHeader() {
-  return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink-900">
-          Bin Level Detector
-        </h1>
-        <p className="mt-0.5 max-w-2xl text-sm text-ink-500">
-          Upload an image or pull one from an ESP32-CAM to run waste
-          classification, animal detection, and bin-fill detection. Same models
-          the{" "}
-          <Link
-            to="/live-monitoring"
-            className="font-semibold text-brand-700 hover:text-brand-600"
-          >
-            Live Monitoring
-          </Link>{" "}
-          map uses behind the scenes.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Link
-          to="/live-monitoring"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-        >
-          Live Monitoring
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
-        <Link
-          to="/hygienic-risk"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-        >
-          Risk Dashboard
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
-        <Link
-          to="/mobile-report"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-        >
-          Phone report
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-    </div>
   );
 }
 
 /* ============================ Banners ============================ */
 
 function Banner({ tone, icon: Icon, title, body }) {
-  const tones = {
-    red: "border-red-200 bg-red-50 text-red-800",
-    amber: "border-amber-200 bg-amber-50 text-amber-800",
-    brand: "border-brand-200 bg-brand-50 text-brand-700",
-  };
+  const toneKey = tone === "red" ? "error" : tone === "brand" ? "ok" : "warn";
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${tones[tone]}`}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone(toneKey)}`}
     >
       <Icon className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="text-sm">
@@ -527,7 +502,7 @@ function UploadCard({
         icon={ImagePlus}
         title="Image source"
         right={
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <span className="rounded-full border border-slate-700/50 bg-slate-900/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Upload or LAN snapshot
           </span>
         }
@@ -548,18 +523,18 @@ function UploadCard({
           }}
           className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${
             dragOver
-              ? "border-brand-500 bg-brand-50/60"
-              : "border-slate-300 bg-slate-50 hover:border-brand-400 hover:bg-brand-50/40"
+              ? "border-brand-500/50 bg-brand-500/10"
+              : "border-slate-700/50 bg-slate-950/40 hover:border-brand-500/30 hover:bg-brand-500/5"
           }`}
           aria-label="Upload an image"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
-            <UploadCloud className="h-6 w-6 text-brand-600" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-900/60 ring-1 ring-slate-700/50">
+            <UploadCloud className="h-6 w-6 text-brand-400" />
           </div>
-          <div className="text-sm font-semibold text-ink-900">
+          <div className="text-sm font-semibold text-slate-100">
             Drag &amp; drop an image here
           </div>
-          <div className="text-xs text-ink-500">or click to browse</div>
+          <div className="text-xs text-slate-500">or click to browse</div>
           <input
             ref={fileInputRef}
             type="file"
@@ -569,22 +544,22 @@ function UploadCard({
           />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/60">
               {mixedContentBlocked ? (
-                <WifiOff className="h-4 w-4 text-red-600" />
+                <WifiOff className="h-4 w-4 text-red-400" />
               ) : (
-                <Wifi className="h-4 w-4 text-brand-600" />
+                <Wifi className="h-4 w-4 text-brand-400" />
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-ink-900">
+              <div className="text-sm font-semibold text-slate-100">
                 ESP32-CAM (same Wi‑Fi)
               </div>
-              <div className="text-xs text-ink-500">
+              <div className="text-xs text-slate-500">
                 Snapshot URL on your LAN, e.g.{" "}
-                <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px] text-ink-700">
+                <code className="rounded bg-slate-900/60 px-1 py-0.5 text-[11px] text-slate-300">
                   http://10.134.126.191/capture
                 </code>
               </div>
@@ -592,9 +567,9 @@ function UploadCard({
           </div>
 
           {mixedContentBlocked ? (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
               This site is served over HTTPS. Browsers block loading{" "}
-              <code className="rounded bg-amber-100 px-1">http://</code> camera
+              <code className="rounded bg-amber-500/20 px-1">http://</code> camera
               URLs (mixed content). Use the{" "}
               <strong>VisionWaste bridge</strong> on your laptop, or upload an
               image instead.
@@ -604,7 +579,7 @@ function UploadCard({
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <input
               type="url"
-              className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className={`${inputClass} mt-0 flex-1`}
               placeholder="http://10.134.126.191/capture"
               value={esp32Url}
               onChange={(e) => onEsp32UrlChange(e.target.value)}
@@ -615,7 +590,7 @@ function UploadCard({
               type="button"
               onClick={onLoadFromEsp32}
               disabled={esp32Loading || mixedContentBlocked || !esp32Url.trim()}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className={btnPrimary}
             >
               {esp32Loading ? (
                 <>
@@ -638,7 +613,7 @@ function UploadCard({
         fallback lives under{" "}
         <Link
           to="/mobile-report"
-          className="font-semibold text-brand-700 hover:text-brand-600"
+          className="font-semibold text-brand-400 hover:text-brand-300"
         >
           Mobile Report
         </Link>
@@ -657,7 +632,7 @@ function BinsSnapshotCard({ bins, loading, error }) {
         right={
           <Link
             to="/live-monitoring"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-600"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-400 hover:text-brand-300"
           >
             Map
             <ChevronRight className="h-3.5 w-3.5" />
@@ -667,24 +642,24 @@ function BinsSnapshotCard({ bins, loading, error }) {
 
       <Card.Body>
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-ink-500">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading bins…
           </div>
         ) : null}
 
         {error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
             {error}
           </div>
         ) : null}
 
         {!loading && !error && bins.length === 0 ? (
-          <div className="text-sm text-ink-500">
+          <div className="text-sm text-slate-500">
             No bins yet. Create bins in{" "}
             <Link
               to="/admin"
-              className="font-semibold text-brand-700 hover:text-brand-600"
+              className="font-semibold text-brand-400 hover:text-brand-300"
             >
               Admin
             </Link>
@@ -693,7 +668,7 @@ function BinsSnapshotCard({ bins, loading, error }) {
         ) : null}
 
         {bins.length > 0 ? (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-slate-700/50">
             {bins.map((b) => {
               const tier = effectiveFillTier(b);
               const tierKey = normalizeFill(tier) || "unknown";
@@ -706,9 +681,9 @@ function BinsSnapshotCard({ bins, loading, error }) {
                 <li key={b.id}>
                   <Link
                     to={`/bins/${b.id}`}
-                    className="flex items-center justify-between gap-2 py-2.5 transition hover:bg-slate-50"
+                    className="flex items-center justify-between gap-2 py-2.5 transition hover:bg-slate-900/40"
                   >
-                    <span className="truncate text-sm font-medium text-ink-900">
+                    <span className="truncate text-sm font-medium text-slate-100">
                       {b.name}
                     </span>
                     <span className="flex items-center gap-2">
@@ -719,7 +694,7 @@ function BinsSnapshotCard({ bins, loading, error }) {
                       >
                         {fillLabel(tier === "unknown" ? "" : tier)}
                       </span>
-                      <span className="w-10 text-right text-xs font-medium tabular-nums text-ink-700">
+                      <span className="w-10 text-right text-xs font-medium tabular-nums text-slate-400">
                         {pct}
                       </span>
                     </span>
@@ -743,13 +718,13 @@ function WorkspaceCard({ imageUrl, predictions, loading, onRun, onReset }) {
         icon={ImagePlus}
         title="Workspace"
         right={
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <span className="rounded-full border border-slate-700/50 bg-slate-900/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Waste · Animal · Bin-fill
           </span>
         }
       />
       <Card.Body className="space-y-4">
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+        <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950/40">
           <ImageCanvas imageUrl={imageUrl} predictions={predictions} />
         </div>
 
@@ -758,7 +733,7 @@ function WorkspaceCard({ imageUrl, predictions, loading, onRun, onReset }) {
             type="button"
             onClick={onRun}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className={btnPrimary}
           >
             {loading ? (
               <>
@@ -775,7 +750,7 @@ function WorkspaceCard({ imageUrl, predictions, loading, onRun, onReset }) {
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-ink-700 hover:bg-slate-50"
+            className={btnSecondary}
           >
             <RotateCcw className="h-4 w-4" />
             Upload new image
@@ -793,14 +768,14 @@ function PredictionsCard({ predictions }) {
         icon={ListChecks}
         title="Detections"
         right={
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <span className="rounded-full border border-slate-700/50 bg-slate-900/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             {predictions.length}
           </span>
         }
       />
       <Card.Body>
         {predictions.length === 0 ? (
-          <div className="text-sm text-ink-500">
+          <div className="text-sm text-slate-500">
             Run detection to see waste, animal, bin-fill, and risk predictions
             here.
           </div>
@@ -814,7 +789,7 @@ function PredictionsCard({ predictions }) {
               return (
                 <li
                   key={i}
-                  className="rounded-lg border border-slate-200 bg-white p-2.5"
+                  className="rounded-lg border border-slate-700/50 bg-slate-950/40 p-2.5"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span
@@ -824,11 +799,11 @@ function PredictionsCard({ predictions }) {
                     >
                       {p.label}
                     </span>
-                    <span className="text-xs font-semibold tabular-nums text-ink-700">
+                    <span className="text-xs font-semibold tabular-nums text-slate-300">
                       {conf}
                     </span>
                   </div>
-                  <div className="mt-1 text-[11px] text-ink-500">
+                  <div className="mt-1 text-[11px] text-slate-500">
                     Box: [{Math.round(x1)}, {Math.round(y1)}, {Math.round(x2)},{" "}
                     {Math.round(y2)}]
                   </div>
@@ -860,7 +835,7 @@ function AnnotationsCard({ lastPredict }) {
         icon={ShieldAlert}
         title="Server-rendered annotations"
         right={
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <span className="rounded-full border border-slate-700/50 bg-slate-900/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             From model microservices
           </span>
         }
@@ -912,16 +887,16 @@ function AnnotationsCard({ lastPredict }) {
 
 function AnnotationPanel({ icon: Icon, title, imgSrc, meta }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+    <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950/40">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-700/50 px-3 py-2">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100">
-            <Icon className="h-3.5 w-3.5 text-ink-700" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900/60">
+            <Icon className="h-3.5 w-3.5 text-slate-300" />
           </div>
-          <span className="text-sm font-semibold text-ink-900">{title}</span>
+          <span className="text-sm font-semibold text-slate-100">{title}</span>
         </div>
       </div>
-      <div className="bg-slate-50">
+      <div className="bg-slate-950/60">
         <img
           src={imgSrc}
           alt={`${title} annotated detection`}
@@ -929,7 +904,7 @@ function AnnotationPanel({ icon: Icon, title, imgSrc, meta }) {
         />
       </div>
       {meta ? (
-        <div className="border-t border-slate-100 px-3 py-2 text-[11px] text-ink-500">
+        <div className="border-t border-slate-700/50 px-3 py-2 text-[11px] text-slate-500">
           {meta}
         </div>
       ) : null}

@@ -15,6 +15,18 @@ import {
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
+import PageShell from "../components/dashboard/PageShell";
+import PageHeader from "../components/dashboard/PageHeader";
+import {
+  btnGhost,
+  btnSecondary,
+  btnPrimary,
+  inputClass,
+  selectClass,
+  labelClass,
+  bannerTone,
+  riskBadgeClass,
+} from "../components/dashboard/dashboardUi";
 import {
   apiUrl,
   getApiBaseUrl,
@@ -32,15 +44,6 @@ function haversineM(lat1, lng1, lat2, lng2) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
-
-function riskBadgeClass(level) {
-  const u = String(level || "").toUpperCase();
-  if (u === "HIGH" || u === "CRITICAL")
-    return "border-red-200 bg-red-50 text-red-800";
-  if (u === "MEDIUM") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (u === "LOW") return "border-brand-200 bg-brand-50 text-brand-800";
-  return "border-slate-200 bg-slate-50 text-ink-700";
 }
 
 /**
@@ -280,57 +283,45 @@ export default function MobileReportPage() {
     }
   };
 
-  const inputClass =
-    "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500";
-
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-4 lg:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 text-brand-600">
-              <Smartphone className="h-6 w-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
-                Field reporting
-              </span>
-            </div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
-              Mobile report
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-ink-500">
+      <PageShell>
+        <PageHeader
+          title="Mobile report"
+          subtitle={
+            <>
               Submit an on-site photo through the same analysis pipeline as the
               ESP32 bridge. Use{" "}
-              <strong className="text-ink-700">HTTPS</strong> so the camera API
+              <strong className="text-slate-300">HTTPS</strong> so the camera API
               works in the browser.
-            </p>
+            </>
+          }
+          actions={
+            <>
+              <Link to="/dashboard" className={btnGhost}>
+                Dashboard
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link to="/bins" className={btnGhost}>
+                Bin registry
+              </Link>
+            </>
+          }
+        >
+          <div className="mt-1 flex items-center gap-2 text-brand-400">
+            <Smartphone className="h-5 w-5" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Field reporting
+            </span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-            >
-              Dashboard
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              to="/bins"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-            >
-              Bin registry
-            </Link>
-          </div>
-        </header>
+        </PageHeader>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="!min-h-0">
             <Card.Header icon={Camera} title="Capture" />
             <Card.Body className="!mt-2 space-y-3">
               {!cameraOn ? (
-                <button
-                  type="button"
-                  onClick={startCamera}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
-                >
+                <button type="button" onClick={startCamera} className={`${btnPrimary} w-full`}>
                   <Camera className="h-4 w-4" />
                   Open rear camera
                 </button>
@@ -346,23 +337,19 @@ export default function MobileReportPage() {
                     <button
                       type="button"
                       onClick={snapshotFromVideo}
-                      className="inline-flex flex-1 min-w-[8rem] items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                      className={`${btnPrimary} min-w-[8rem] flex-1`}
                     >
                       Capture frame
                     </button>
-                    <button
-                      type="button"
-                      onClick={stopCamera}
-                      className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-ink-700 hover:bg-slate-50"
-                    >
+                    <button type="button" onClick={stopCamera} className={btnSecondary}>
                       Stop
                     </button>
                   </div>
                 </div>
               )}
-              <p className="text-xs text-ink-500">
+              <p className="text-xs text-slate-500">
                 Or{" "}
-                <label className="cursor-pointer font-semibold text-brand-700 hover:text-brand-600">
+                <label className="cursor-pointer font-semibold text-brand-400 hover:text-brand-300">
                   choose from gallery
                   <input
                     type="file"
@@ -375,7 +362,7 @@ export default function MobileReportPage() {
               </p>
               {cameraErr ? (
                 <div
-                  className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${bannerTone("error")}`}
                   role="alert"
                 >
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -388,10 +375,10 @@ export default function MobileReportPage() {
           <Card className="!min-h-0">
             <Card.Header icon={MapPin} title="Location" />
             <Card.Body className="!mt-2 space-y-3">
-              <p className="text-xs text-ink-500">{gpsNote}</p>
+              <p className="text-xs text-slate-500">{gpsNote}</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="block text-xs font-semibold text-ink-600">
-                  Latitude
+                <label className="block">
+                  <span className={labelClass}>Latitude</span>
                   <input
                     className={inputClass}
                     value={latInput}
@@ -399,8 +386,8 @@ export default function MobileReportPage() {
                     placeholder="e.g. 6.927079"
                   />
                 </label>
-                <label className="block text-xs font-semibold text-ink-600">
-                  Longitude
+                <label className="block">
+                  <span className={labelClass}>Longitude</span>
                   <input
                     className={inputClass}
                     value={lngInput}
@@ -416,15 +403,17 @@ export default function MobileReportPage() {
             <Card.Header icon={Trash2} title="Bin" />
             <Card.Body className="!mt-2 space-y-2">
               {binsError ? (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <div
+                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${bannerTone("warn")}`}
+                >
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   {binsError}
                 </div>
               ) : null}
-              <label className="block text-xs font-semibold text-ink-600">
-                Linked bin
+              <label className="block">
+                <span className={labelClass}>Linked bin</span>
                 <select
-                  className={inputClass}
+                  className={selectClass}
                   value={binId}
                   onChange={(e) => setBinId(e.target.value)}
                 >
@@ -436,7 +425,7 @@ export default function MobileReportPage() {
                   ))}
                 </select>
               </label>
-              <p className="text-xs text-ink-400">
+              <p className="text-xs text-slate-500">
                 When GPS works, the nearest bin with coordinates is pre-selected.
               </p>
             </Card.Body>
@@ -449,19 +438,19 @@ export default function MobileReportPage() {
                 <img
                   src={previewUrl}
                   alt="Selected capture"
-                  className="max-h-56 w-full rounded-lg border border-slate-200 bg-slate-50 object-contain"
+                  className="max-h-56 w-full rounded-lg border border-slate-700/50 bg-slate-950/40 object-contain"
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 py-12 text-center">
-                  <Upload className="h-10 w-10 text-ink-300" />
-                  <p className="mt-2 text-sm text-ink-500">No image yet</p>
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-700/50 bg-slate-950/40 py-12 text-center">
+                  <Upload className="h-10 w-10 text-slate-600" />
+                  <p className="mt-2 text-sm text-slate-500">No image yet</p>
                 </div>
               )}
               <button
                 type="button"
                 disabled={busy}
                 onClick={runSubmit}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className={`${btnPrimary} w-full disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {busy ? (
                   <>
@@ -477,7 +466,7 @@ export default function MobileReportPage() {
               </button>
               {resultErr ? (
                 <div
-                  className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${bannerTone("error")}`}
                   role="alert"
                 >
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -485,14 +474,14 @@ export default function MobileReportPage() {
                 </div>
               ) : null}
               {resultMsg ? (
-                <div className="space-y-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-3 text-sm text-brand-900">
+                <div className={`space-y-2 rounded-lg border px-3 py-3 text-sm ${bannerTone("ok")}`}>
                   <div className="flex items-start gap-2">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>{resultMsg}</span>
                   </div>
                   {lastRisk ? (
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Hygienic risk
                       </span>
                       <span
@@ -510,11 +499,11 @@ export default function MobileReportPage() {
           </Card>
         </div>
 
-        <p className="text-center text-xs text-ink-400">
+        <p className="text-center text-xs text-slate-500">
           Automated captures still use the ESP32 LAN bridge. This page is for
           manual reporting when you are on-site with a phone.
         </p>
-      </div>
+      </PageShell>
     </DashboardLayout>
   );
 }

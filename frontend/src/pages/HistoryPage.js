@@ -7,8 +7,6 @@ import {
   Database,
   AlertTriangle,
   ChevronRight,
-  Filter,
-  Search,
   Camera,
   Bell,
   PawPrint,
@@ -23,7 +21,25 @@ import {
 } from "lucide-react";
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
-import Card from "../components/dashboard/Card";
+import PageShell from "../components/dashboard/PageShell";
+import PageHeader from "../components/dashboard/PageHeader";
+import FilterBar, {
+  FilterChipGroup,
+  FilterSearch,
+} from "../components/dashboard/FilterBar";
+import ListRow from "../components/dashboard/ListRow";
+import EmptyState from "../components/dashboard/EmptyState";
+import {
+  btnGhost,
+  btnSecondary,
+  inputClass,
+  selectClass,
+  labelClass,
+  chipClass,
+  chipActiveClass,
+  bannerTone,
+  summaryTone,
+} from "../components/dashboard/dashboardUi";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl, fetchBins } from "../utils/apiBase";
 
@@ -84,17 +100,17 @@ const RISK_COLOR = {
 };
 
 const ALERT_SEVERITY_TONE = {
-  critical: "bg-red-50 text-red-800 border-red-200",
-  warning: "bg-amber-50 text-amber-800 border-amber-200",
-  info: "bg-slate-100 text-ink-700 border-slate-200",
+  critical: "bg-red-500/10 text-red-300 border-red-500/30",
+  warning: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+  info: "bg-slate-900/40 text-slate-300 border-slate-700/50",
 };
 
 const ALERT_STATUS_TONE = {
-  open: "bg-red-50 text-red-700 border-red-200",
-  acknowledged: "bg-amber-50 text-amber-800 border-amber-200",
-  actioned: "bg-brand-50 text-brand-800 border-brand-200",
-  rejected: "bg-slate-100 text-ink-600 border-slate-200",
-  dismissed: "bg-slate-50 text-ink-500 border-slate-200",
+  open: "bg-red-500/10 text-red-300 border-red-500/30",
+  acknowledged: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+  actioned: "bg-brand-500/10 text-brand-300 border-brand-500/30",
+  rejected: "bg-slate-900/40 text-slate-400 border-slate-700/50",
+  dismissed: "bg-slate-950/40 text-slate-500 border-slate-700/50",
 };
 
 const ALERT_TYPE_LABEL = {
@@ -434,52 +450,43 @@ export default function HistoryPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-4 lg:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-ink-900">
-              History
-            </h1>
-            <p className="mt-0.5 max-w-3xl text-sm text-ink-500">
-              Full audit timeline of every capture and alert lifecycle event in
-              the selected window. Use the filters to scope by bin, event type,
-              risk level, or free-text search; rows link out to the bin detail
-              and Alerts pages for follow-up.
-            </p>
-            <p className="mt-1 text-xs text-ink-400">
-              Range: <span className="font-mono">{rangeLabel}</span>
-              {binFilter !== "all" ? (
-                <>
-                  {" · "}
-                  Bin{" "}
-                  <span className="font-semibold text-ink-700">
-                    {binsById.get(String(binFilter))?.name || `#${binFilter}`}
-                  </span>
-                </>
-              ) : null}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={load}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
-              />
-              {loading ? "Loading…" : "Refresh"}
-            </button>
-            <Link
-              to="/reports"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-            >
-              Reports
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        </header>
+      <PageShell>
+        <PageHeader
+          title="History"
+          subtitle="Full audit timeline of every capture and alert lifecycle event in the selected window. Use the filters to scope by bin, event type, risk level, or free-text search; rows link out to the bin detail and Alerts pages for follow-up."
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={load}
+                disabled={loading}
+                className={btnSecondary}
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+                />
+                {loading ? "Loading…" : "Refresh"}
+              </button>
+              <Link to="/reports" className={btnGhost}>
+                Reports
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </>
+          }
+        >
+          <p className="mt-1 text-xs text-slate-500">
+            Range: <span className="font-mono">{rangeLabel}</span>
+            {binFilter !== "all" ? (
+              <>
+                {" · "}
+                Bin{" "}
+                <span className="font-semibold text-slate-300">
+                  {binsById.get(String(binFilter))?.name || `#${binFilter}`}
+                </span>
+              </>
+            ) : null}
+          </p>
+        </PageHeader>
 
         {dbDisabled ? (
           <Banner
@@ -512,158 +519,118 @@ export default function HistoryPage() {
           />
         </div>
 
-        <Card>
-          <Card.Header icon={Filter} title="Filters" />
-          <Card.Body className="!mt-2 space-y-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">
-                Date range
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {RANGE_PRESETS.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPresetId(p.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      presetId === p.id
-                        ? "border-brand-500 bg-brand-600 text-white shadow-sm"
-                        : "border-slate-200 bg-white text-ink-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              {presetId === "custom" ? (
-                <div className="mt-3 flex flex-wrap items-end gap-3">
-                  <label className="flex flex-col">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-                      From
-                    </span>
-                    <input
-                      type="date"
-                      value={customStart}
-                      onChange={(e) => setCustomStart(e.target.value)}
-                      className="mt-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                    />
-                  </label>
-                  <label className="flex flex-col">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-                      To
-                    </span>
-                    <input
-                      type="date"
-                      value={customEnd}
-                      onChange={(e) => setCustomEnd(e.target.value)}
-                      className="mt-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                    />
-                  </label>
-                </div>
-              ) : null}
-            </div>
-
+        <FilterBar className="flex-col items-stretch gap-4">
+          <FilterChipGroup label="Date range">
+            {RANGE_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPresetId(p.id)}
+                className={
+                  presetId === p.id ? chipActiveClass : chipClass
+                }
+              >
+                {p.label}
+              </button>
+            ))}
+          </FilterChipGroup>
+          {presetId === "custom" ? (
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-                  Bin
-                </span>
-                <select
-                  value={binFilter}
-                  onChange={(e) => setBinFilter(e.target.value)}
-                  className="mt-1 min-w-[14rem] rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm font-medium text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                >
-                  <option value="all">All bins</option>
-                  {bins.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name || `Bin #${b.id}`}
-                    </option>
-                  ))}
-                </select>
+                <span className={labelClass}>From</span>
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className={inputClass}
+                />
               </label>
-
               <label className="flex flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-                  Risk level
-                </span>
-                <select
-                  value={riskFilter}
-                  onChange={(e) => setRiskFilter(e.target.value)}
-                  className="mt-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm font-medium text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                <span className={labelClass}>To</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className={inputClass}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col">
+              <span className={labelClass}>Bin</span>
+              <select
+                value={binFilter}
+                onChange={(e) => setBinFilter(e.target.value)}
+                className={`${selectClass} min-w-[14rem]`}
+              >
+                <option value="all">All bins</option>
+                {bins.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name || `Bin #${b.id}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col">
+              <span className={labelClass}>Risk level</span>
+              <select
+                value={riskFilter}
+                onChange={(e) => setRiskFilter(e.target.value)}
+                className={selectClass}
+              >
+                {RISK_FILTERS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <FilterSearch
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="waste label, alert title, esp32_id…"
+            />
+
+            <div className="flex items-center gap-1.5 rounded-lg border border-slate-700/50 bg-slate-900/40 px-3 py-2 text-[11px] text-slate-400">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>
+                {filteredEvents.length} of {events.length} events
+              </span>
+            </div>
+          </div>
+
+          <FilterChipGroup label="Event type">
+            {TYPE_FILTERS.map((t) => {
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTypeFilter(t.id)}
+                  className={`inline-flex items-center gap-1.5 ${
+                    typeFilter === t.id ? chipActiveClass : chipClass
+                  }`}
                 >
-                  {RISK_FILTERS.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="flex flex-col flex-1 min-w-[12rem]">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-                  Search
-                </span>
-                <div className="relative mt-1">
-                  <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="waste label, alert title, esp32_id…"
-                    className="w-full rounded-lg border border-slate-300 bg-white py-1.5 pl-7 pr-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                  />
-                </div>
-              </label>
-
-              <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-ink-600">
-                <Calendar className="h-3.5 w-3.5" />
-                <span>
-                  {filteredEvents.length} of {events.length} events
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">
-                Event type
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {TYPE_FILTERS.map((t) => {
-                  const Icon = t.icon;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setTypeFilter(t.id)}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                        typeFilter === t.id
-                          ? "border-brand-500 bg-brand-600 text-white shadow-sm"
-                          : "border-slate-200 bg-white text-ink-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </Card.Body>
-        </Card>
+                  <Icon className="h-3.5 w-3.5" />
+                  {t.label}
+                </button>
+              );
+            })}
+          </FilterChipGroup>
+        </FilterBar>
 
         {loading && events.length === 0 ? (
           <TimelineSkeleton />
         ) : filteredEvents.length === 0 ? (
-          <Card>
-            <Card.Body className="py-12 text-center text-sm text-ink-500">
-              <HistoryIcon className="mx-auto h-10 w-10 text-ink-300" />
-              <p className="mt-3 font-semibold text-ink-800">No events</p>
-              <p className="mt-1 text-xs">
-                No captures or alerts match the current filters. Widen the date
-                range or clear the search to see more.
-              </p>
-            </Card.Body>
-          </Card>
+          <EmptyState
+            icon={HistoryIcon}
+            title="No events"
+            message="No captures or alerts match the current filters. Widen the date range or clear the search to see more."
+          />
         ) : (
           <div className="space-y-6">
             {byDay.map(([dKey, evs]) => (
@@ -681,7 +648,7 @@ export default function HistoryPage() {
                   type="button"
                   onClick={() => setPageSize((s) => Math.min(s + 150, 500))}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-ink-700 hover:bg-slate-50 disabled:opacity-50"
+                  className={btnSecondary}
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {loading ? "Loading…" : `Load more (currently ${pageSize})`}
@@ -690,7 +657,7 @@ export default function HistoryPage() {
             ) : null}
           </div>
         )}
-      </div>
+      </PageShell>
     </DashboardLayout>
   );
 }
@@ -698,24 +665,24 @@ export default function HistoryPage() {
 function DayGroup({ dayKey: dKey, events, binsById }) {
   return (
     <section>
-      <div className="sticky top-0 z-10 -mx-4 mb-3 bg-slate-50/95 px-4 py-2 backdrop-blur lg:-mx-6 lg:px-6">
+      <div className="sticky top-0 z-10 -mx-4 mb-3 bg-slate-950/90 px-4 py-2 backdrop-blur lg:-mx-6 lg:px-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-ink-800">
+          <h2 className="text-sm font-bold text-slate-200">
             {formatDay(dKey)}
-            <span className="ml-2 text-xs font-medium text-ink-400">
+            <span className="ml-2 text-xs font-medium text-slate-500">
               {dKey}
             </span>
           </h2>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             {events.length} event{events.length === 1 ? "" : "s"}
           </span>
         </div>
       </div>
-      <ol className="relative space-y-3 border-l border-slate-200 pl-5">
+      <ol className="relative space-y-3 border-l border-slate-700/50 pl-5">
         {events.map((e) => (
           <li key={e.id} className="relative">
             <span
-              className="absolute -left-[9px] top-3 h-3.5 w-3.5 rounded-full ring-4 ring-slate-50"
+              className="absolute -left-[9px] top-3 h-3.5 w-3.5 rounded-full ring-4 ring-slate-950"
               style={{ backgroundColor: nodeColor(e) }}
             />
             {e.kind === "capture" ? (
@@ -752,11 +719,11 @@ function CaptureRow({ event: e, binsById }) {
     flags.push({ label: `${e.animals} animal${e.animals === 1 ? "" : "s"}`, tone: "amber" });
 
   return (
-    <Card className="!min-h-0 !p-4">
+    <ListRow className="!min-h-0">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-ink-700">
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-900/40 px-2 py-0.5 font-semibold text-slate-300">
               <Camera className="h-3 w-3" />
               Capture #{c.id}
             </span>
@@ -772,14 +739,14 @@ function CaptureRow({ event: e, binsById }) {
             {flags.map((f, idx) => (
               <Pill key={idx} label={f.label} tone={f.tone} />
             ))}
-            <span className="text-ink-400">{formatTime(c.captured_at)}</span>
+            <span className="text-slate-500">{formatTime(c.captured_at)}</span>
           </div>
 
-          <div className="text-sm font-semibold text-ink-900">
+          <div className="text-sm font-semibold text-slate-100">
             {bin ? (
               <Link
                 to={`/bins/${bin.id}`}
-                className="text-ink-900 hover:text-brand-700"
+                className="text-slate-100 hover:text-brand-400"
               >
                 {bin.name}
               </Link>
@@ -787,17 +754,17 @@ function CaptureRow({ event: e, binsById }) {
               <span>Bin #{c.device_id ?? "—"}</span>
             )}
             {bin?.esp32_id ? (
-              <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-ink-500">
+              <span className="ml-2 rounded bg-slate-900/40 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">
                 {bin.esp32_id}
               </span>
             ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-600">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
             {c.waste_label ? (
               <span>
                 Waste:{" "}
-                <span className="font-semibold text-ink-800">
+                <span className="font-semibold text-slate-200">
                   {c.waste_label}
                 </span>
                 {Number.isFinite(Number(c.waste_confidence))
@@ -807,28 +774,28 @@ function CaptureRow({ event: e, binsById }) {
             ) : null}
             <span>
               Fill:{" "}
-              <span className="font-semibold text-ink-800">{tier}</span>
+              <span className="font-semibold text-slate-200">{tier}</span>
               {Number.isFinite(Number(c.fill_percentage))
                 ? ` · ${Math.round(Number(c.fill_percentage))}%`
                 : ""}
             </span>
             {Number.isFinite(Number(c.temp_c)) ? (
               <span className="inline-flex items-center gap-1">
-                <Thermometer className="h-3 w-3 text-ink-400" />
+                <Thermometer className="h-3 w-3 text-slate-500" />
                 {Number(c.temp_c).toFixed(1)}°C
               </span>
             ) : null}
             {Number.isFinite(Number(c.humidity_pct)) ? (
               <span className="inline-flex items-center gap-1">
-                <Droplets className="h-3 w-3 text-ink-400" />
+                <Droplets className="h-3 w-3 text-slate-500" />
                 {Math.round(Number(c.humidity_pct))}%
               </span>
             ) : null}
             {c.weather_condition ? (
-              <span className="text-ink-500">{c.weather_condition}</span>
+              <span className="text-slate-500">{c.weather_condition}</span>
             ) : null}
             {c.risk_case ? (
-              <span className="text-ink-500">Case {c.risk_case}</span>
+              <span className="text-slate-500">Case {c.risk_case}</span>
             ) : null}
           </div>
         </div>
@@ -839,7 +806,7 @@ function CaptureRow({ event: e, binsById }) {
               href={apiUrl(`/captures/${c.id}/image`)}
               target="_blank"
               rel="noreferrer"
-              className="block flex-1 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 lg:flex-none"
+              className="block flex-1 overflow-hidden rounded-lg border border-slate-700/50 bg-slate-900/40 lg:flex-none"
             >
               <img
                 src={apiUrl(`/captures/${c.id}/image`)}
@@ -849,14 +816,14 @@ function CaptureRow({ event: e, binsById }) {
               />
             </a>
           ) : (
-            <div className="flex h-20 flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-ink-300 lg:h-24 lg:flex-none">
+            <div className="flex h-20 flex-1 items-center justify-center rounded-lg border border-dashed border-slate-700/50 bg-slate-950/40 text-slate-600 lg:h-24 lg:flex-none">
               <ImageIcon className="h-7 w-7" />
             </div>
           )}
           {bin ? (
             <Link
               to={`/bins/${bin.id}`}
-              className="inline-flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-brand-700 hover:bg-brand-50"
+              className={btnGhost}
             >
               Bin detail
               <ArrowUpRight className="h-3 w-3" />
@@ -864,7 +831,7 @@ function CaptureRow({ event: e, binsById }) {
           ) : null}
         </div>
       </div>
-    </Card>
+    </ListRow>
   );
 }
 
@@ -878,10 +845,10 @@ function AlertRow({ event: e }) {
   const stTone = ALERT_STATUS_TONE[a.status] || ALERT_STATUS_TONE.open;
 
   return (
-    <Card className="!min-h-0 !p-4">
+    <ListRow className="!min-h-0">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2 text-[11px]">
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-ink-700">
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-900/40 px-2 py-0.5 font-semibold text-slate-300">
             <Bell className="h-3 w-3" />
             Alert #{a.id}
           </span>
@@ -890,7 +857,7 @@ function AlertRow({ event: e }) {
           >
             {a.severity}
           </span>
-          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-semibold text-ink-700">
+          <span className="rounded-full border border-slate-700/50 bg-slate-950/40 px-2 py-0.5 font-semibold text-slate-300">
             {typeLabel}
           </span>
           <span
@@ -898,21 +865,21 @@ function AlertRow({ event: e }) {
           >
             {a.status}
           </span>
-          <span className="text-ink-400">{formatTime(e.at)}</span>
+          <span className="text-slate-500">{formatTime(e.at)}</span>
         </div>
 
-        <h3 className="text-sm font-semibold text-ink-900">{a.title}</h3>
+        <h3 className="text-sm font-semibold text-slate-100">{a.title}</h3>
         {a.summary ? (
-          <p className="text-xs text-ink-600">{a.summary}</p>
+          <p className="text-xs text-slate-400">{a.summary}</p>
         ) : null}
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-500">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
           {a.device ? (
             <span>
               Bin:{" "}
               <Link
                 to={`/bins/${a.device.id}`}
-                className="font-semibold text-brand-700 hover:text-brand-600"
+                className="font-semibold text-brand-400 hover:text-brand-300"
               >
                 {a.device.name}
               </Link>
@@ -922,7 +889,7 @@ function AlertRow({ event: e }) {
             <span>Capture #{a.capture_id}</span>
           ) : null}
           {a.admin_note ? (
-            <span className="rounded bg-slate-50 px-1.5 py-0.5 text-ink-600">
+            <span className="rounded bg-slate-900/40 px-1.5 py-0.5 text-slate-400">
               Note: {a.admin_note}
             </span>
           ) : null}
@@ -931,23 +898,23 @@ function AlertRow({ event: e }) {
         <div>
           <Link
             to="/alerts"
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700 hover:text-brand-600"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-400 hover:text-brand-300"
           >
             Open in Alerts
             <ArrowUpRight className="h-3 w-3" />
           </Link>
         </div>
       </div>
-    </Card>
+    </ListRow>
   );
 }
 
 function Pill({ label, tone = "slate" }) {
   const tones = {
-    slate: "border-slate-200 bg-slate-50 text-ink-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-800",
-    red: "border-red-200 bg-red-50 text-red-700",
-    brand: "border-brand-200 bg-brand-50 text-brand-800",
+    slate: "border-slate-700/50 bg-slate-900/40 text-slate-300",
+    amber: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+    red: "border-red-500/30 bg-red-500/10 text-red-300",
+    brand: "border-brand-500/30 bg-brand-500/10 text-brand-300",
   };
   return (
     <span
@@ -962,10 +929,10 @@ function Pill({ label, tone = "slate" }) {
 
 function Chip({ icon: Icon, label, value, tone = "slate" }) {
   const tones = {
-    slate: "border-slate-200 bg-white text-ink-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-800",
-    red: "border-red-200 bg-red-50 text-red-800",
-    brand: "border-brand-200 bg-brand-50 text-brand-800",
+    slate: summaryTone("default"),
+    amber: summaryTone("amber"),
+    red: summaryTone("risk"),
+    brand: summaryTone("brand"),
   };
   return (
     <div
@@ -973,7 +940,7 @@ function Chip({ icon: Icon, label, value, tone = "slate" }) {
         tones[tone] || tones.slate
       }`}
     >
-      <div className="rounded-lg bg-white/70 p-2">
+      <div className="rounded-lg bg-slate-900/60 p-2">
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0">
@@ -987,13 +954,10 @@ function Chip({ icon: Icon, label, value, tone = "slate" }) {
 }
 
 function Banner({ icon: Icon, title, body, tone = "amber" }) {
-  const tones = {
-    amber: "border-amber-200 bg-amber-50 text-amber-900",
-    red: "border-red-200 bg-red-50 text-red-800",
-  };
+  const toneKey = tone === "red" ? "error" : "warn";
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${tones[tone]}`}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone(toneKey)}`}
     >
       <Icon className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="text-sm">
@@ -1010,11 +974,11 @@ function TimelineSkeleton() {
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className="animate-pulse rounded-xl border border-slate-200 bg-white p-4"
+          className="animate-pulse rounded-xl border border-slate-700/50 bg-slate-950/40 p-4"
         >
-          <div className="h-3 w-1/4 rounded bg-slate-200" />
-          <div className="mt-2 h-4 w-1/3 rounded bg-slate-100" />
-          <div className="mt-2 h-3 w-2/3 rounded bg-slate-100" />
+          <div className="h-3 w-1/4 rounded bg-slate-700" />
+          <div className="mt-2 h-4 w-1/3 rounded bg-slate-800" />
+          <div className="mt-2 h-3 w-2/3 rounded bg-slate-800" />
         </div>
       ))}
     </div>

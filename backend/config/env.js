@@ -20,14 +20,15 @@ function normalizeModelServiceUrl(raw, fallback) {
 
 const MODEL_WASTE_URL_RAW = process.env.MODEL_WASTE_URL || "";
 const MODEL_ANIMAL_URL_RAW = process.env.MODEL_ANIMAL_URL || "";
-const MODEL_YOLO_URL_RAW = process.env.MODEL_YOLO_URL || "";
+/** Bin fill YOLO — prefer MODEL_FILL_URL; MODEL_YOLO_URL kept for legacy model-yolo Flask. */
+const MODEL_FILL_URL_RAW =
+  process.env.MODEL_FILL_URL || process.env.MODEL_YOLO_URL || "";
 const MODEL_LITTER_URL_RAW = process.env.MODEL_LITTER_URL || "";
 const MODEL_LITTERING_ACTION_URL_RAW =
   process.env.MODEL_LITTERING_ACTION_URL || "";
 
 /**
- * FastAPI services (waste, animal) plus optional Flask model-yolo (bin fill)
- * and optional litter-severity-api (YOLO + LSI).
+ * FastAPI services (waste, animal, fill) plus optional litter-severity-api (YOLO + LSI).
  */
 const MODEL_REGISTRY = {
   waste: normalizeModelServiceUrl(
@@ -40,10 +41,10 @@ const MODEL_REGISTRY = {
   ),
 };
 
-if (MODEL_YOLO_URL_RAW.trim()) {
-  MODEL_REGISTRY.yolo = normalizeModelServiceUrl(
-    MODEL_YOLO_URL_RAW,
-    "http://localhost:6000"
+if (MODEL_FILL_URL_RAW.trim()) {
+  MODEL_REGISTRY.fill = normalizeModelServiceUrl(
+    MODEL_FILL_URL_RAW,
+    "http://localhost:8005"
   );
 }
 
@@ -114,6 +115,7 @@ module.exports = {
     ) * 1000,
 
   MODEL_LITTERING_ACTION_URL_RAW,
+  MODEL_FILL_URL_RAW,
   MODEL_LITTERING_ACTION_TIMEOUT_MS: Math.max(
     1000,
     Number(process.env.MODEL_LITTERING_ACTION_TIMEOUT_MS || 15000) || 15000

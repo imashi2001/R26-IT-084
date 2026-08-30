@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.md
+run-local.ps1
+test-local.ps1

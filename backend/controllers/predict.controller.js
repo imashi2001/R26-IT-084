@@ -10,7 +10,7 @@
  *   esp32_id               (string, optional)       binds to a Device row
  *   device_id              (number, optional)       direct Device id override
  *   model                  (string, optional)       "waste" | "animal" | "yolo"| "fill"| "bin_fill" —
- *                                                   when set, call only that service; omit / "all" runs waste+animal (+ MODEL_YOLO_URL bin-fill).
+ *                                                   when set, call only that service; omit / "all" runs waste+animal (+ MODEL_FILL_URL bin-fill).
  *   lat / lon              (number, optional)       weather + stored on capture
  *   source_type            (string, optional)       esp32 | mobile | admin
  *
@@ -216,13 +216,13 @@ function predictionsFromBinFill(binFillPayload) {
 
 const YOLO_FILL_TIER_TO_PCT = { Empty: 25, Half: 50, Overflow: 85 };
 
-function persistModelLabel(bodyModel, hasYoloRegistry) {
+function persistModelLabel(bodyModel, hasFillRegistry) {
   const rm = (bodyModel || "").toString().trim().toLowerCase();
   if (rm === "waste") return "waste";
   if (rm === "animal") return "animal";
   if (rm === "yolo" || rm === "fill" || rm === "bin_fill") return "bin_fill_yolo";
   const parts = ["waste", "animal"];
-  if (hasYoloRegistry) parts.push("bin_fill");
+  if (hasFillRegistry) parts.push("bin_fill");
   return parts.join("+");
 }
 
@@ -263,7 +263,7 @@ async function predict(req, res, next) {
       requestedModel === "yolo" ||
       requestedModel === "fill" ||
       requestedModel === "bin_fill";
-    const hasYoloRegistry = Boolean(modelClient.getModelUrl("yolo"));
+    const hasFillRegistry = Boolean(modelClient.getModelUrl("fill"));
 
     let waste = null;
     let animal = null;
@@ -359,7 +359,7 @@ async function predict(req, res, next) {
     });
 
     const timestamp = new Date().toISOString();
-    const persistLabel = persistModelLabel(body.model, hasYoloRegistry);
+    const persistLabel = persistModelLabel(body.model, hasFillRegistry);
 
     const extras = {
       waste_label: waste?.label || null,

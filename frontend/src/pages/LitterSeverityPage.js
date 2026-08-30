@@ -1,16 +1,14 @@
 import { useCallback, useState } from "react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import PageShell from "../components/dashboard/PageShell";
 import PageHeader from "../components/dashboard/PageHeader";
-import LitteringBBoxCanvas from "../components/LitteringBBoxCanvas";
 import { btnPrimary, labelClass, bannerTone } from "../components/dashboard/dashboardUi";
-import { analyzeLitterSeverity, analyzeLitteringAction } from "../utils/apiBase";
-import { summarizeLitteringAction } from "../utils/litteringAction";
+import { analyzeLitterSeverity } from "../utils/apiBase";
 
 /**
- * Litter Severity page — two isolated analysis tools:
- *  1. Littering Event Detection (person/action near bin)
- *  2. Outside-Bin Litter Severity Index (individual litter objects + LSI)
+ * /litter-severity — Outside-bin Litter Severity Index (LSI) only.
+ * For littering-event detection (YOLO11 best.pt), see /littering-event.
  */
 
 const SEVERITY_HISTORY_CAP = 8;
@@ -38,37 +36,26 @@ function trailingElevatedStreak(severities) {
 }
 
 export default function LitterSeverityPage() {
-  const [lsiFile, setLsiFile] = useState(null);
-  const [lsiLoading, setLsiLoading] = useState(false);
-  const [lsiError, setLsiError] = useState("");
-  const [lsiResult, setLsiResult] = useState(null);
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
   const [severityHistory, setSeverityHistory] = useState([]);
 
-  const [eventFile, setEventFile] = useState(null);
-  const [eventLoading, setEventLoading] = useState(false);
-  const [eventError, setEventError] = useState("");
-  const [eventResult, setEventResult] = useState(null);
-
-  const onLsiFile = useCallback((e) => {
-    setLsiFile(e.target.files?.[0] || null);
-    setLsiResult(null);
-    setLsiError("");
+  const onFile = useCallback((e) => {
+    setFile(e.target.files?.[0] || null);
+    setResult(null);
+    setError("");
   }, []);
 
-  const onEventFile = useCallback((e) => {
-    setEventFile(e.target.files?.[0] || null);
-    setEventResult(null);
-    setEventError("");
-  }, []);
-
-  const runLsi = useCallback(async () => {
-    if (!lsiFile) return;
-    setLsiLoading(true);
-    setLsiError("");
-    setLsiResult(null);
+  const run = useCallback(async () => {
+    if (!file) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
     try {
-      const data = await analyzeLitterSeverity(lsiFile);
-      setLsiResult(data);
+      const data = await analyzeLitterSeverity(file);
+      setResult(data);
       const sev = (data.severity || "").toString().trim();
       if (sev) {
         setSeverityHistory((prev) => [...prev, sev].slice(-SEVERITY_HISTORY_CAP));
@@ -79,169 +66,65 @@ export default function LitterSeverityPage() {
         e?.response?.data?.detail ||
         e?.message ||
         "Request failed";
-      setLsiError(typeof msg === "string" ? msg : JSON.stringify(msg));
+      setError(typeof msg === "string" ? msg : JSON.stringify(msg));
     } finally {
-      setLsiLoading(false);
+      setLoading(false);
     }
-  }, [lsiFile]);
-
-  const runEvent = useCallback(async () => {
-    if (!eventFile) return;
-    setEventLoading(true);
-    setEventError("");
-    setEventResult(null);
-    try {
-      const data = await analyzeLitteringAction(eventFile);
-      setEventResult(data);
-    } catch (e) {
-      const msg =
-        e?.response?.data?.error ||
-        e?.response?.data?.detail ||
-        e?.message ||
-        "Request failed";
-      setEventError(typeof msg === "string" ? msg : JSON.stringify(msg));
-    } finally {
-      setEventLoading(false);
-    }
-  }, [eventFile]);
-
-  const eventSummary = eventResult ? summarizeLitteringAction(eventResult) : null;
+  }, [file]);
 
   const elevatedStreak =
-    lsiResult && !lsiResult.error
-      ? trailingElevatedStreak(severityHistory)
-      : 0;
+    result && !result.error ? trailingElevatedStreak(severityHistory) : 0;
   const showConsistentSignageCallout =
     elevatedStreak >= ELEVATED_STREAK_FOR_SIGNAGE &&
-    isElevatedSeverity(lsiResult?.severity);
+    isElevatedSeverity(result?.severity);
 
   return (
     <DashboardLayout>
       <PageShell className="max-w-3xl">
         <PageHeader
-          title="Litter Analysis"
+          title="Litter Severity (LSI)"
           subtitle={
             <>
-              Two separate models: <strong>littering-event detection</strong> (person/action)
-              and <strong>outside-bin litter severity</strong> (individual litter objects + LSI).
+              Detects individual litter objects around a bin and computes the Litter
+              Severity Index. Requires{" "}
+              <code className="rounded bg-slate-900/60 px-1 text-slate-300">
+                MODEL_LITTER_URL
+              </code>
+              . For your trained littering-event model, use{" "}
+              <Link to="/littering-event" className="text-orange-400 hover:underline">
+                Littering Event Detection
+              </Link>
+              .
             </>
           }
         />
 
-        <section className="rounded-xl border border-orange-500/30 bg-slate-950/40 p-6">
-          <h2 className="text-lg font-semibold text-orange-200">
-            1. Littering Event Detection
-          </h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Frame-level detector for a person visually throwing or leaving garbage near a bin.
-            Requires{" "}
-            <code className="rounded bg-slate-900/60 px-1 text-slate-300">
-              MODEL_LITTERING_ACTION_URL
-            </code>
-            . This is <em>not</em> the LSI litter-object counter.
-          </p>
-
-          <label className="mt-4 block">
+        <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-6">
+          <label className="block">
             <span className={labelClass}>Image</span>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={onEventFile}
-              className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-orange-500"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={!eventFile || eventLoading}
-            onClick={runEvent}
-            className={`${btnPrimary} mt-4 disabled:cursor-not-allowed disabled:opacity-50`}
-          >
-            {eventLoading ? "Detecting…" : "Run littering-event detection"}
-          </button>
-          {eventError ? (
-            <p className="mt-3 text-sm text-red-300" role="alert">
-              {eventError}
-            </p>
-          ) : null}
-
-          {eventSummary?.ok ? (
-            <div className="mt-4 space-y-4">
-              <div
-                className={`rounded-xl border p-4 ${
-                  eventSummary.eventDetected
-                    ? "border-orange-500/40 bg-orange-500/10 text-orange-100"
-                    : "border-slate-700/50 bg-slate-900/40 text-slate-300"
-                }`}
-              >
-                <p className="text-xs font-medium uppercase tracking-wide opacity-80">
-                  Result
-                </p>
-                <p className="text-2xl font-bold">
-                  {eventSummary.eventDetected
-                    ? "Littering event detected"
-                    : "No littering event detected"}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-6 text-sm">
-                  <span>
-                    Confidence:{" "}
-                    <strong>{(eventSummary.maxConfidence * 100).toFixed(1)}%</strong>
-                  </span>
-                  <span>
-                    Detections: <strong>{eventSummary.eventCount}</strong>
-                  </span>
-                </div>
-              </div>
-
-              {eventFile && eventSummary.detections.length > 0 ? (
-                <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950">
-                  <LitteringBBoxCanvas
-                    imageFile={eventFile}
-                    detections={eventSummary.detections}
-                  />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
-
-        <section className="mt-8 rounded-xl border border-brand-500/30 bg-slate-950/40 p-6">
-          <h2 className="text-lg font-semibold text-brand-200">
-            2. Outside-Bin Litter Severity Index
-          </h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Detects individual litter objects around a bin and computes LSI (count, coverage,
-            spread). Requires{" "}
-            <code className="rounded bg-slate-900/60 px-1 text-slate-300">
-              MODEL_LITTER_URL
-            </code>
-            .
-          </p>
-
-          <label className="mt-4 block">
-            <span className={labelClass}>Image</span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={onLsiFile}
+              onChange={onFile}
               className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-500"
             />
           </label>
           <button
             type="button"
-            disabled={!lsiFile || lsiLoading}
-            onClick={runLsi}
+            disabled={!file || loading}
+            onClick={run}
             className={`${btnPrimary} mt-4 disabled:cursor-not-allowed disabled:opacity-50`}
           >
-            {lsiLoading ? "Analyzing…" : "Run LSI analysis"}
+            {loading ? "Analyzing…" : "Run LSI analysis"}
           </button>
-          {lsiError ? (
+          {error ? (
             <p className="mt-3 text-sm text-red-300" role="alert">
-              {lsiError}
+              {error}
             </p>
           ) : null}
-        </section>
+        </div>
 
-        {lsiResult && !lsiResult.error ? (
+        {result && !result.error ? (
           <div className="mt-6 space-y-4">
             {showConsistentSignageCallout ? (
               <div
@@ -258,37 +141,37 @@ export default function LitterSeverityPage() {
               </div>
             ) : null}
 
-            {lsiResult.signage_advisory ? (
+            {result.signage_advisory ? (
               <div
                 className={`rounded-xl border p-4 text-sm leading-relaxed ${
-                  lsiResult.signage_advisory.warning_signs_recommended
+                  result.signage_advisory.warning_signs_recommended
                     ? bannerTone("warn")
                     : "border-slate-700/50 bg-slate-900/40 text-slate-300"
                 }`}
               >
                 <p className="font-semibold text-slate-100">
-                  {lsiResult.signage_advisory.headline}
+                  {result.signage_advisory.headline}
                 </p>
-                <p className="mt-2">{lsiResult.signage_advisory.detail}</p>
+                <p className="mt-2">{result.signage_advisory.detail}</p>
               </div>
             ) : null}
 
             <div
-              className={`rounded-xl border p-4 ${severityClass(lsiResult.severity)}`}
+              className={`rounded-xl border p-4 ${severityClass(result.severity)}`}
             >
               <div className="flex flex-wrap items-baseline gap-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide opacity-80">
                     LSI Severity
                   </p>
-                  <p className="text-2xl font-bold">{lsiResult.severity || "—"}</p>
+                  <p className="text-2xl font-bold">{result.severity || "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide opacity-80">
                     LSI (0–100)
                   </p>
                   <p className="text-2xl font-bold">
-                    {lsiResult.lsi != null ? Number(lsiResult.lsi).toFixed(1) : "—"}
+                    {result.lsi != null ? Number(result.lsi).toFixed(1) : "—"}
                   </p>
                 </div>
                 <div>
@@ -296,20 +179,31 @@ export default function LitterSeverityPage() {
                     Litter objects
                   </p>
                   <p className="text-2xl font-bold">
-                    {lsiResult.detection_count ?? lsiResult.detections?.length ?? 0}
+                    {result.detection_count ?? result.detections?.length ?? 0}
                   </p>
                 </div>
               </div>
             </div>
 
-            {lsiResult.annotated_image_base64 ? (
+            {result.annotated_image_base64 ? (
               <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950">
                 <img
-                  src={`data:image/jpeg;base64,${lsiResult.annotated_image_base64}`}
+                  src={`data:image/jpeg;base64,${result.annotated_image_base64}`}
                   alt="Outside-bin litter objects and LSI overlay"
                   className="mx-auto max-h-[70vh] w-full object-contain"
                 />
               </div>
+            ) : null}
+
+            {result.metrics ? (
+              <details className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-4 text-sm">
+                <summary className="cursor-pointer font-medium text-slate-200">
+                  Metrics (JSON)
+                </summary>
+                <pre className="mt-3 max-h-48 overflow-auto rounded bg-slate-900/60 p-3 text-xs text-slate-400">
+                  {JSON.stringify(result.metrics, null, 2)}
+                </pre>
+              </details>
             ) : null}
           </div>
         ) : null}

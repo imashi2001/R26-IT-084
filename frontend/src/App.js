@@ -27,6 +27,7 @@ const AlertsNotificationsPage = lazy(
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const HistoryPage = lazy(() => import("./pages/HistoryPage"));
 const LitterSeverityPage = lazy(() => import("./pages/LitterSeverityPage"));
+const LitteringEventPage = lazy(() => import("./pages/LitteringEventPage"));
 const SpeakerCheckPage = lazy(() => import("./pages/SpeakerCheckPage"));
 
 const protectedShell = (el) => (
@@ -94,6 +95,10 @@ export default function App() {
           <Route
             path="/litter-severity"
             element={protectedShell(<LitterSeverityPage />)}
+          />
+          <Route
+            path="/littering-event"
+            element={protectedShell(<LitteringEventPage />)}
           />
           <Route
             path="/forecast"

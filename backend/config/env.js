@@ -22,6 +22,8 @@ const MODEL_WASTE_URL_RAW = process.env.MODEL_WASTE_URL || "";
 const MODEL_ANIMAL_URL_RAW = process.env.MODEL_ANIMAL_URL || "";
 const MODEL_YOLO_URL_RAW = process.env.MODEL_YOLO_URL || "";
 const MODEL_LITTER_URL_RAW = process.env.MODEL_LITTER_URL || "";
+const MODEL_LITTERING_ACTION_URL_RAW =
+  process.env.MODEL_LITTERING_ACTION_URL || "";
 
 /**
  * FastAPI services (waste, animal) plus optional Flask model-yolo (bin fill)
@@ -49,6 +51,13 @@ if (MODEL_LITTER_URL_RAW.trim()) {
   MODEL_REGISTRY.litter = normalizeModelServiceUrl(
     MODEL_LITTER_URL_RAW,
     "http://localhost:8003"
+  );
+}
+
+if (MODEL_LITTERING_ACTION_URL_RAW.trim()) {
+  MODEL_REGISTRY.littering_action = normalizeModelServiceUrl(
+    MODEL_LITTERING_ACTION_URL_RAW,
+    "http://localhost:8004"
   );
 }
 
@@ -102,5 +111,20 @@ module.exports = {
     Math.max(
       5,
       Number(process.env.AUDIO_TRIGGER_COOLDOWN_SECONDS || 60) || 60
+    ) * 1000,
+
+  MODEL_LITTERING_ACTION_URL_RAW,
+  MODEL_LITTERING_ACTION_TIMEOUT_MS: Math.max(
+    1000,
+    Number(process.env.MODEL_LITTERING_ACTION_TIMEOUT_MS || 15000) || 15000
+  ),
+  LITTERING_ALERT_CONFIDENCE: parseFloatSafe(
+    process.env.LITTERING_ALERT_CONFIDENCE,
+    0.5
+  ),
+  LITTERING_ALERT_COOLDOWN_MS:
+    Math.max(
+      30,
+      Number(process.env.LITTERING_ALERT_COOLDOWN_SECONDS || 300) || 300
     ) * 1000,
 };

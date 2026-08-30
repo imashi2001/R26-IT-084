@@ -79,6 +79,7 @@ const TYPE_FILTERS = [
   { id: "capture", label: "Captures", icon: Camera },
   { id: "alert", label: "Alerts", icon: Bell },
   { id: "animal", label: "Animal sightings", icon: PawPrint },
+  { id: "littering", label: "Littering events", icon: ShieldAlert },
   { id: "overflow", label: "Overflow", icon: Trash2 },
   { id: "risk_high", label: "HIGH+ risk", icon: ShieldAlert },
 ];
@@ -118,6 +119,7 @@ const ALERT_TYPE_LABEL = {
   risk_high: "High risk",
   buzzer: "Deterrence / buzzer",
   overflow: "Bin overflow",
+  littering_detected: "Littering event",
   animal: "Animal activity",
 };
 
@@ -344,6 +346,7 @@ export default function HistoryPage() {
           highPlus: r === "HIGH" || r === "CRITICAL",
           overflow: tier === "OVERFLOW",
           animal: animals > 0,
+          littering: Boolean(c.littering_event_detected),
         },
         searchHaystack: [
           c.waste_label,
@@ -374,6 +377,7 @@ export default function HistoryPage() {
           highPlus: a.severity === "critical",
           overflow: a.alert_type === "overflow",
           animal: a.alert_type === "animal" || a.alert_type === "buzzer",
+          littering: a.alert_type === "littering_detected",
         },
         searchHaystack: [
           a.title,
@@ -399,6 +403,7 @@ export default function HistoryPage() {
         if (typeFilter === "capture" && e.kind !== "capture") return false;
         if (typeFilter === "alert" && e.kind !== "alert") return false;
         if (typeFilter === "animal" && !e.flags.animal) return false;
+        if (typeFilter === "littering" && !e.flags.littering) return false;
         if (typeFilter === "overflow" && !e.flags.overflow) return false;
         if (typeFilter === "risk_high" && !e.flags.highPlus) return false;
       }
@@ -717,6 +722,8 @@ function CaptureRow({ event: e, binsById }) {
   if (e.flags.overflow) flags.push({ label: "OVERFLOW", tone: "red" });
   if (e.flags.animal)
     flags.push({ label: `${e.animals} animal${e.animals === 1 ? "" : "s"}`, tone: "amber" });
+  if (e.flags.littering)
+    flags.push({ label: "Littering detected", tone: "amber" });
 
   return (
     <ListRow className="!min-h-0">

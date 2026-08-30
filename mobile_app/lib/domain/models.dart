@@ -96,6 +96,9 @@ class BinLatestExtras {
   final double? tempC;
   final double? humidityPct;
   final double? fillPercentage;
+  final bool? litteringEventDetected;
+  final int? litteringEventCount;
+  final double? litteringMaxConfidence;
 
   const BinLatestExtras({
     this.wasteLabel,
@@ -106,6 +109,9 @@ class BinLatestExtras {
     this.tempC,
     this.humidityPct,
     this.fillPercentage,
+    this.litteringEventDetected,
+    this.litteringEventCount,
+    this.litteringMaxConfidence,
   });
 
   factory BinLatestExtras.fromJson(Map<String, dynamic> j) => BinLatestExtras(
@@ -117,6 +123,9 @@ class BinLatestExtras {
         tempC: _dNull(j['temp_c']),
         humidityPct: _dNull(j['humidity_pct']),
         fillPercentage: _dNull(j['fill_percentage']),
+        litteringEventDetected: j['littering_event_detected'] as bool?,
+        litteringEventCount: (j['littering_event_count'] as num?)?.toInt(),
+        litteringMaxConfidence: _dNull(j['littering_max_confidence']),
       );
 }
 

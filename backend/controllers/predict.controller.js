@@ -35,6 +35,7 @@ const captureService = require("../services/captureService");
 const latestState = require("../services/latestState");
 const deviceService = require("../services/deviceService");
 const audioTriggerService = require("../services/audioTriggerService");
+const litteringAlertService = require("../services/litteringAlertService");
 const weatherService = require("../services/weatherService");
 const { computeRisk } = require("../services/riskEngine");
 const {
@@ -145,6 +146,62 @@ function predictionsToPersist(animalPayload) {
   }));
 }
 
+function predictionsFromLitteringAction(litteringPayload) {
+  if (!litteringPayload || litteringPayload.error) return [];
+  const detections = Array.isArray(litteringPayload.detections)
+    ? litteringPayload.detections
+    : [];
+  return detections.map((d) => ({
+    label: d.class_name || d.label || "littering",
+    confidence: Number(d.confidence) || 0,
+    box: Array.isArray(d.box) ? d.box.map(Number) : [0, 0, 0, 0],
+    model_type: "littering_action",
+  }));
+}
+
+function litteringActionForResponse(litteringPayload) {
+  if (!litteringPayload) return null;
+  if (litteringPayload.error) return null;
+  return {
+    event_detected: Boolean(litteringPayload.event_detected),
+    event_count: Number(litteringPayload.event_count) || 0,
+    max_confidence: Number(litteringPayload.max_confidence) || 0,
+    detections: Array.isArray(litteringPayload.detections)
+      ? litteringPayload.detections.map((d) => ({
+          class_id: d.class_id,
+          class_name: d.class_name || d.label,
+          confidence: Number(d.confidence) || 0,
+          bbox: d.bbox,
+          bbox_normalized: d.bbox_normalized,
+        }))
+      : [],
+  };
+}
+
+function litteringExtras(litteringPayload) {
+  if (!litteringPayload || litteringPayload.error) {
+    return {
+      littering_event_detected: null,
+      littering_event_count: null,
+      littering_max_confidence: null,
+      littering_action_summary: null,
+    };
+  }
+  return {
+    littering_event_detected: Boolean(litteringPayload.event_detected),
+    littering_event_count: Number(litteringPayload.event_count) || 0,
+    littering_max_confidence: Number(litteringPayload.max_confidence) || 0,
+    littering_action_summary: {
+      event_detected: Boolean(litteringPayload.event_detected),
+      event_count: Number(litteringPayload.event_count) || 0,
+      max_confidence: Number(litteringPayload.max_confidence) || 0,
+      inference_ms: litteringPayload.inference_ms ?? null,
+      model: litteringPayload.model || null,
+      detections: litteringPayload.detections || [],
+    },
+  };
+}
+
 function predictionsFromBinFill(binFillPayload) {
   if (!binFillPayload || binFillPayload.error) return [];
   const preds = Array.isArray(binFillPayload.predictions)
@@ -211,6 +268,8 @@ async function predict(req, res, next) {
     let waste = null;
     let animal = null;
     let bin_fill = null;
+    let littering_action = null;
+    const warnings = [];
 
     if (callBoth) {
       const triple = await modelClient.inferAll({
@@ -221,6 +280,12 @@ async function predict(req, res, next) {
       waste = triple.waste;
       animal = triple.animal;
       bin_fill = triple.bin_fill;
+      littering_action = triple.littering_action;
+      if (littering_action?.error) {
+        warnings.push(`littering_action: ${littering_action.error}`);
+        console.warn("[predict] littering_action:", littering_action.error);
+        littering_action = null;
+      }
     } else if (requestedModel === "waste") {
       try {
         waste = await modelClient.inferWaste({
@@ -326,11 +391,13 @@ async function predict(req, res, next) {
           risk
         );
       })(),
+      ...litteringExtras(littering_action),
     };
 
     const predictionsToStore = [
       ...predictionsToPersist(animal),
       ...predictionsFromBinFill(bin_fill),
+      ...predictionsFromLitteringAction(littering_action),
     ];
 
     try {
@@ -347,8 +414,9 @@ async function predict(req, res, next) {
       console.error("[predict] failed to set latest state:", e.message);
     }
 
+    let savedCapture = null;
     try {
-      const capture = await captureService.saveCaptureWithPredictions({
+      savedCapture = await captureService.saveCaptureWithPredictions({
         modelName: persistLabel,
         imageUrl: null,
         imageBuffer: req.file.buffer,
@@ -360,9 +428,19 @@ async function predict(req, res, next) {
         predictions: predictionsToStore,
         extras,
       });
-      if (capture) res.set("X-Capture-Id", String(capture.id));
+      if (savedCapture) res.set("X-Capture-Id", String(savedCapture.id));
     } catch (saveErr) {
       console.error("[predict] failed to persist capture:", saveErr.message);
+    }
+
+    try {
+      await litteringAlertService.maybeCreateLitteringAlert({
+        captureId: savedCapture?.id || null,
+        deviceId,
+        litteringAction: littering_action,
+      });
+    } catch (alertErr) {
+      console.error("[predict] littering alert skipped:", alertErr.message);
     }
 
     try {
@@ -382,6 +460,8 @@ async function predict(req, res, next) {
       animal,
       bin_fill,
       bin_fill_level,
+      littering_action: litteringActionForResponse(littering_action),
+      warnings: warnings.length ? warnings : undefined,
       weather: { ...weather, location_source: locationSource, lat, lon },
       risk,
       bin: device

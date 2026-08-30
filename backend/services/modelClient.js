@@ -1,7 +1,12 @@
 const axios = require("axios");
 const FormData = require("form-data");
 
-const { MODEL_REGISTRY, INFER_TIMEOUT_MS } = require("../config/env");
+const {
+  MODEL_REGISTRY,
+  INFER_TIMEOUT_MS,
+  MODEL_LITTERING_ACTION_URL_RAW,
+  MODEL_LITTERING_ACTION_TIMEOUT_MS,
+} = require("../config/env");
 
 /**
  * Two model microservices, each deployed separately on Railway:
@@ -229,6 +234,141 @@ async function inferLitter({ fileBuffer, filename, mimetype }) {
   return postToService("litter", fileBuffer, filename, mimetype);
 }
 
+function isLitteringActionConfigured() {
+  return Boolean(MODEL_LITTERING_ACTION_URL_RAW.trim());
+}
+
+/** Normalize littering-action microservice payload for gateway + persistence. */
+function normalizeLitteringActionPayload(raw) {
+  if (!raw || typeof raw !== "object" || raw.error) return raw;
+  const detections = Array.isArray(raw.detections)
+    ? raw.detections.map((d) => {
+        const bbox = d.bbox || {};
+        const box = [
+          Number(bbox.x1 ?? d.box?.[0] ?? 0),
+          Number(bbox.y1 ?? d.box?.[1] ?? 0),
+          Number(bbox.x2 ?? d.box?.[2] ?? 0),
+          Number(bbox.y2 ?? d.box?.[3] ?? 0),
+        ];
+        return {
+          class_id: d.class_id != null ? Number(d.class_id) : 0,
+          class_name:
+            (d.class_name != null && String(d.class_name)) ||
+            (d.label != null && String(d.label)) ||
+            "littering",
+          label:
+            (d.class_name != null && String(d.class_name)) ||
+            (d.label != null && String(d.label)) ||
+            "littering",
+          confidence: Number(d.confidence) || 0,
+          box,
+          bbox: {
+            x1: box[0],
+            y1: box[1],
+            x2: box[2],
+            y2: box[3],
+          },
+          bbox_normalized: d.bbox_normalized || null,
+        };
+      })
+    : [];
+
+  const eventCount =
+    raw.event_count != null ? Number(raw.event_count) : detections.length;
+  const maxConfidence =
+    raw.max_confidence != null
+      ? Number(raw.max_confidence)
+      : detections.reduce((m, d) => Math.max(m, d.confidence), 0);
+
+  return {
+    ...raw,
+    event_detected: Boolean(
+      raw.event_detected != null ? raw.event_detected : eventCount > 0
+    ),
+    event_count: eventCount,
+    max_confidence: maxConfidence,
+    detections,
+  };
+}
+
+/**
+ * Littering-event detector (YOLO11). Optional — requires MODEL_LITTERING_ACTION_URL.
+ * Never throws; returns `{ error }` on failure so /predict can degrade gracefully.
+ */
+async function inferLitteringAction({ fileBuffer, filename, mimetype }) {
+  const base = getModelUrl("littering_action");
+  if (!base) {
+    return { error: "MODEL_LITTERING_ACTION_URL is not set on the backend." };
+  }
+
+  const form = buildForm(fileBuffer, filename, mimetype);
+  const targetUrl = `${base.replace(/\/+$/, "")}/predict`;
+
+  try {
+    const r = await axios.post(targetUrl, form, {
+      headers: form.getHeaders(),
+      timeout: MODEL_LITTERING_ACTION_TIMEOUT_MS,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+    });
+    return normalizeLitteringActionPayload(r.data || {});
+  } catch (err) {
+    if (err.code === "ECONNABORTED") {
+      return { error: `Littering-action service timed out after ${MODEL_LITTERING_ACTION_TIMEOUT_MS}ms.` };
+    }
+    if (err.response) {
+      const detail = err.response.data;
+      const msg =
+        (detail && (detail.error || detail.detail || detail.message)) ||
+        `Littering-action service returned HTTP ${err.response.status}.`;
+      return {
+        error: typeof msg === "string" ? msg : JSON.stringify(msg),
+        status: err.response.status,
+      };
+    }
+    return {
+      error:
+        err.message ||
+        `Could not reach littering-action service at ${targetUrl}.`,
+    };
+  }
+}
+
+async function pingLitteringActionHealth() {
+  if (!isLitteringActionConfigured()) {
+    return {
+      configured: false,
+      url: null,
+      ok: false,
+      status: "not_configured",
+    };
+  }
+
+  const base = getModelUrl("littering_action");
+  try {
+    const r = await axios.get(`${base.replace(/\/+$/, "")}/health`, {
+      timeout: 3000,
+    });
+    const body = r.data || {};
+    const modelLoaded = Boolean(body.model_loaded ?? body.ok);
+    return {
+      configured: true,
+      url: base,
+      ok: modelLoaded,
+      status: modelLoaded ? "healthy" : "unavailable",
+      detail: body,
+    };
+  } catch (err) {
+    return {
+      configured: true,
+      url: base,
+      ok: false,
+      status: "unavailable",
+      error: err.message,
+    };
+  }
+}
+
 /**
  * Run BOTH models on the same image in parallel and return raw payloads.
  * If one service is down, the other still produces its result; the failing
@@ -236,11 +376,15 @@ async function inferLitter({ fileBuffer, filename, mimetype }) {
  */
 async function inferAll({ fileBuffer, filename, mimetype }) {
   const hasYolo = Boolean(getModelUrl("yolo"));
+  const hasLitteringAction = isLitteringActionConfigured();
   const settled = await Promise.allSettled([
     inferWaste({ fileBuffer, filename, mimetype }),
     inferAnimal({ fileBuffer, filename, mimetype }),
     hasYolo
       ? inferBinFillYolo({ fileBuffer, filename, mimetype })
+      : Promise.resolve(null),
+    hasLitteringAction
+      ? inferLitteringAction({ fileBuffer, filename, mimetype })
       : Promise.resolve(null),
   ]);
 
@@ -261,7 +405,15 @@ async function inferAll({ fileBuffer, filename, mimetype }) {
         : { error: settled[2].reason?.message || "bin-fill YOLO failed" };
   }
 
-  return { waste, animal, bin_fill };
+  let littering_action = null;
+  if (hasLitteringAction) {
+    littering_action =
+      settled[3].status === "fulfilled"
+        ? settled[3].value
+        : { error: settled[3].reason?.message || "littering-action failed" };
+  }
+
+  return { waste, animal, bin_fill, littering_action };
 }
 
 /**
@@ -277,6 +429,9 @@ async function infer({ modelName, fileBuffer, filename, mimetype }) {
   if (key === "litter") {
     return inferLitter({ fileBuffer, filename, mimetype });
   }
+  if (key === "littering_action" || key === "littering-action") {
+    return inferLitteringAction({ fileBuffer, filename, mimetype });
+  }
   const data = await postToService(modelName, fileBuffer, filename, mimetype);
   if (modelName === "animal") return normalizeAnimalPayload(data);
   return data;
@@ -286,12 +441,16 @@ module.exports = {
   getModelUrl,
   listModels,
   pingAllModels,
+  pingLitteringActionHealth,
+  isLitteringActionConfigured,
   inferWaste,
   inferAnimal,
   inferLitter,
+  inferLitteringAction,
   inferBinFillYolo,
   inferAll,
   infer,
   normalizeAnimalPayload,
   normalizeBinFillPayload,
+  normalizeLitteringActionPayload,
 };

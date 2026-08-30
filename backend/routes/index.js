@@ -12,6 +12,7 @@ const forecastRoutes = require("./forecast.routes");
 const weatherRoutes = require("./weather.routes");
 const alertsRoutes = require("./alerts.routes");
 const litterRoutes = require("./litter.routes");
+const litteringActionRoutes = require("./litteringAction.routes");
 const bridgeRoutes = require("./bridge.routes");
 const dashboardSettingsRoutes = require("./dashboardSettings.routes");
 const collectionRoutes = require("./collection.routes");
@@ -41,6 +42,8 @@ router.get("/", (_req, res) => {
       "GET /api/waste-data?date=YYYY-MM-DD — tourism demo fills (holiday_cache.json + geocode_cache.json)",
     litter_severity:
       "POST /litter-severity (multipart: image) — requires MODEL_LITTER_URL (litter microservice)",
+    littering_action:
+      "POST /littering-action (multipart: image) — requires MODEL_LITTERING_ACTION_URL (littering-event microservice)",
     dashboard:
       "GET /dashboard/settings, POST /dashboard/settings/hero (admin), DELETE /dashboard/settings/hero (admin), POST /dashboard/settings/promo (admin), DELETE /dashboard/settings/promo (admin)",
     collection: "POST /collection/plan — ordered Half+Overflow stops for route planning",
@@ -63,5 +66,6 @@ router.use("/forecast", forecastRoutes);
 router.use("/weather", weatherRoutes);
 router.use("/alerts", alertsRoutes);
 router.use("/litter-severity", litterRoutes);
+router.use("/littering-action", litteringActionRoutes);
 
 module.exports = router;

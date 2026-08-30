@@ -25,6 +25,10 @@ module.exports = (sequelize) =>
       box_y1: { type: DataTypes.FLOAT, allowNull: false },
       box_x2: { type: DataTypes.FLOAT, allowNull: false },
       box_y2: { type: DataTypes.FLOAT, allowNull: false },
+      model_type: {
+        type: DataTypes.STRING(40),
+        allowNull: true,
+      },
     },
     {
       tableName: "predictions",

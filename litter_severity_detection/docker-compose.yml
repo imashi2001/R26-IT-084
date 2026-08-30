@@ -1,0 +1,18 @@
+# Run the Litter Severity microservice from this folder (component root).
+# Build context points at the shared service under ../services/
+#
+#   docker compose up --build
+#
+# Then set on the VisionWaste backend: MODEL_LITTER_URL=http://localhost:8003
+#
+# Requires Docker Desktop running (Windows).
+
+services:
+  litter-severity-api:
+    build:
+      context: ../services/litter-severity-api
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      PORT: "8000"

@@ -208,3 +208,15 @@ export async function analyzeLitterSeverity(file) {
   });
   return data;
 }
+
+/**
+ * Littering-event detection (YOLO11) via Express proxy → littering-action microservice.
+ */
+export async function analyzeLitteringAction(file) {
+  const form = new FormData();
+  form.append("image", file);
+  const { data } = await axios.post(apiUrl("/littering-action"), form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}

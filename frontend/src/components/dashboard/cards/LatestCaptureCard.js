@@ -27,6 +27,7 @@ export default function LatestCaptureCard({ snapshot, stale }) {
   const hasImage = Boolean(snapshot?.imageUrl);
   const binLabel = formatBinId(snapshot?.deviceId);
   const timeLabel = formatTimestamp(snapshot?.timestamp);
+  const litteringDetected = Boolean(snapshot?.extras?.littering_event_detected);
 
   return (
     <Card glow={hasImage && !stale}>
@@ -34,14 +35,21 @@ export default function LatestCaptureCard({ snapshot, stale }) {
         icon={Camera}
         title="Live Capture"
         right={
-          hasImage && !stale ? (
-            <span className={badge.live}>
-              <Radio className="h-3 w-3" />
-              LIVE
-            </span>
-          ) : hasImage ? (
-            <span className={badge.stale}>Stale</span>
-          ) : null
+          <div className="flex items-center gap-2">
+            {litteringDetected ? (
+              <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-300">
+                Littering
+              </span>
+            ) : null}
+            {hasImage && !stale ? (
+              <span className={badge.live}>
+                <Radio className="h-3 w-3" />
+                LIVE
+              </span>
+            ) : hasImage ? (
+              <span className={badge.stale}>Stale</span>
+            ) : null}
+          </div>
         }
       />
 

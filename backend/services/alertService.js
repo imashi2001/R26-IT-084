@@ -1,7 +1,4 @@
-/**
- * Alert records derived from captures + admin workflow (status / notes).
- */
-
+const { LITTERING_ALERT_CONFIDENCE } = require("../config/env");
 const { Op } = require("sequelize");
 
 const db = require("../config/db");
@@ -68,6 +65,17 @@ function classifyCaptureForAlert(c) {
       summary: `Fill level ${fillTxt}. Waste: ${waste}.`,
     };
   }
+  const litteringDetected = Boolean(c.littering_event_detected);
+  const litteringConf = Number(c.littering_max_confidence) || 0;
+  if (litteringDetected && litteringConf >= LITTERING_ALERT_CONFIDENCE) {
+    const count = Number(c.littering_event_count) || 0;
+    return {
+      alert_type: "littering_detected",
+      severity: "warning",
+      title: "Littering event detected",
+      summary: `${count} littering event(s) on capture (max confidence ${(litteringConf * 100).toFixed(0)}%).`,
+    };
+  }
   if (animals > 0) {
     return {
       alert_type: "animal",
@@ -104,6 +112,9 @@ async function syncAlertsFromCaptures({ lookbackDays = 30, scanLimit = 400 } = {
       "fill_percentage",
       "waste_label",
       "rotting_hours",
+      "littering_event_detected",
+      "littering_event_count",
+      "littering_max_confidence",
     ],
   });
 

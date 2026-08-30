@@ -52,9 +52,20 @@ animal_detection/models/
 *.pt
 !services/waste-api/model/waste_classification_model.h5
 !services/animal-api/model/best.pt
+!services/litter-severity-api/model/best.pt
 
 # Local ML housekeeping (optional export from training scripts)
 skipped_samples.tsv
+
+# ---- Litter severity (research folder): do not commit local inference dumps / obsolete UI ----
+# Hosting + merge use: services/litter-severity-api/, backend/, frontend/, docker-compose.litter.yml
+litter_severity_detection/litter_severity_backend/
+litter_severity_detection/litter_severity_frontend/
+litter_severity_detection/results/*
+!litter_severity_detection/results/.gitkeep
+litter_severity_detection/.venv/
+litter_severity_detection/**/__pycache__/
+litter_severity_detection/notebooks/.ipynb_checkpoints/
 
 # React / Node
 node_modules/

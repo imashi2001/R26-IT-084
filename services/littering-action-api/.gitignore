@@ -1,2 +1,3 @@
-weights/
+weights/*
+!weights/best.pt
 !weights/.gitkeep

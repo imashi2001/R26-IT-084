@@ -51,9 +51,16 @@ docker run --rm -p 8004:8000 -e PORT=8000 littering-action-api
 
 ## Railway
 
-1. New service → root directory `services/littering-action-api`
-2. Use the included `Dockerfile` (no custom start command)
-3. Generate domain → set backend `MODEL_LITTERING_ACTION_URL=https://<service>.up.railway.app`
+1. New service → root directory **`services/littering-action-api`**
+2. Use the included `Dockerfile` (no custom start command; Railway sets `PORT`)
+3. **Required:** commit and push the model file before deploy:
+   ```powershell
+   git add services/littering-action-api/weights/best.pt
+   git commit -m "Add littering-action model weights for Railway"
+   git push
+   ```
+   Without `weights/best.pt` in GitHub, the Docker build fails at `COPY weights/best.pt`.
+4. Generate domain → set backend `MODEL_LITTERING_ACTION_URL=https://<service>.up.railway.app`
 
 ## Tests
 

@@ -1,0 +1,317 @@
+{
+  "generated_at": "2026-08-30 07:46:28 UTC",
+  "metrics": [
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "test_images",
+      "value": 372,
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "accuracy",
+      "value": "97.58",
+      "split": "test",
+      "class_name": "",
+      "notes": "percent"
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "precision_organic",
+      "value": "0.9721",
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "recall_organic",
+      "value": "0.9775",
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "f1_organic",
+      "value": "0.9748",
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "precision",
+      "value": "0.9793",
+      "split": "test",
+      "class_name": "non_organic",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "recall",
+      "value": "0.9742",
+      "split": "test",
+      "class_name": "non_organic",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "f1",
+      "value": "0.9767",
+      "split": "test",
+      "class_name": "non_organic",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "precision",
+      "value": "0.9721",
+      "split": "test",
+      "class_name": "organic",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "recall",
+      "value": "0.9775",
+      "split": "test",
+      "class_name": "organic",
+      "notes": ""
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "metric": "f1",
+      "value": "0.9748",
+      "split": "test",
+      "class_name": "organic",
+      "notes": ""
+    },
+    {
+      "model": "animal_yolov8",
+      "metric": "mAP50",
+      "value": "0.8806",
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "animal_yolov8",
+      "metric": "mAP50-95",
+      "value": "0.6101",
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "animal_yolov8",
+      "metric": "precision",
+      "value": "0.8641",
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "animal_yolov8",
+      "metric": "recall",
+      "value": "0.7959",
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "animal_yolov8",
+      "metric": "mAP50-95",
+      "value": "0.6183",
+      "split": "test",
+      "class_name": "cat",
+      "notes": ""
+    },
+    {
+      "model": "animal_yolov8",
+      "metric": "mAP50-95",
+      "value": "0.6279",
+      "split": "test",
+      "class_name": "crow",
+      "notes": ""
+    },
+    {
+      "model": "animal_yolov8",
+      "metric": "mAP50-95",
+      "value": "0.6630",
+      "split": "test",
+      "class_name": "dog",
+      "notes": ""
+    },
+    {
+      "model": "animal_yolov8",
+      "metric": "mAP50-95",
+      "value": "0.5311",
+      "split": "test",
+      "class_name": "monkey",
+      "notes": ""
+    },
+    {
+      "model": "bin_fill_yolov8",
+      "metric": "mAP50",
+      "value": "0.5919",
+      "split": "val",
+      "class_name": "",
+      "notes": "From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\\Users\\Charuka\\Desktop\\garbage-project\\dataset\\data.yaml"
+    },
+    {
+      "model": "bin_fill_yolov8",
+      "metric": "mAP50-95",
+      "value": "0.3650",
+      "split": "val",
+      "class_name": "",
+      "notes": "From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\\Users\\Charuka\\Desktop\\garbage-project\\dataset\\data.yaml"
+    },
+    {
+      "model": "bin_fill_yolov8",
+      "metric": "precision",
+      "value": "0.5275",
+      "split": "val",
+      "class_name": "",
+      "notes": "From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\\Users\\Charuka\\Desktop\\garbage-project\\dataset\\data.yaml"
+    },
+    {
+      "model": "bin_fill_yolov8",
+      "metric": "recall",
+      "value": "0.6183",
+      "split": "val",
+      "class_name": "",
+      "notes": "From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\\Users\\Charuka\\Desktop\\garbage-project\\dataset\\data.yaml"
+    },
+    {
+      "model": "bin_fill_yolov8",
+      "metric": "best_epoch",
+      "value": 6,
+      "split": "val",
+      "class_name": "",
+      "notes": "From best.pt checkpoint (training-time validation, not a fresh test run). Original train data: C:\\Users\\Charuka\\Desktop\\garbage-project\\dataset\\data.yaml"
+    },
+    {
+      "model": "bin_fill_yolov8",
+      "metric": "class",
+      "value": "Empty",
+      "split": "val",
+      "class_name": "",
+      "notes": "class list from checkpoint (per-class mAP needs dataset re-val)"
+    },
+    {
+      "model": "bin_fill_yolov8",
+      "metric": "class",
+      "value": "Half",
+      "split": "val",
+      "class_name": "",
+      "notes": "class list from checkpoint (per-class mAP needs dataset re-val)"
+    },
+    {
+      "model": "bin_fill_yolov8",
+      "metric": "class",
+      "value": "Overflow",
+      "split": "val",
+      "class_name": "",
+      "notes": "class list from checkpoint (per-class mAP needs dataset re-val)"
+    },
+    {
+      "model": "risk_engine_rules",
+      "metric": "scenario_accuracy",
+      "value": "100.00",
+      "split": "test",
+      "class_name": "",
+      "notes": "6/6 scenarios; percent"
+    },
+    {
+      "model": "risk_engine_rules",
+      "metric": "scenarios_total",
+      "value": 6,
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    },
+    {
+      "model": "risk_engine_rules",
+      "metric": "scenarios_passed",
+      "value": 6,
+      "split": "test",
+      "class_name": "",
+      "notes": ""
+    }
+  ],
+  "dataset": [
+    {
+      "model": "waste_mobilenetv2",
+      "split": "train",
+      "class": "non_organic",
+      "images": 912
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "split": "train",
+      "class": "organic",
+      "images": 831
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "split": "val",
+      "class": "non_organic",
+      "images": 195
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "split": "val",
+      "class": "organic",
+      "images": 178
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "split": "test",
+      "class": "non_organic",
+      "images": 194
+    },
+    {
+      "model": "waste_mobilenetv2",
+      "split": "test",
+      "class": "organic",
+      "images": 178
+    },
+    {
+      "model": "animal_yolov8",
+      "split": "train",
+      "class": "(all)",
+      "images": 2721
+    },
+    {
+      "model": "animal_yolov8",
+      "split": "valid",
+      "class": "(all)",
+      "images": 260
+    },
+    {
+      "model": "animal_yolov8",
+      "split": "test",
+      "class": "(all)",
+      "images": 130
+    }
+  ],
+  "skipped": [
+    {
+      "model": "litter_yolov8",
+      "reason": "Model not found: C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\services\\litter-severity-api\\model\\best.pt"
+    }
+  ],
+  "artifacts": [
+    "C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\evaluation_results\\waste_confusion_matrix.csv",
+    "C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\evaluation_results\\waste_confusion_matrix.png",
+    "C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\evaluation_results\\waste_per_class.csv",
+    "C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\evaluation_results\\animal_yolov8_per_class.csv",
+    "C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\evaluation_results\\yolo_runs\\animal_yolov8\\confusion_matrix.png",
+    "C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\evaluation_results\\yolo_runs\\animal_yolov8\\confusion_matrix_normalized.png",
+    "C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\evaluation_results\\bin_fill_yolov8_checkpoint_metrics.csv",
+    "C:\\Users\\ranaw\\Documents\\Research_Project\\R26-IT-084\\evaluation_results\\risk_engine_scenarios.csv"
+  ]
+}

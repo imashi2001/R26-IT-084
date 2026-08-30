@@ -7,6 +7,7 @@ model file baked in.
 services/
   waste-api/           -> TensorFlow MobileNetV2 (organic / non_organic)
   animal-api/          -> Ultralytics YOLOv8     (cat / crow / dog / monkey)
+  fill-api/            -> Ultralytics YOLOv8n    (empty / half / overflow — garbage_fill_level_detection_v1)
   litter-severity-api/ -> Ultralytics YOLO + LSI (litter severity; see `MODEL_LITTER_URL` on Express)
   littering-action-api/ -> Ultralytics YOLO11 littering-event detector (`MODEL_LITTERING_ACTION_URL`)
 ```
@@ -22,6 +23,7 @@ Repeat for each service:
 2. **Settings -> Service -> Root Directory**:
    - `services/waste-api` for the waste service
    - `services/animal-api` for the animal service
+   - `services/fill-api` for bin fill level (requires `model/best.pt` — run `scripts/install_fill_model.ps1`)
    - `services/litter-severity-api` for litter severity (add **`model/best.pt`** in the image or mount weights; see that service’s `Dockerfile`)
 3. Railway auto-detects the `Dockerfile`. No start command override needed.
 4. **Networking -> Generate Domain** to get the public URL.
@@ -50,11 +52,12 @@ If `/predict` returns JSON locally, Railway will work.
 
 ## Calling from the orchestrator
 
-After deploying, point the main backend at the two URLs:
+After deploying, point the main backend at the service URLs:
 
 ```powershell
-$env:WASTE_API_URL  = "https://waste-api-xxx.up.railway.app/predict"
-$env:ANIMAL_API_URL = "https://animal-api-xxx.up.railway.app/predict"
+$env:MODEL_WASTE_URL  = "https://waste-api-xxx.up.railway.app"
+$env:MODEL_ANIMAL_URL = "https://animal-api-xxx.up.railway.app"
+$env:MODEL_FILL_URL   = "https://fill-api-xxx.up.railway.app"
 ```
 
 (The orchestrator code change to fan out to these instead of loading

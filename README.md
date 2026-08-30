@@ -7,9 +7,10 @@ Avoiding inconvenience to people due to irregular waste.
 ```
 frontend/      React app (UI)
 backend/       Express.js API gateway (no ML, talks to model services + DB)
-model-yolo/    Standalone YOLOv8 inference microservice (Python)
+services/      Model microservices (waste, animal, fill, litter, …)
+garbage_fill_level_detection_v1/  Trained fill-level weights (copy to services/fill-api/model/)
 dataset/       Training data (only needed for training)
-train.py       YOLO training entrypoint -> writes to model-yolo/model/best.pt
+train.py       YOLO training entrypoint -> writes to services/fill-api/model/best.pt
 test.py        Quick CLI inference test
 VisionWaste/   ESP32 bridge (Python, LAN laptop → Railway backend)
 ```
@@ -24,9 +25,9 @@ Frontend (3000)
    |  POST /predict
    v
 Backend gateway (5000) — Express.js
-   |  POST /infer  (multipart image)
+   |  POST /predict  (multipart file)
    v
-model-yolo service (6000) — Python  (best.pt lives here)
+fill-api service (8005) — FastAPI  (garbage_fill_level_detection_v1 / best.pt)
 ```
 
 When new models are added, deploy them as additional services
@@ -49,11 +50,11 @@ Always use **full URLs with scheme**:
 
 | Variable | Example |
 |----------|---------|
-| `MODEL_YOLO_URL` (backend) | `https://your-model.up.railway.app` |
+| `MODEL_FILL_URL` (backend) | `https://fill-api-xxx.up.railway.app` |
 | `VITE_API_URL` (frontend build) | `https://your-backend.up.railway.app` |
 | Bridge `BACKEND_PREDICT_URL` | `https://your-backend.up.railway.app/predict` |
 
-Host-only strings like `something.up.railway.app` are normalized to **`https://`** where applicable (`MODEL_YOLO_URL`, `VITE_API_URL`).
+Host-only strings like `something.up.railway.app` are normalized to **`https://`** where applicable (`MODEL_FILL_URL`, `VITE_API_URL`).
 
 Optional backend **`CORS_ORIGIN`**: comma-separated allowed frontend origins (empty = allow all). See [backend/.env.example](backend/.env.example).
 
@@ -61,13 +62,13 @@ Frontend local overrides: copy [frontend/.env.example](frontend/.env.example) to
 
 ## Run locally (3 terminals)
 
-Terminal 1 - YOLO model service:
+Terminal 1 - Bin fill model service:
 ```powershell
-cd model-yolo
-C:\genv\Scripts\python.exe -m pip install -r requirements.txt
-C:\genv\Scripts\python.exe server.py
+cd services\fill-api
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8005
 ```
-Listens on http://localhost:6000
+Listens on http://localhost:8005
 
 Terminal 2 - Backend gateway (Express):
 ```powershell
@@ -88,11 +89,12 @@ Open http://localhost:3000.
 
 ## Deploy on Railway
 
-Create one Railway project with three services:
+Create one Railway project with separate services:
 
-1. **model-yolo** — root: `model-yolo`; uses `Dockerfile` (leave Railway **custom start command** empty so `$PORT` is not passed literally).
+1. **fill-api** — root: `services/fill-api`; ensure `model/best.pt` is in repo (run `scripts/install_fill_model.ps1`).
 2. **backend** — root: `backend`, start: `npm start`,
-   set `MODEL_YOLO_URL` to the **https://** public URL of the `model-yolo` service.
-3. **frontend** — root: `frontend`, build: `npm run build`, start: `npm run serve`, output: `dist`, set `VITE_API_URL` to the **https://** public URL of `backend`.
+   set `MODEL_FILL_URL` to the **https://** public URL of the `fill-api` service.
+   Also set `MODEL_WASTE_URL`, `MODEL_ANIMAL_URL` as needed.
+3. **frontend** — root: `frontend`, build: `npm run build`, start: `npm run serve`, set `VITE_API_URL` to the **https://** public URL of `backend`.
 
 Add Railway Postgres later when you wire users / history into the gateway.

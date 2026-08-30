@@ -54,6 +54,7 @@ animal_detection/models/
 !services/animal-api/model/best.pt
 !services/litter-severity-api/model/best.pt
 !services/littering-action-api/weights/best.pt
+!services/fill-api/model/best.pt
 
 # Local ML housekeeping (optional export from training scripts)
 skipped_samples.tsv

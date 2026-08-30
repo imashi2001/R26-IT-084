@@ -11,6 +11,7 @@ import {
   Thermometer,
   TrendingUp,
   ScanSearch,
+  UserRoundX,
   LogOut,
   User as UserIcon,
   Building2,
@@ -174,11 +175,18 @@ export default function TopBar({ onToggleSidebar }) {
 
       <div className="flex items-center gap-2 pl-2">
         <Link
+          to="/littering-event"
+          className="hidden items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-3 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 md:inline-flex"
+        >
+          <UserRoundX className="h-4 w-4 shrink-0" />
+          Littering
+        </Link>
+        <Link
           to="/litter-severity"
-          className="hidden items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:text-white md:inline-flex"
+          className="hidden items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:text-white lg:inline-flex"
         >
           <ScanSearch className="h-4 w-4 shrink-0" />
-          Litter
+          LSI
         </Link>
         <Link
           to="/forecast"

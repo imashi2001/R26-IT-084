@@ -31,6 +31,7 @@ export default defineConfig({
       "/alerts": "http://localhost:5000",
       "/litter-severity": "http://localhost:5000",
       "/dashboard": "http://localhost:5000",
+      "/collection": "http://localhost:5000",
       "/uploads": "http://localhost:5000",
     },
   },

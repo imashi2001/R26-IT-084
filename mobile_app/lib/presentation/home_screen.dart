@@ -70,7 +70,7 @@ class HomeScreen extends StatelessWidget {
                   title: 'Find nearest bin',
                   subtitle: 'Public — GPS, fill level, and driving route',
                   filled: true,
-                  onTap: () => context.go('/public'),
+                  onTap: () => context.push('/public'),
                 ),
                 const SizedBox(height: 12),
                 _RoleCard(
@@ -78,7 +78,7 @@ class HomeScreen extends StatelessWidget {
                   title: 'Municipal staff',
                   subtitle: 'Login — all bins, live status, capture detail',
                   filled: false,
-                  onTap: () => context.go('/staff/login'),
+                  onTap: () => context.push('/staff/login'),
                 ),
                 const Spacer(flex: 2),
                 const Text(

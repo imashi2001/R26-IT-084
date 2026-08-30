@@ -133,7 +133,7 @@ Multipart fields typical for the React **`/mobile-report`** flow:
 | Table | Key columns |
 |-------|-------------|
 | users | id, name, email, password_hash, role (`user` \| `admin`), timestamps |
-| devices | id, user_id, **name** (display “Bin name”), **esp32_id** (unique), **location** (“Location name”), address, latitude, longitude, **status** (`active` \| `inactive` \| `maintenance`), **bridge_instance_id** (optional laptop binding), **camera_base_url**, **pending_speaker_action**, **pending_speaker_at**, **last_seen_at** (ESP32 command poll), timestamps |
+| devices | id, user_id, **name** (display “Bin name”), **esp32_id** (unique), **location** (“Location name”), address, latitude, longitude, **status** (`active` \| `inactive` \| `maintenance`), **bridge_instance_id** (optional laptop binding), **camera_base_url**, **bin_type** (`smart` \| `virtual`), **manual_fill_level**, **manual_fill_percentage** (virtual bins), **pending_speaker_action**, **pending_speaker_at**, **last_seen_at** (ESP32 command poll), timestamps |
 | device_commands | **id** (UUID PK), **device_id**, **esp32_id**, **command** (e.g. `PLAY_AUDIO`), **track**, **status** (`pending` \| `sent` \| `completed` \| `failed`), **sent_at**, **completed_at**, **error_message**, timestamps |
 | captures | id, user_id, device_id, **bridge_instance_id**, image_url, image_buffer, image_mimetype, fill_level, model_name, captured_at, **source_type**, **latitude**, **longitude**, **fill_percentage**, **prediction_class**, waste_*, risk_*, weather fields, timestamps |
 | predictions | id, capture_id, label, confidence, box_x1..box_y2, timestamps |
@@ -185,6 +185,9 @@ ALTER TABLE devices ADD COLUMN IF NOT EXISTS camera_base_url VARCHAR(255);
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS pending_speaker_action VARCHAR(16);
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS pending_speaker_at TIMESTAMPTZ;
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS bin_type VARCHAR(16) NOT NULL DEFAULT 'smart';
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS manual_fill_level VARCHAR(24);
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS manual_fill_percentage DOUBLE PRECISION;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS source_type VARCHAR(16);
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;

@@ -1,7 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  ChevronRight,
+  MapPin,
+  RefreshCw,
+} from "lucide-react";
 import ImageCanvas from "../components/ImageCanvas";
 import PredictionList from "../components/PredictionList";
+import DashboardLayout from "../components/dashboard/DashboardLayout";
+import PageShell from "../components/dashboard/PageShell";
+import PageHeader from "../components/dashboard/PageHeader";
+import Card from "../components/dashboard/Card";
+import EmptyState from "../components/dashboard/EmptyState";
+import PageSkeleton from "../components/dashboard/PageSkeleton";
+import StatusBanner from "../components/dashboard/StatusBanner";
+import {
+  btnGhost,
+  btnSecondary,
+  statusBadgeClass,
+} from "../components/dashboard/dashboardUi";
 import { apiUrl } from "../utils/apiBase";
 
 function formatTs(iso) {
@@ -46,6 +64,17 @@ function formatGps(c) {
   return "—";
 }
 
+function MetaItem({ label, value }) {
+  return (
+    <div className="rounded-lg border border-slate-700/50 bg-slate-950/40 px-3 py-2">
+      <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm font-medium text-slate-200">{value}</dd>
+    </div>
+  );
+}
+
 export default function BinDetailPage() {
   const { id } = useParams();
   const [data, setData] = useState(null);
@@ -54,49 +83,40 @@ export default function BinDetailPage() {
   const [historyError, setHistoryError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setHistoryError(null);
+    try {
+      const [latestRes, capRes] = await Promise.all([
+        fetch(apiUrl(`/devices/${id}/latest`)),
+        fetch(apiUrl(`/devices/${id}/captures?limit=50`)),
+      ]);
+      const latestBody = await latestRes.json().catch(() => ({}));
+      const capBody = await capRes.json().catch(() => ({}));
 
-    async function run() {
-      setLoading(true);
-      setError(null);
-      setHistoryError(null);
-      try {
-        const [latestRes, capRes] = await Promise.all([
-          fetch(apiUrl(`/devices/${id}/latest`)),
-          fetch(apiUrl(`/devices/${id}/captures?limit=50`)),
-        ]);
-        const latestBody = await latestRes.json().catch(() => ({}));
-        const capBody = await capRes.json().catch(() => ({}));
-
-        if (!latestRes.ok) {
-          throw new Error(latestBody.error || `HTTP ${latestRes.status}`);
-        }
-        if (!cancelled) setData(latestBody);
-
-        if (!capRes.ok) {
-          if (!cancelled) {
-            setHistoryError(capBody.error || `HTTP ${capRes.status}`);
-            setCaptures([]);
-          }
-        } else if (!cancelled) {
-          setCaptures(Array.isArray(capBody.captures) ? capBody.captures : []);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e.message || "Failed to load bin.");
-          setCaptures([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!latestRes.ok) {
+        throw new Error(latestBody.error || `HTTP ${latestRes.status}`);
       }
-    }
+      setData(latestBody);
 
-    run();
-    return () => {
-      cancelled = true;
-    };
+      if (!capRes.ok) {
+        setHistoryError(capBody.error || `HTTP ${capRes.status}`);
+        setCaptures([]);
+      } else {
+        setCaptures(Array.isArray(capBody.captures) ? capBody.captures : []);
+      }
+    } catch (e) {
+      setError(e.message || "Failed to load bin.");
+      setCaptures([]);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const latest = data?.latest;
   const extras = latest?.extras || {};
@@ -106,154 +126,206 @@ export default function BinDetailPage() {
     : [];
 
   return (
-    <div className="page bin-detail-page">
-      <p className="back-row">
-        <Link to="/map">&larr; Back to map</Link>
-      </p>
+    <DashboardLayout>
+      {loading && !data ? (
+        <PageSkeleton rows={5} />
+      ) : (
+        <PageShell
+          banner={
+            error
+              ? { tone: "error", text: error, onRetry: load }
+              : historyError
+                ? { tone: "warn", text: historyError }
+                : null
+          }
+        >
+          <PageHeader
+            title={data?.device?.name || "Bin detail"}
+            subtitle={
+              data?.device?.address ||
+              data?.device?.location ||
+              "Latest capture and history for this bin"
+            }
+            actions={
+              <>
+                <Link to="/bins" className={btnSecondary}>
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Bin registry
+                </Link>
+                <Link to="/map" className={btnGhost}>
+                  <MapPin className="h-3.5 w-3.5" />
+                  Map
+                </Link>
+                <button type="button" onClick={load} className={btnGhost}>
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+                  />
+                  Refresh
+                </button>
+              </>
+            }
+          />
 
-      {loading && <div className="info-banner">Loading bin…</div>}
-      {error && <div className="error-banner">{error}</div>}
+          {data?.device ? (
+            <>
+              <Card>
+                <Card.Header
+                  title="Device overview"
+                  subtitle={`Status: ${data.device.status || "—"}`}
+                  right={
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusBadgeClass(data.device.status)}`}
+                    >
+                      {data.device.status || "unknown"}
+                    </span>
+                  }
+                />
+                <Card.Body>
+                  <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                    <MetaItem label="Fill level" value={latest?.fill_level || "—"} />
+                    <MetaItem
+                      label="Fill estimate"
+                      value={
+                        extras.fill_percentage != null &&
+                        Number.isFinite(Number(extras.fill_percentage))
+                          ? `${Math.round(Number(extras.fill_percentage))}%`
+                          : "—"
+                      }
+                    />
+                    <MetaItem
+                      label="Last capture"
+                      value={formatTs(latest?.captured_at)}
+                    />
+                    <MetaItem label="Source" value={extras.source_type || "—"} />
+                    <MetaItem
+                      label="Report GPS"
+                      value={
+                        extras.capture_latitude != null &&
+                        extras.capture_longitude != null
+                          ? `${Number(extras.capture_latitude).toFixed(5)}, ${Number(extras.capture_longitude).toFixed(5)}`
+                          : "—"
+                      }
+                    />
+                    <MetaItem
+                      label="ESP32 ID"
+                      value={data.device.esp32_id || "—"}
+                    />
+                    <MetaItem
+                      label="Bridge / Laptop ID"
+                      value={
+                        data.device.bridge_instance_id ? (
+                          <code className="text-xs text-brand-400">
+                            {data.device.bridge_instance_id}
+                          </code>
+                        ) : (
+                          "Any matching bridge"
+                        )
+                      }
+                    />
+                  </dl>
+                </Card.Body>
+              </Card>
 
-      {!loading && data?.device && (
-        <>
-          <header className="page-header">
-            <h1>{data.device.name}</h1>
-            <p className="subtitle">
-              {data.device.address || data.device.location || "No address label"}
-            </p>
-            <dl className="bin-meta-grid">
-              <div>
-                <dt>Status</dt>
-                <dd>{data.device.status || "—"}</dd>
-              </div>
-              <div>
-                <dt>Fill level</dt>
-                <dd>{latest?.fill_level || "—"}</dd>
-              </div>
-              <div>
-                <dt>Fill estimate</dt>
-                <dd>
-                  {extras.fill_percentage != null &&
-                  Number.isFinite(Number(extras.fill_percentage))
-                    ? `${Math.round(Number(extras.fill_percentage))}%`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt>Last capture</dt>
-                <dd>{formatTs(latest?.captured_at)}</dd>
-              </div>
-              <div>
-                <dt>Source</dt>
-                <dd>{extras.source_type || "—"}</dd>
-              </div>
-              <div>
-                <dt>Report GPS</dt>
-                <dd>
-                  {extras.capture_latitude != null &&
-                  extras.capture_longitude != null &&
-                  Number.isFinite(Number(extras.capture_latitude)) &&
-                  Number.isFinite(Number(extras.capture_longitude))
-                    ? `${Number(extras.capture_latitude).toFixed(5)}, ${Number(
-                        extras.capture_longitude
-                      ).toFixed(5)}`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt>ESP32 ID</dt>
-                <dd>{data.device.esp32_id || "—"}</dd>
-              </div>
-              <div>
-                <dt>Bridge / Laptop ID</dt>
-                <dd>
-                  {data.device.bridge_instance_id ? (
-                    <code>{data.device.bridge_instance_id}</code>
+              <Card>
+                <Card.Header title="Latest capture" />
+                <Card.Body>
+                  {imageUrl ? (
+                    <div className="overflow-hidden rounded-xl border border-slate-700/50">
+                      <ImageCanvas imageUrl={imageUrl} predictions={predictions} />
+                    </div>
                   ) : (
-                    "— (any bridge with matching ESP32 ID may attach)"
+                    <EmptyState
+                      title="No image yet"
+                      message="Send a capture from the bridge or mobile report."
+                      action={
+                        <Link to="/mobile-report" className={btnSecondary}>
+                          Mobile report
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
+                      }
+                    />
                   )}
-                </dd>
-              </div>
-            </dl>
-          </header>
+                  {predictions.length > 0 ? (
+                    <div className="mt-4">
+                      <PredictionList predictions={predictions} />
+                    </div>
+                  ) : null}
+                </Card.Body>
+              </Card>
 
-          {imageUrl ? (
-            <div className="bin-detail-canvas">
-              <ImageCanvas imageUrl={imageUrl} predictions={predictions} />
-            </div>
-          ) : (
-            <div className="info-banner">
-              No image stored yet. Send a capture from the bridge with matching{" "}
-              <code>DEVICE_ESP32_ID</code> / <code>esp32_id</code>, or submit from{" "}
-              <Link to="/mobile-report">mobile report</Link>.
-            </div>
-          )}
-
-          {predictions.length > 0 && (
-            <PredictionList predictions={predictions} />
-          )}
-
-          <section className="bin-capture-history">
-            <h2>Capture history</h2>
-            {historyError && (
-              <div className="error-banner">{historyError}</div>
-            )}
-            {!historyError && captures.length === 0 && (
-              <p className="subtitle">No captures recorded for this bin yet.</p>
-            )}
-            {!historyError && captures.length > 0 && (
-              <div className="bin-history-table-wrap">
-                <table className="bin-history-table">
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Source</th>
-                      <th>Fill %</th>
-                      <th>Summary</th>
-                      <th>GPS</th>
-                      <th>Thumb</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {captures.map((c) => (
-                      <tr key={c.id}>
-                        <td>{formatTs(c.captured_at)}</td>
-                        <td>{c.source_type || "—"}</td>
-                        <td>
-                          {c.fill_percentage != null &&
-                          Number.isFinite(Number(c.fill_percentage))
-                            ? `${Math.round(Number(c.fill_percentage))}%`
-                            : "—"}
-                        </td>
-                        <td>{formatConfidenceSummary(c)}</td>
-                        <td className="bin-history-gps">{formatGps(c)}</td>
-                        <td>
-                          {c.has_image ? (
-                            <a
-                              href={apiUrl(`/captures/${c.id}/image`)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="bin-history-thumb-link"
-                            >
-                              <img
-                                src={apiUrl(`/captures/${c.id}/image`)}
-                                alt=""
-                                className="bin-history-thumb"
-                              />
-                            </a>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </>
+              <Card>
+                <Card.Header
+                  title="Capture history"
+                  subtitle={`${captures.length} recent captures`}
+                />
+                <Card.Body className="overflow-x-auto">
+                  {captures.length === 0 ? (
+                    <EmptyState title="No captures recorded" />
+                  ) : (
+                    <table className="w-full min-w-[640px] text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-700/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="pb-2 pr-3">Time</th>
+                          <th className="pb-2 pr-3">Source</th>
+                          <th className="pb-2 pr-3">Fill %</th>
+                          <th className="pb-2 pr-3">Summary</th>
+                          <th className="pb-2 pr-3">GPS</th>
+                          <th className="pb-2">Thumb</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/80">
+                        {captures.map((c) => (
+                          <tr key={c.id} className="text-slate-300">
+                            <td className="py-2 pr-3">{formatTs(c.captured_at)}</td>
+                            <td className="py-2 pr-3">{c.source_type || "—"}</td>
+                            <td className="py-2 pr-3">
+                              {c.fill_percentage != null
+                                ? `${Math.round(Number(c.fill_percentage))}%`
+                                : "—"}
+                            </td>
+                            <td className="py-2 pr-3">
+                              {formatConfidenceSummary(c)}
+                            </td>
+                            <td className="py-2 pr-3 font-mono text-xs">
+                              {formatGps(c)}
+                            </td>
+                            <td className="py-2">
+                              {c.has_image ? (
+                                <a
+                                  href={apiUrl(`/captures/${c.id}/image`)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <img
+                                    src={apiUrl(`/captures/${c.id}/image`)}
+                                    alt=""
+                                    className="h-10 w-10 rounded-lg border border-slate-700/50 object-cover"
+                                  />
+                                </a>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </Card.Body>
+              </Card>
+            </>
+          ) : !loading && !error ? (
+            <EmptyState
+              title="Bin not found"
+              action={
+                <Link to="/bins" className={btnSecondary}>
+                  Back to registry
+                </Link>
+              }
+            />
+          ) : null}
+        </PageShell>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

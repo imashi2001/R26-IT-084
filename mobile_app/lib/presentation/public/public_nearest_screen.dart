@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/map_layers.dart';
 import '../../data/providers.dart';
 import '../../domain/models.dart';
 import '../../theme/app_theme.dart';
@@ -110,6 +112,20 @@ class _PublicNearestScreenState extends ConsumerState<PublicNearestScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface.withValues(alpha: 0.95),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
+        title: const Text('Find nearest bin'),
+      ),
       body: Stack(
         children: [
           FlutterMap(
@@ -123,12 +139,7 @@ class _PublicNearestScreenState extends ConsumerState<PublicNearestScreen> {
               },
             ),
             children: [
-              TileLayer(
-                urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
-                userAgentPackageName: 'com.visionwaste.app',
-              ),
+              visionWasteTileLayer(dark: false),
               if (state.route?.path.isNotEmpty == true)
                 PolylineLayer(
                   polylines: [
@@ -187,8 +198,8 @@ class _PublicNearestScreenState extends ConsumerState<PublicNearestScreen> {
                   }),
                 ],
               ),
-              const RichAttributionWidget(attributions: [
-                TextSourceAttribution('© OpenStreetMap contributors'),
+              RichAttributionWidget(attributions: [
+                TextSourceAttribution(visionWasteMapAttribution),
               ]),
             ],
           ),

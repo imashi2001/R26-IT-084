@@ -7,6 +7,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useAuth } from "../context/AuthContext";
+import { MAP_TILE_LIGHT, MAP_ATTRIBUTION } from "../config/mapConfig";
 import { apiUrl } from "../utils/apiBase";
 import {
   formatLastSeen,
@@ -394,8 +395,8 @@ export default function AdminPage() {
                   style={{ height: "320px", width: "100%", borderRadius: "12px" }}
                 >
                   <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    attribution={MAP_ATTRIBUTION}
+                    url={MAP_TILE_LIGHT}
                   />
                   <MapClickHandler
                     onPick={(lat, lng) => {

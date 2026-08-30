@@ -184,8 +184,112 @@ class AuthUser {
 class RouteResult {
   final List<List<double>> path;
   final bool approximate;
+  final double? distanceMeters;
+  final double? durationSeconds;
 
-  const RouteResult({required this.path, required this.approximate});
+  const RouteResult({
+    required this.path,
+    required this.approximate,
+    this.distanceMeters,
+    this.durationSeconds,
+  });
+}
+
+class StaffAlert {
+  final int id;
+  final String severity;
+  final String title;
+  final String? summary;
+  final String status;
+  final int? deviceId;
+  final String? deviceName;
+  final String? createdAt;
+
+  const StaffAlert({
+    required this.id,
+    required this.severity,
+    required this.title,
+    this.summary,
+    required this.status,
+    this.deviceId,
+    this.deviceName,
+    this.createdAt,
+  });
+
+  factory StaffAlert.fromJson(Map<String, dynamic> j) => StaffAlert(
+        id: (j['id'] as num).toInt(),
+        severity: j['severity'] as String? ?? 'info',
+        title: j['title'] as String? ?? 'Alert',
+        summary: j['summary'] as String?,
+        status: j['status'] as String? ?? 'open',
+        deviceId: (j['device_id'] as num?)?.toInt(),
+        deviceName: j['device_name'] as String?,
+        createdAt: j['created_at'] as String?,
+      );
+}
+
+class CollectionStop {
+  final int id;
+  final int order;
+  final String name;
+  final String? address;
+  final double latitude;
+  final double longitude;
+  final String? latestFillLevel;
+  final double? latestFillPercentage;
+  final String? fillTier;
+
+  const CollectionStop({
+    required this.id,
+    required this.order,
+    required this.name,
+    this.address,
+    required this.latitude,
+    required this.longitude,
+    this.latestFillLevel,
+    this.latestFillPercentage,
+    this.fillTier,
+  });
+
+  factory CollectionStop.fromJson(Map<String, dynamic> j) => CollectionStop(
+        id: (j['id'] as num).toInt(),
+        order: (j['order'] as num?)?.toInt() ?? 0,
+        name: j['name'] as String? ?? 'Bin',
+        address: j['address'] as String?,
+        latitude: _d(j['latitude']),
+        longitude: _d(j['longitude']),
+        latestFillLevel: j['latest_fill_level'] as String?,
+        latestFillPercentage: _dNull(j['latest_fill_percentage']),
+        fillTier: j['fill_tier'] as String?,
+      );
+}
+
+class CollectionPlan {
+  final double startLat;
+  final double startLng;
+  final List<CollectionStop> stops;
+  final int excludedEmptyCount;
+
+  const CollectionPlan({
+    required this.startLat,
+    required this.startLng,
+    required this.stops,
+    required this.excludedEmptyCount,
+  });
+
+  factory CollectionPlan.fromJson(Map<String, dynamic> j) {
+    final start = j['start'] as Map<String, dynamic>? ?? {};
+    final stops = (j['stops'] as List? ?? [])
+        .cast<Map<String, dynamic>>()
+        .map(CollectionStop.fromJson)
+        .toList();
+    return CollectionPlan(
+      startLat: _d(start['latitude']),
+      startLng: _d(start['longitude']),
+      stops: stops,
+      excludedEmptyCount: (j['excluded_empty_count'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
 // helpers

@@ -12,11 +12,26 @@ import {
   Image as ImageIcon,
   MapPin,
   Clock,
-  Filter,
 } from "lucide-react";
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
-import Card from "../components/dashboard/Card";
+import PageShell from "../components/dashboard/PageShell";
+import PageHeader from "../components/dashboard/PageHeader";
+import FilterBar, { FilterChipGroup } from "../components/dashboard/FilterBar";
+import ListRow from "../components/dashboard/ListRow";
+import EmptyState from "../components/dashboard/EmptyState";
+import {
+  btnGhost,
+  btnSecondary,
+  btnPrimary,
+  inputClass,
+  selectClass,
+  labelClass,
+  chipClass,
+  chipActiveClass,
+  bannerTone,
+  summaryTone,
+} from "../components/dashboard/dashboardUi";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../utils/apiBase";
 
@@ -58,28 +73,28 @@ const TYPE_LABELS = {
 function severityTone(sev) {
   switch ((sev || "").toLowerCase()) {
     case "critical":
-      return "bg-red-50 text-red-800 border-red-200";
+      return "bg-red-500/10 text-red-300 border-red-500/30";
     case "warning":
-      return "bg-amber-50 text-amber-800 border-amber-200";
+      return "bg-amber-500/10 text-amber-300 border-amber-500/30";
     default:
-      return "bg-slate-100 text-ink-700 border-slate-200";
+      return "bg-slate-900/40 text-slate-300 border-slate-700/50";
   }
 }
 
 function statusTone(st) {
   switch ((st || "").toLowerCase()) {
     case "open":
-      return "bg-red-50 text-red-700 border-red-200";
+      return "bg-red-500/10 text-red-300 border-red-500/30";
     case "acknowledged":
-      return "bg-amber-50 text-amber-800 border-amber-200";
+      return "bg-amber-500/10 text-amber-300 border-amber-500/30";
     case "actioned":
-      return "bg-brand-50 text-brand-800 border-brand-200";
+      return "bg-brand-500/10 text-brand-300 border-brand-500/30";
     case "rejected":
-      return "bg-slate-100 text-ink-600 border-slate-200";
+      return "bg-slate-900/40 text-slate-400 border-slate-700/50";
     case "dismissed":
-      return "bg-slate-50 text-ink-500 border-slate-200";
+      return "bg-slate-950/40 text-slate-500 border-slate-700/50";
     default:
-      return "bg-slate-100 text-ink-500 border-slate-200";
+      return "bg-slate-900/40 text-slate-500 border-slate-700/50";
   }
 }
 
@@ -226,39 +241,36 @@ export default function AlertsNotificationsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-4 lg:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-ink-900">
-              Alerts &amp; notifications
-            </h1>
-            <p className="mt-0.5 max-w-3xl text-sm text-ink-500">
+      <PageShell>
+        <PageHeader
+          title="Alerts & notifications"
+          subtitle={
+            <>
               Every operational alert derived from captures (hygienic risk,
               deterrence threshold, overflow, and animal activity). Sync runs
               automatically when you open this page.{" "}
-              <strong>Admins</strong> can change status and leave audit notes;
-              other roles have read-only access.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={load}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              {loading ? "Syncing…" : "Refresh"}
-            </button>
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-            >
-              Dashboard
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        </header>
+              <strong className="text-slate-300">Admins</strong> can change status
+              and leave audit notes; other roles have read-only access.
+            </>
+          }
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={load}
+                disabled={loading}
+                className={btnSecondary}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                {loading ? "Syncing…" : "Refresh"}
+              </button>
+              <Link to="/dashboard" className={btnGhost}>
+                Dashboard
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </>
+          }
+        />
 
         {dbDisabled ? (
           <Banner
@@ -292,55 +304,40 @@ export default function AlertsNotificationsPage() {
           ))}
         </div>
 
-        <Card>
-          <Card.Header
-            icon={Filter}
-            title="Filter by status"
-            right={
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
-                {total} in view
-              </span>
-            }
-          />
-          <Card.Body className="!mt-2">
-            <div className="flex flex-wrap gap-2">
-              {STATUS_TABS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTab(t.id)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    tab === t.id
-                      ? "border-brand-500 bg-brand-600 text-white shadow-sm"
-                      : "border-slate-200 bg-white text-ink-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {t.label}
-                  {t.id === "open" && openCount > 0 ? (
-                    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-white/20 px-1 text-[10px]">
-                      {openCount}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          </Card.Body>
-        </Card>
+        <FilterBar className="flex-col items-stretch gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={labelClass}>Filter by status</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              {total} in view
+            </span>
+          </div>
+          <FilterChipGroup>
+            {STATUS_TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={tab === t.id ? chipActiveClass : chipClass}
+              >
+                {t.label}
+                {t.id === "open" && openCount > 0 ? (
+                  <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-brand-500/20 px-1 text-[10px]">
+                    {openCount}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </FilterChipGroup>
+        </FilterBar>
 
         {loading && !alerts.length ? (
           <ListSkeleton />
         ) : alerts.length === 0 ? (
-          <Card>
-            <Card.Body className="py-12 text-center text-sm text-ink-500">
-              <Bell className="mx-auto h-10 w-10 text-ink-300" />
-              <p className="mt-3 font-semibold text-ink-800">No alerts yet</p>
-              <p className="mt-1 text-xs">
-                Alerts appear when captures exceed risk, fill, animal, or
-                buzzer thresholds. Send a few /predict captures with the bridge
-                or Bin Level Detector, then hit <strong>Refresh</strong>.
-              </p>
-            </Card.Body>
-          </Card>
+          <EmptyState
+            icon={Bell}
+            title="No alerts yet"
+            message="Alerts appear when captures exceed risk, fill, animal, or buzzer thresholds. Send a few /predict captures with the bridge or Bin Level Detector, then hit Refresh."
+          />
         ) : (
           <ul className="space-y-4">
             {alerts.map((a) => (
@@ -356,19 +353,16 @@ export default function AlertsNotificationsPage() {
             ))}
           </ul>
         )}
-      </div>
+      </PageShell>
     </DashboardLayout>
   );
 }
 
 function Banner({ icon: Icon, title, body, tone = "amber" }) {
-  const tones = {
-    amber: "border-amber-200 bg-amber-50 text-amber-900",
-    red: "border-red-200 bg-red-50 text-red-800",
-  };
+  const toneKey = tone === "red" ? "error" : "warn";
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${tones[tone]}`}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone(toneKey)}`}
     >
       <Icon className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="text-sm">
@@ -381,10 +375,10 @@ function Banner({ icon: Icon, title, body, tone = "amber" }) {
 
 function SummaryChip({ label, value, tone }) {
   const tones = {
-    risk: "border-red-200 bg-red-50 text-red-800",
-    amber: "border-amber-200 bg-amber-50 text-amber-800",
-    brand: "border-brand-200 bg-brand-50 text-brand-800",
-    slate: "border-slate-200 bg-slate-50 text-ink-700",
+    risk: summaryTone("risk"),
+    amber: summaryTone("amber"),
+    brand: summaryTone("brand"),
+    slate: summaryTone("default"),
   };
   return (
     <div
@@ -404,11 +398,11 @@ function ListSkeleton() {
       {[0, 1, 2].map((i) => (
         <li
           key={i}
-          className="animate-pulse rounded-xl border border-slate-200 bg-white p-5"
+          className="animate-pulse rounded-xl border border-slate-700/50 bg-slate-950/40 p-5"
         >
-          <div className="h-4 w-1/3 rounded bg-slate-200" />
-          <div className="mt-3 h-3 w-full rounded bg-slate-100" />
-          <div className="mt-2 h-3 w-2/3 rounded bg-slate-100" />
+          <div className="h-4 w-1/3 rounded bg-slate-700" />
+          <div className="mt-3 h-3 w-full rounded bg-slate-800" />
+          <div className="mt-2 h-3 w-2/3 rounded bg-slate-800" />
         </li>
       ))}
     </ul>
@@ -433,8 +427,8 @@ function AlertCard({
 
   return (
     <li>
-      <Card className="overflow-hidden">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+      <ListRow className="overflow-hidden !p-0">
+        <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-stretch lg:p-5">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span
@@ -444,7 +438,7 @@ function AlertCard({
               >
                 {a.severity}
               </span>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-ink-600">
+              <span className="rounded-full border border-slate-700/50 bg-slate-900/40 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
                 {typeLabel}
               </span>
               <span
@@ -454,23 +448,23 @@ function AlertCard({
               >
                 {a.status}
               </span>
-              <span className="inline-flex items-center gap-1 text-[11px] text-ink-400">
+              <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
                 <Clock className="h-3 w-3" />
                 {formatTs(a.created_at)}
               </span>
             </div>
-            <h2 className="text-lg font-bold text-ink-900">{a.title}</h2>
+            <h2 className="text-lg font-bold text-slate-100">{a.title}</h2>
             {a.summary ? (
-              <p className="text-sm leading-relaxed text-ink-600">{a.summary}</p>
+              <p className="text-sm leading-relaxed text-slate-400">{a.summary}</p>
             ) : null}
 
-            <div className="flex flex-wrap gap-3 text-xs text-ink-500">
+            <div className="flex flex-wrap gap-3 text-xs text-slate-500">
               {dev ? (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" />
                   <Link
                     to={`/bins/${dev.id}`}
-                    className="font-semibold text-brand-700 hover:text-brand-600"
+                    className="font-semibold text-brand-400 hover:text-brand-300"
                   >
                     {dev.name}
                   </Link>
@@ -488,7 +482,7 @@ function AlertCard({
                       ·{" "}
                       <Link
                         to={`/bins/${dev.id}`}
-                        className="font-semibold text-brand-700 hover:text-brand-600"
+                        className="font-semibold text-brand-400 hover:text-brand-300"
                       >
                         Bin details
                       </Link>
@@ -505,16 +499,16 @@ function AlertCard({
             </div>
 
             {a.admin_note ? (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-ink-700">
-                <span className="font-semibold text-ink-500">Admin note · </span>
+              <div className="rounded-lg border border-slate-700/50 bg-slate-900/40 px-3 py-2 text-xs text-slate-300">
+                <span className="font-semibold text-slate-500">Admin note · </span>
                 {a.admin_note}
               </div>
             ) : null}
           </div>
 
-          <div className="flex w-full shrink-0 flex-col gap-3 border-t border-slate-100 pt-4 lg:w-72 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+          <div className="flex w-full shrink-0 flex-col gap-3 border-t border-slate-700/50 pt-4 lg:w-72 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
             {img ? (
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+              <div className="overflow-hidden rounded-lg border border-slate-700/50 bg-slate-900/40">
                 <img
                   src={img}
                   alt=""
@@ -523,14 +517,14 @@ function AlertCard({
                 />
               </div>
             ) : (
-              <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-ink-400">
+              <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-slate-700/50 bg-slate-950/40 text-slate-500">
                 <ImageIcon className="h-8 w-8" />
               </div>
             )}
 
             {isAdmin && draft ? (
-              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+              <div className="space-y-2 rounded-xl border border-slate-700/50 bg-slate-900/40 p-3">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Workflow status
                 </label>
                 <select
@@ -538,7 +532,7 @@ function AlertCard({
                   onChange={(e) =>
                     onDraftChange(a.id, { status: e.target.value })
                   }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  className={selectClass}
                 >
                   {STATUS_OPTIONS.map((o) => (
                     <option key={o.id} value={o.id}>
@@ -546,7 +540,7 @@ function AlertCard({
                     </option>
                   ))}
                 </select>
-                <label className="mt-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+                <label className="mt-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Admin note (audit trail)
                 </label>
                 <textarea
@@ -556,7 +550,7 @@ function AlertCard({
                   }
                   rows={3}
                   placeholder="e.g. Crew dispatched 14:30 · bin emptied"
-                  className="w-full resize-y rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  className={`${inputClass} resize-y text-xs`}
                 />
                 <button
                   type="button"
@@ -566,7 +560,7 @@ function AlertCard({
                     (draft.status === a.status &&
                       (draft.admin_note || "") === (a.admin_note || ""))
                   }
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className={`${btnPrimary} w-full disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   {saving ? (
                     <>
@@ -584,7 +578,7 @@ function AlertCard({
             ) : null}
           </div>
         </div>
-      </Card>
+      </ListRow>
     </li>
   );
 }

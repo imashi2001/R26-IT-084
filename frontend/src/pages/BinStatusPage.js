@@ -92,10 +92,22 @@ const SORT_OPTIONS = [
   { id: "captured_at", label: "Last update (newest)" },
 ];
 
-const FORM_STEPS = [
+const MANUAL_FILL_OPTIONS = [
+  { id: "Empty", label: "Empty" },
+  { id: "Half", label: "Half" },
+  { id: "Overflow", label: "Overflow" },
+];
+
+const FORM_STEPS_SMART = [
   { id: "details", label: "Bin details", icon: Database },
   { id: "location", label: "Location", icon: MapPin },
   { id: "device", label: "Device link", icon: Cpu },
+];
+
+const FORM_STEPS_VIRTUAL = [
+  { id: "details", label: "Bin details", icon: Database },
+  { id: "location", label: "Location", icon: MapPin },
+  { id: "fill", label: "Manual fill", icon: Activity },
 ];
 
 /* ============================ helpers ============================ */
@@ -117,6 +129,7 @@ function relativeFromNow(iso) {
 }
 
 const EMPTY_FORM = {
+  binType: "smart",
   name: "",
   esp32Id: "",
   bridgeInstanceId: "",
@@ -127,6 +140,8 @@ const EMPTY_FORM = {
   latitude: "",
   longitude: "",
   geoQuery: "",
+  manualFillLevel: "Half",
+  manualFillPct: "",
 };
 
 /* ============================ page ============================ */
@@ -155,6 +170,10 @@ export default function BinStatusPage() {
   const [audioBusyId, setAudioBusyId] = useState(null);
   const [stopBusyId, setStopBusyId] = useState(null);
   const [audioMsgs, setAudioMsgs] = useState({});
+
+  const isVirtualForm = form.binType === "virtual";
+  const formSteps = isVirtualForm ? FORM_STEPS_VIRTUAL : FORM_STEPS_SMART;
+  const lastFormStep = isVirtualForm ? "fill" : "device";
 
   /* ----- data ----- */
 
@@ -350,6 +369,7 @@ export default function BinStatusPage() {
     setEditingId(d.id);
     setFormStep("details");
     setForm({
+      binType: (d.bin_type || "smart").toLowerCase() === "virtual" ? "virtual" : "smart",
       name: d.name || "",
       esp32Id: d.esp32_id || "",
       bridgeInstanceId: d.bridge_instance_id || "",
@@ -366,6 +386,13 @@ export default function BinStatusPage() {
           ? String(d.longitude)
           : "",
       geoQuery: d.address || d.location || "",
+      manualFillLevel: d.manual_fill_level || d.latest_fill_level || "Half",
+      manualFillPct:
+        d.manual_fill_percentage != null
+          ? String(d.manual_fill_percentage)
+          : d.latest_fill_percentage != null
+            ? String(d.latest_fill_percentage)
+            : "",
     });
     setFormMsg(null);
     setFormError(null);
@@ -419,17 +446,52 @@ export default function BinStatusPage() {
       return;
     }
 
+    if (form.binType === "virtual") {
+      if (lat == null || lng == null) {
+        setFormError("Virtual bins require map coordinates.");
+        setFormStep("location");
+        return;
+      }
+      if (!form.manualFillLevel) {
+        setFormError("Select a manual fill level for virtual bins.");
+        setFormStep("fill");
+        return;
+      }
+    }
+
     const payload = {
       name: form.name.trim(),
       status: form.status,
-      esp32_id: form.esp32Id.trim() || null,
-      bridge_instance_id: form.bridgeInstanceId.trim() || null,
-      camera_base_url: form.cameraBaseUrl.trim().replace(/\/+$/, "") || null,
+      bin_type: form.binType,
       location: form.locationLabel.trim() || null,
       address: form.address.trim() || null,
       latitude: lat,
       longitude: lng,
     };
+
+    if (form.binType === "virtual") {
+      payload.manual_fill_level = form.manualFillLevel;
+      const pctRaw = form.manualFillPct.trim();
+      payload.manual_fill_percentage =
+        pctRaw === "" ? null : Number(pctRaw);
+      if (
+        payload.manual_fill_percentage != null &&
+        (!Number.isFinite(payload.manual_fill_percentage) ||
+          payload.manual_fill_percentage < 0 ||
+          payload.manual_fill_percentage > 100)
+      ) {
+        setFormError("Fill percentage must be between 0 and 100.");
+        setFormStep("fill");
+        return;
+      }
+      payload.esp32_id = null;
+      payload.bridge_instance_id = null;
+      payload.camera_base_url = null;
+    } else {
+      payload.esp32_id = form.esp32Id.trim() || null;
+      payload.bridge_instance_id = form.bridgeInstanceId.trim() || null;
+      payload.camera_base_url = form.cameraBaseUrl.trim().replace(/\/+$/, "") || null;
+    }
 
     setBusy(true);
     try {
@@ -530,75 +592,69 @@ export default function BinStatusPage() {
           <div className="space-y-5">
             <Card>
               <Card.Header
-                icon={Search}
-                title="Search & filters"
-                right={
-                  query || statusFilter !== "all" || fillFilter !== "all" || riskFilter !== "all" ? (
-                    <button
-                      type="button"
-                      onClick={clearFilters}
-                      className={btnGhost}
-                    >
-                      <XCircle className="h-3 w-3" />
-                      Clear
-                    </button>
-                  ) : null
-                }
-              />
-              <Card.Body className="space-y-3">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by name, ESP32 ID, location, address…"
-                    className={`${inputClass.replace("mt-1 ", "")} pl-9`}
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <SelectField
-                    label="Status"
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    options={[
-                      { id: "all", label: "All statuses" },
-                      ...STATUS_OPTIONS.map((s) => ({ id: s, label: s })),
-                    ]}
-                  />
-                  <SelectField
-                    label="Fill"
-                    value={fillFilter}
-                    onChange={setFillFilter}
-                    options={FILL_FILTERS}
-                  />
-                  <SelectField
-                    label="Risk"
-                    value={riskFilter}
-                    onChange={setRiskFilter}
-                    options={RISK_FILTERS}
-                  />
-                  <SelectField
-                    label="Sort"
-                    value={sortBy}
-                    onChange={setSortBy}
-                    options={SORT_OPTIONS}
-                  />
-                </div>
-              </Card.Body>
-            </Card>
-
-            <Card>
-              <Card.Header
                 icon={Database}
                 title={editingId ? "Bins" : "Bin registry"}
+                subtitle="Search and filter the list — edit or add bins using the panel on the right."
                 right={
-                  <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    {filtered.length} / {devices.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {query ||
+                    statusFilter !== "all" ||
+                    fillFilter !== "all" ||
+                    riskFilter !== "all" ? (
+                      <button type="button" onClick={clearFilters} className={btnGhost}>
+                        <XCircle className="h-3 w-3" />
+                        Clear
+                      </button>
+                    ) : null}
+                    <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      {filtered.length} / {devices.length}
+                    </span>
+                  </div>
                 }
               />
-              <Card.Body className="!mt-2">
+              <Card.Body className="!mt-2 space-y-3">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                  <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-950/50 px-3 py-2">
+                    <Search className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type="search"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search bins…"
+                      className="w-full border-0 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <CompactFilterSelect
+                      label="Status"
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                      options={[
+                        { id: "all", label: "All statuses" },
+                        ...STATUS_OPTIONS.map((s) => ({ id: s, label: s })),
+                      ]}
+                    />
+                    <CompactFilterSelect
+                      label="Fill"
+                      value={fillFilter}
+                      onChange={setFillFilter}
+                      options={FILL_FILTERS}
+                    />
+                    <CompactFilterSelect
+                      label="Risk"
+                      value={riskFilter}
+                      onChange={setRiskFilter}
+                      options={RISK_FILTERS}
+                    />
+                    <CompactFilterSelect
+                      label="Sort"
+                      value={sortBy}
+                      onChange={setSortBy}
+                      options={SORT_OPTIONS}
+                    />
+                  </div>
+                </div>
+
                 {loading ? (
                   <ListSkeleton />
                 ) : devices.length === 0 ? (
@@ -673,8 +729,47 @@ export default function BinStatusPage() {
                   />
                 ) : null}
 
+                {!editingId ? (
+                  <div className="mt-3 flex flex-wrap gap-1 rounded-xl border border-slate-800/60 bg-slate-950/40 p-1">
+                    <button
+                      type="button"
+                      disabled={!isAdmin || busy}
+                      onClick={() => {
+                        updateField("binType", "smart");
+                        if (formStep === "fill") setFormStep("device");
+                      }}
+                      className={[
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold transition sm:flex-none",
+                        form.binType === "smart"
+                          ? "bg-brand-500/15 text-brand-400 ring-1 ring-brand-500/25"
+                          : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                      ].join(" ")}
+                    >
+                      <Cpu className="h-3.5 w-3.5" />
+                      Smart bin
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!isAdmin || busy}
+                      onClick={() => {
+                        updateField("binType", "virtual");
+                        if (formStep === "device") setFormStep("fill");
+                      }}
+                      className={[
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold transition sm:flex-none",
+                        form.binType === "virtual"
+                          ? "bg-brand-500/15 text-brand-400 ring-1 ring-brand-500/25"
+                          : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                      ].join(" ")}
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                      Virtual bin
+                    </button>
+                  </div>
+                ) : null}
+
                 <div className="mt-3 flex flex-wrap gap-1 rounded-xl border border-slate-800/60 bg-slate-950/40 p-1">
-                  {FORM_STEPS.map(({ id, label, icon: Icon }, idx) => (
+                  {formSteps.map(({ id, label, icon: Icon }, idx) => (
                     <button
                       key={id}
                       type="button"
@@ -754,7 +849,7 @@ export default function BinStatusPage() {
                     </div>
                   ) : null}
 
-                  {formStep === "device" ? (
+                  {formStep === "device" && !isVirtualForm ? (
                     <div className="space-y-3 rounded-xl border border-slate-800/50 bg-slate-950/20 p-3">
                       <FieldRow
                         label="ESP32 device ID"
@@ -787,6 +882,29 @@ export default function BinStatusPage() {
                     </div>
                   ) : null}
 
+                  {formStep === "fill" && isVirtualForm ? (
+                    <div className="space-y-3 rounded-xl border border-slate-800/50 bg-slate-950/20 p-3">
+                      <p className="text-xs text-slate-400">
+                        Virtual bins use a manual fill level for map display and collection route planning (no camera required).
+                      </p>
+                      <SelectField
+                        label="Manual fill level"
+                        value={form.manualFillLevel}
+                        onChange={(v) => updateField("manualFillLevel", v)}
+                        options={MANUAL_FILL_OPTIONS}
+                        disabled={!isAdmin || busy}
+                      />
+                      <FieldRow
+                        label="Fill percentage (optional)"
+                        value={form.manualFillPct}
+                        onChange={(v) => updateField("manualFillPct", v)}
+                        placeholder="e.g. 55"
+                        disabled={!isAdmin || busy}
+                        help="Used for urgency scoring on collection routes. Leave blank for a default based on level."
+                      />
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-col gap-2 border-t border-slate-800/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap gap-2">
                       {formStep !== "details" ? (
@@ -795,7 +913,7 @@ export default function BinStatusPage() {
                           disabled={!isAdmin || busy}
                           onClick={() =>
                             setFormStep(
-                              formStep === "device" ? "location" : "details"
+                              formStep === lastFormStep ? "location" : "details"
                             )
                           }
                           className={btnSecondary}
@@ -803,18 +921,27 @@ export default function BinStatusPage() {
                           Back
                         </button>
                       ) : null}
-                      {formStep !== "device" ? (
+                      {formStep !== lastFormStep ? (
                         <button
                           type="button"
                           disabled={!isAdmin || busy}
                           onClick={() =>
                             setFormStep(
-                              formStep === "details" ? "location" : "device"
+                              formStep === "details"
+                                ? "location"
+                                : isVirtualForm
+                                  ? "fill"
+                                  : "device"
                             )
                           }
                           className={btnSecondary}
                         >
-                          Next: {formStep === "details" ? "Location" : "Device link"}
+                          Next:{" "}
+                          {formStep === "details"
+                            ? "Location"
+                            : isVirtualForm
+                              ? "Manual fill"
+                              : "Device link"}
                         </button>
                       ) : null}
                     </div>
@@ -1037,6 +1164,7 @@ function BinRow({
   const urgency = collectionUrgency(d);
   const urgent = needsCollectionSoon(d);
   const hasEsp32 = Boolean(d.esp32_id && String(d.esp32_id).trim());
+  const isVirtual = String(d.bin_type || "smart").toLowerCase() === "virtual";
   const camOnline = isCameraOnline(d);
 
   return (
@@ -1060,7 +1188,16 @@ function BinRow({
               >
                 {d.status || "—"}
               </span>
-              {hasEsp32 ? (
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                  isVirtual
+                    ? "border-violet-500/30 bg-violet-500/15 text-violet-300"
+                    : "border-slate-600/50 bg-slate-800/50 text-slate-400"
+                }`}
+              >
+                {isVirtual ? "Virtual" : "Smart"}
+              </span>
+              {hasEsp32 && !isVirtual ? (
                 <span
                   className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
                     camOnline
@@ -1129,7 +1266,10 @@ function BinRow({
                 </span>
               )}
               <span className="text-[11px] text-slate-500">
-                Updated {relativeFromNow(d.latest_captured_at)}
+                Updated{" "}
+                {isVirtual && !d.latest_captured_at
+                  ? "manual fill"
+                  : relativeFromNow(d.latest_captured_at)}
               </span>
               <span className="text-[11px] text-slate-500">
                 Urgency <span className="font-semibold text-slate-300">{urgency}</span>
@@ -1152,7 +1292,7 @@ function BinRow({
               Details
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
-            {canEdit && hasEsp32 ? (
+            {canEdit && hasEsp32 && !isVirtual ? (
               <>
                 <button
                   type="button"
@@ -1189,6 +1329,26 @@ function BinRow({
         </div>
       </div>
     </li>
+  );
+}
+
+function CompactFilterSelect({ label, value, onChange, options }) {
+  return (
+    <label className="flex items-center gap-1.5 rounded-xl border border-slate-800/80 bg-slate-950/50 px-2 py-1.5 text-xs text-slate-400">
+      <span className="hidden sm:inline">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        className="max-w-[8.5rem] border-0 bg-transparent text-slate-300 outline-none sm:max-w-none"
+      >
+        {options.map((opt) => (
+          <option key={opt.id} value={opt.id} className="bg-slate-900">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

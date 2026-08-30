@@ -4,6 +4,12 @@ const deviceCommandService = require("../services/deviceCommandService");
 const captureService = require("../services/captureService");
 const latestState = require("../services/latestState");
 const { deriveFillLevel } = require("../utils/fillLevel");
+const {
+  resolveDeviceFillLevel,
+  resolveDeviceFillPercentage,
+  applyBinTypePayload,
+  validateVirtualCoordinates,
+} = require("../utils/deviceFill");
 const { haversineMeters } = require("../utils/geo");
 const { getPublicBaseUrl } = require("../utils/publicUrl");
 
@@ -81,42 +87,27 @@ function inferredFillLevelFromPercentage(pct) {
   return "Overflow";
 }
 
-/**
- * Persisted captures often have fill_level null unless MODEL_YOLO_URL bin-fill ran successfully.
- * Prefer predictions and risk-derived fill_percentage, then in-memory snapshot.
- */
-function resolveLatestFillLevel({ latestCap, mem }) {
-  if (latestCap?.fill_level) return latestCap.fill_level;
-
-  const capPreds = latestCap?.predictions;
-  if (Array.isArray(capPreds) && capPreds.length > 0) {
-    const shaped = capPreds.map((p) => ({
-      label: p.label,
-      confidence: Number(p.confidence),
-    }));
-    const fromPred = deriveFillLevel(shaped);
-    if (fromPred) return fromPred;
-  }
-
-  const pct =
-    latestCap?.fill_percentage != null
-      ? latestCap.fill_percentage
-      : mem?.extras?.fill_percentage ?? null;
-  const fromPct = inferredFillLevelFromPercentage(pct);
-  if (fromPct) return fromPct;
-
-  if (mem?.predictions?.length) {
-    const fromMem = deriveFillLevel(mem.predictions);
-    if (fromMem) return fromMem;
-  }
-
-  return null;
+function resolveLatestFillLevel({ device, latestCap, mem }) {
+  return resolveDeviceFillLevel(device || {}, { latestCap, mem });
 }
 
-function resolveLatestFillPercentage({ latestCap, mem }) {
-  if (latestCap?.fill_percentage != null) return latestCap.fill_percentage;
-  if (mem?.extras?.fill_percentage != null) return mem.extras.fill_percentage;
-  return null;
+function resolveLatestFillPercentage({ device, latestCap, mem }) {
+  return resolveDeviceFillPercentage(device || {}, { latestCap, mem });
+}
+
+function enrichDeviceLatest(device, latestCap, mem) {
+  return {
+    latest_fill_level: resolveLatestFillLevel({ device, latestCap, mem }),
+    latest_fill_percentage: resolveLatestFillPercentage({
+      device,
+      latestCap,
+      mem,
+    }),
+    latest_risk_level: latestCap?.risk_level || null,
+    latest_source_type:
+      latestCap?.source_type || mem?.extras?.source_type || null,
+    latest_captured_at: latestCap?.captured_at || mem?.timestamp || null,
+  };
 }
 
 function normalizeDeviceStatus(raw) {
@@ -148,15 +139,7 @@ async function list(req, res, next) {
         const mem = latestState.getLatestForDevice(d.id);
         return withPresence({
           ...d,
-          latest_fill_level: resolveLatestFillLevel({ latestCap, mem }),
-          latest_fill_percentage: resolveLatestFillPercentage({
-            latestCap,
-            mem,
-          }),
-          latest_source_type:
-            latestCap?.source_type || mem?.extras?.source_type || null,
-          latest_captured_at:
-            latestCap?.captured_at || mem?.timestamp || null,
+          ...enrichDeviceLatest(d, latestCap, mem),
         });
       })
     );
@@ -201,6 +184,16 @@ async function create(req, res, next) {
           : null,
       status: normalizeDeviceStatus(body.status) || "active",
     };
+
+    const binTypeErr = applyBinTypePayload(body, payload, { isPatch: false });
+    if (binTypeErr) {
+      return res.status(400).json({ error: binTypeErr });
+    }
+
+    const coordErr = validateVirtualCoordinates(payload);
+    if (coordErr) {
+      return res.status(400).json({ error: coordErr });
+    }
 
     if (
       payload.latitude != null &&
@@ -300,6 +293,41 @@ async function patch(req, res, next) {
       patch.status = st;
     }
 
+    if (body.bin_type !== undefined) {
+      patch.bin_type = body.bin_type;
+    }
+    if (body.manual_fill_level !== undefined) {
+      patch.manual_fill_level = body.manual_fill_level;
+    }
+    if (body.manual_fill_percentage !== undefined) {
+      patch.manual_fill_percentage = body.manual_fill_percentage;
+    }
+
+    const existing = await deviceService.getDeviceById(id);
+    if (!existing) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    const merged = { ...existing, ...patch };
+    const binTypeErr = applyBinTypePayload(body, merged, { isPatch: true });
+    if (binTypeErr) {
+      return res.status(400).json({ error: binTypeErr });
+    }
+
+    Object.assign(patch, {
+      bin_type: merged.bin_type,
+      manual_fill_level: merged.manual_fill_level,
+      manual_fill_percentage: merged.manual_fill_percentage,
+      esp32_id: merged.esp32_id,
+      bridge_instance_id: merged.bridge_instance_id,
+      camera_base_url: merged.camera_base_url,
+    });
+
+    const coordErr = validateVirtualCoordinates({ ...existing, ...patch });
+    if (coordErr) {
+      return res.status(400).json({ error: coordErr });
+    }
+
     if (
       patch.latitude != null &&
       !Number.isFinite(patch.latitude)
@@ -359,8 +387,8 @@ async function mapPins(req, res, next) {
       const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
       const mem = latestState.getLatestForDevice(d.id);
 
-      const fill = resolveLatestFillLevel({ latestCap, mem });
-      const capturedAt = latestCap?.captured_at || mem?.timestamp || null;
+      const latest = enrichDeviceLatest(d, latestCap, mem);
+      const capturedAt = latest.latest_captured_at;
 
       let latest_image_url = null;
       if (latestCap?.image_buffer) {
@@ -374,21 +402,21 @@ async function mapPins(req, res, next) {
       bins.push({
         id: d.id,
         name: d.name,
+        bin_type: d.bin_type || "smart",
         esp32_id: d.esp32_id,
         location: d.location,
         address: d.address,
         latitude: d.latitude,
         longitude: d.longitude,
-        latest_fill_level: fill,
+        manual_fill_level: d.manual_fill_level || null,
+        manual_fill_percentage: d.manual_fill_percentage ?? null,
+        latest_fill_level: latest.latest_fill_level,
         latest_captured_at: capturedAt,
         latest_image_url,
-        latest_risk_level: latestCap?.risk_level || null,
+        latest_risk_level: latest.latest_risk_level,
         latest_waste_label: latestCap?.waste_label || null,
-        latest_source_type: latestCap?.source_type || mem?.extras?.source_type || null,
-        latest_fill_percentage: resolveLatestFillPercentage({
-          latestCap,
-          mem,
-        }),
+        latest_source_type: latest.latest_source_type,
+        latest_fill_percentage: latest.latest_fill_percentage,
       });
     }
 
@@ -435,25 +463,25 @@ async function nearest(req, res, next) {
           latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
         }
 
+        const latest = enrichDeviceLatest(d, latestCap, mem);
+
         return {
           id: d.id,
           name: d.name,
+          bin_type: d.bin_type || "smart",
           esp32_id: d.esp32_id,
           location: d.location,
           address: d.address,
           latitude: d.latitude,
           longitude: d.longitude,
           distance_meters: Math.round(dist * 10) / 10,
-          latest_fill_level: resolveLatestFillLevel({ latestCap, mem }),
-          latest_captured_at: capturedAt,
+          manual_fill_level: d.manual_fill_level || null,
+          latest_fill_level: latest.latest_fill_level,
+          latest_captured_at: latest.latest_captured_at,
           latest_image_url,
-          latest_risk_level: latestCap?.risk_level || null,
-          latest_source_type:
-            latestCap?.source_type || mem?.extras?.source_type || null,
-          latest_fill_percentage: resolveLatestFillPercentage({
-            latestCap,
-            mem,
-          }),
+          latest_risk_level: latest.latest_risk_level,
+          latest_source_type: latest.latest_source_type,
+          latest_fill_percentage: latest.latest_fill_percentage,
         };
       })
     );

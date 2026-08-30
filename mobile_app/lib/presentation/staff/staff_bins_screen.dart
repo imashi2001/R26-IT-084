@@ -6,8 +6,10 @@ import 'package:latlong2/latlong.dart';
 
 import '../../data/providers.dart';
 import '../../domain/models.dart';
+import '../../config/map_layers.dart';
 import '../../theme/app_theme.dart';
 import '../shared/widgets.dart';
+import 'staff_shell.dart';
 
 class StaffBinsScreen extends ConsumerStatefulWidget {
   const StaffBinsScreen({super.key});
@@ -34,66 +36,21 @@ class _StaffBinsScreenState extends ConsumerState<StaffBinsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final auth  = ref.watch(authProvider);
     final async = ref.watch(mapBinsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Bin Overview'),
-            if (auth.user?.municipalCouncil != null)
-              Text(
-                auth.user!.municipalCouncil!,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
-              ),
-          ],
-        ),
+      drawer: const StaffDrawer(),
+      appBar: StaffAppBar(
+        title: 'Bins',
+        showMenu: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: () => ref.invalidate(mapBinsProvider),
           ),
-          PopupMenuButton<String>(
-            icon: CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.card,
-              child: Text(
-                (auth.user?.name ?? 'S')[0].toUpperCase(),
-                style: const TextStyle(
-                    color: AppColors.brand, fontWeight: FontWeight.w700),
-              ),
-            ),
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                child: ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: const Text('Sign out'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onTap: () {
-                  ref.read(authProvider.notifier).logout();
-                  context.go('/');
-                },
-              ),
-            ],
-          ),
-          const SizedBox(width: 8),
         ],
-        bottom: TabBar(
-          controller: _tabs,
-          indicatorColor: AppColors.brand,
-          labelColor: AppColors.brand,
-          unselectedLabelColor: AppColors.textSecondary,
-          tabs: const [
-            Tab(icon: Icon(Icons.list_alt_outlined), text: 'List'),
-            Tab(icon: Icon(Icons.map_outlined), text: 'Map'),
-          ],
-        ),
       ),
       body: async.when(
         loading: () => const CentredLoader(label: 'Loading bins…'),
@@ -101,11 +58,27 @@ class _StaffBinsScreenState extends ConsumerState<StaffBinsScreen>
           message: e.toString(),
           onRetry: () => ref.invalidate(mapBinsProvider),
         ),
-        data: (bins) => TabBarView(
-          controller: _tabs,
+        data: (bins) => Column(
           children: [
-            _BinList(bins: bins),
-            _BinMap(bins: bins),
+            TabBar(
+              controller: _tabs,
+              indicatorColor: AppColors.brand,
+              labelColor: AppColors.brand,
+              unselectedLabelColor: AppColors.textSecondary,
+              tabs: const [
+                Tab(icon: Icon(Icons.list_alt_outlined), text: 'List'),
+                Tab(icon: Icon(Icons.map_outlined), text: 'Map'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabs,
+                children: [
+                  _BinList(bins: bins),
+                  _BinMap(bins: bins),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -156,35 +129,41 @@ class _BinListState extends State<_BinList> {
             children: [
               Expanded(
                 child: _SummaryChip(
-                    label: 'Total', value: '${bins.length}', selected: _filter == 'all',
-                    onTap: () => setState(() => _filter = 'all')),
+                  label: 'Total',
+                  value: '${bins.length}',
+                  selected: _filter == 'all',
+                  onTap: () => setState(() => _filter = 'all'),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _SummaryChip(
-                    label: 'Overflow',
-                    value: '$overflow',
-                    color: AppColors.riskHigh,
-                    selected: _filter == 'overflow',
-                    onTap: () => setState(() => _filter = 'overflow')),
+                  label: 'Full',
+                  value: '$overflow',
+                  color: AppColors.riskHigh,
+                  selected: _filter == 'overflow',
+                  onTap: () => setState(() => _filter = 'overflow'),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _SummaryChip(
-                    label: 'Half',
-                    value: '$half',
-                    color: AppColors.riskMedium,
-                    selected: _filter == 'half',
-                    onTap: () => setState(() => _filter = 'half')),
+                  label: 'Half',
+                  value: '$half',
+                  color: AppColors.riskMedium,
+                  selected: _filter == 'half',
+                  onTap: () => setState(() => _filter = 'half'),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _SummaryChip(
-                    label: 'Empty',
-                    value: '$empty',
-                    color: AppColors.fillEmpty,
-                    selected: _filter == 'empty',
-                    onTap: () => setState(() => _filter = 'empty')),
+                  label: 'Empty',
+                  value: '$empty',
+                  color: AppColors.fillEmpty,
+                  selected: _filter == 'empty',
+                  onTap: () => setState(() => _filter = 'empty'),
+                ),
               ),
             ],
           ),
@@ -199,9 +178,9 @@ class _BinListState extends State<_BinList> {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
                     final b = _filtered[i];
-                    return BinLevelCard(
+                    return PriorityBinTile(
                       bin: b,
-                      onTap: () => context.go('/staff/bins/${b.id}'),
+                      onTap: () => context.push('/staff/bins/${b.id}'),
                     );
                   },
                 ),
@@ -238,20 +217,38 @@ class _SummaryChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-                color: color.withValues(alpha: selected ? 0.9 : 0.4),
-                width: selected ? 1.5 : 1),
+              color: color.withValues(alpha: selected ? 0.9 : 0.4),
+              width: selected ? 1.5 : 1,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             children: [
-              Text(value,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 18, color: color)),
+              Text(
+                value,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: color,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 10, color: AppColors.textSecondary)),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ],
           ),
         ),
@@ -286,12 +283,7 @@ class _BinMap extends StatelessWidget {
             initialZoom: validBins.length <= 1 ? 14 : 10,
           ),
           children: [
-            TileLayer(
-              urlTemplate:
-                  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-              subdomains: const ['a', 'b', 'c', 'd'],
-              userAgentPackageName: 'com.visionwaste.app',
-            ),
+            visionWasteTileLayer(dark: true),
             MarkerLayer(
               markers: validBins.map((bin) {
                 return Marker(
@@ -299,7 +291,7 @@ class _BinMap extends StatelessWidget {
                   width: 44,
                   height: 44,
                   child: GestureDetector(
-                    onTap: () => context.go('/staff/bins/${bin.id}'),
+                    onTap: () => context.push('/staff/bins/${bin.id}'),
                     child: BinFillMarker(
                       fillLevel: bin.latestFillLevel,
                       fillPercentage: bin.latestFillPercentage,
@@ -308,16 +300,12 @@ class _BinMap extends StatelessWidget {
                 );
               }).toList(),
             ),
-            const RichAttributionWidget(attributions: [
-              TextSourceAttribution('© OpenStreetMap contributors')
+            RichAttributionWidget(attributions: [
+              TextSourceAttribution(visionWasteMapAttribution),
             ]),
           ],
         ),
-        const Positioned(
-          left: 12,
-          top: 12,
-          child: MapFillLegend(),
-        ),
+        const Positioned(left: 12, top: 12, child: MapFillLegend()),
       ],
     );
   }

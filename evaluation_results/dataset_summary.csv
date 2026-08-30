@@ -1,0 +1,10 @@
+model,split,class,images
+waste_mobilenetv2,train,non_organic,912
+waste_mobilenetv2,train,organic,831
+waste_mobilenetv2,val,non_organic,195
+waste_mobilenetv2,val,organic,178
+waste_mobilenetv2,test,non_organic,194
+waste_mobilenetv2,test,organic,178
+animal_yolov8,train,(all),2721
+animal_yolov8,valid,(all),260
+animal_yolov8,test,(all),130

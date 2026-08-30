@@ -4,7 +4,18 @@ Flutter Android app for the VisionWaste bin-level monitoring system.
 
 ## Features
 - **Public users** — find nearest bin by GPS, see fill level + risk, view driving route preview on OSM map, open Google Maps for turn-by-turn navigation.
-- **Municipal staff** — JWT login, view all bins in list + map view, inspect individual bin details (fill level, risk, waste label, latest capture image).
+- **Municipal staff** — JWT login, bottom navigation (Dashboard · Bins · Routes · Alerts · More), collection route planning, alerts feed, bin detail with map preview.
+
+## Staff navigation (5 tabs)
+| Tab | Route | Purpose |
+|-----|-------|---------|
+| Dashboard | `/staff/dashboard` | KPIs, priority bins, fleet summary |
+| Bins | `/staff/bins` | List + map; tap opens bin detail |
+| Routes | `/staff/routes` | GPS collection plan + map + Start Navigation |
+| Alerts | `/staff/alerts` | Critical / warning / info feed from backend |
+| More | `/staff/more` | Profile, shortcuts, sign out |
+
+Bin detail (`/staff/bins/:id`) opens as a full-screen overlay with a working back arrow (uses `context.push` + root navigator).
 
 ## Project structure
 ```
@@ -25,9 +36,14 @@ lib/
     public/
       public_nearest_screen.dart  full-screen OSM map + nearest bins + route panel
     staff/
-      staff_login_screen.dart     JWT login form
-      staff_bins_screen.dart      list + map tabs of all bins
-      staff_bin_detail_screen.dart  bin detail view
+      staff_shell.dart              bottom nav + drawer + shared app bar
+      staff_dashboard_screen.dart   home KPI dashboard
+      staff_bins_screen.dart        list + map tabs
+      staff_routes_screen.dart      collection route map + stops
+      staff_alerts_screen.dart      alert feed with filters
+      staff_more_screen.dart        profile + settings
+      staff_login_screen.dart       JWT login form
+      staff_bin_detail_screen.dart  bin detail (mockup layout)
     shared/widgets.dart           BinLevelCard, RiskBadge, FillMeter, ErrorState, CentredLoader
 ```
 
@@ -63,6 +79,29 @@ const String kBackendBaseUrl = 'https://r26-it-084-production-3f77.up.railway.ap
 cd mobile_app
 flutter pub get
 ```
+
+### MapTiler (optional)
+
+Maps use **MapTiler** when you pass your API key at run/build time; otherwise free **CARTO/OpenStreetMap** tiles are used.
+
+1. Get a key: [MapTiler Cloud → API keys](https://cloud.maptiler.com/account/keys/)
+2. Copy `dart_defines.example.json` → `dart_defines.json` and paste your key
+3. Run with:
+   ```powershell
+   flutter run --dart-define-from-file=dart_defines.json
+   ```
+   Or use the helper script:
+   ```powershell
+   .\run_with_maps.ps1
+   ```
+4. Release APK:
+   ```powershell
+   flutter build apk --release --dart-define-from-file=dart_defines.json
+   ```
+
+`dart_defines.json` is gitignored — do not commit your API key.
+
+Config: `lib/config/map_config.dart` · shared layer: `lib/config/map_layers.dart`
 
 ## 4. Run on a device / emulator
 ```powershell

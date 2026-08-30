@@ -15,8 +15,15 @@ export function tierFromFillPercentage(pct) {
   return "overflow";
 }
 
-/** Prefer explicit latest_fill_level; otherwise infer from latest_fill_percentage. */
+/** Prefer explicit latest_fill_level; virtual manual fill; otherwise infer from %. */
 export function effectiveFillTier(binLike) {
+  const binType = String(binLike?.bin_type || "").toLowerCase();
+  if (binType === "virtual" || binLike?.manual_fill_level) {
+    const manual = normalizeFill(binLike.manual_fill_level || binLike.latest_fill_level);
+    if (manual === "empty" || manual === "half" || manual === "overflow") {
+      return manual;
+    }
+  }
   const lvl = normalizeFill(binLike.latest_fill_level);
   if (lvl === "empty" || lvl === "half" || lvl === "overflow") return lvl;
   const inferred = tierFromFillPercentage(binLike.latest_fill_percentage);

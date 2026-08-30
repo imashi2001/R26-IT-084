@@ -28,6 +28,17 @@ import {
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
+import { CHART } from "../components/dashboard/dashboardTheme";
+import {
+  btnSecondary,
+  selectClass,
+  inputClass,
+  labelClass,
+  riskBadgeClass,
+  bannerTone,
+  chipClass,
+  chipActiveClass,
+} from "../components/dashboard/dashboardUi";
 import useSystemSnapshot from "../hooks/useSystemSnapshot";
 import useCaptureHistory from "../hooks/useCaptureHistory";
 import { fetchBins, fetchForecast } from "../utils/apiBase";
@@ -60,13 +71,6 @@ const SLOT_COLOR = {
   MEDIUM: "#f59e0b",
   HIGH: "#ef4444",
   CRITICAL: "#b91c1c",
-};
-
-const RISK_BADGE = {
-  LOW: "bg-brand-50 text-brand-700",
-  MEDIUM: "bg-amber-50 text-amber-700",
-  HIGH: "bg-red-50 text-red-700",
-  CRITICAL: "bg-red-100 text-red-800",
 };
 
 function levelToScore(level) {
@@ -236,7 +240,7 @@ export default function HygienicRiskDashboardPage() {
             title="Database is not configured"
             body={
               <>
-                Set <code className="rounded bg-amber-100 px-1">DATABASE_URL</code>{" "}
+                Set <code className="rounded bg-amber-500/20 px-1 text-amber-200">DATABASE_URL</code>{" "}
                 on the backend to enable capture history and per-bin forecasts.
                 The forecast chart still works — it derives risk straight from
                 live weather.
@@ -294,8 +298,8 @@ export default function HygienicRiskDashboardPage() {
           onSearch={setSearch}
           filterLevel={filterLevel}
           onFilterLevel={setFilterLevel}
-        />
-      </div>
+          />
+        </div>
     </DashboardLayout>
   );
 }
@@ -305,16 +309,16 @@ export default function HygienicRiskDashboardPage() {
 function PageHeader({ binId, bins, onBinChange, onRefresh, forecastBusy }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-bold text-ink-900 tracking-tight">
+        <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
           Risk Dashboard
         </h1>
-        <p className="text-sm text-ink-500 mt-0.5 max-w-2xl">
+        <p className="mt-0.5 max-w-2xl text-sm text-slate-400">
           Hygienic risk forecast, capture history, and rule-based explanations.
           For per-capture details and image analysis, use{" "}
           <Link
             to="/bin-level-detector"
-            className="font-semibold text-brand-700 hover:text-brand-600"
+            className="font-semibold text-brand-400 hover:text-brand-300"
           >
             Bin Level Detector
           </Link>
@@ -323,14 +327,12 @@ function PageHeader({ binId, bins, onBinChange, onRefresh, forecastBusy }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs">
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-ink-500">
-            Bin
-          </span>
+        <label className="inline-flex items-center gap-2">
+          <span className={labelClass}>Bin</span>
           <select
             value={binId}
             onChange={(e) => onBinChange(e.target.value)}
-            className="bg-transparent text-sm font-medium text-ink-900 focus:outline-none"
+            className={`${selectClass} !mt-0 w-auto min-w-[10rem]`}
           >
             <option value="">Default location</option>
             {bins.map((b) => (
@@ -345,7 +347,7 @@ function PageHeader({ binId, bins, onBinChange, onRefresh, forecastBusy }) {
           type="button"
           onClick={onRefresh}
           disabled={forecastBusy}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50 transition disabled:cursor-not-allowed disabled:opacity-60"
+          className={btnSecondary}
         >
           <RefreshCw
             className={`h-3.5 w-3.5 ${forecastBusy ? "animate-spin" : ""}`}
@@ -360,21 +362,16 @@ function PageHeader({ binId, bins, onBinChange, onRefresh, forecastBusy }) {
 /* ============================ Banner ============================ */
 
 function Banner({ tone, icon: Icon, title, body }) {
-  const tones = {
-    amber: "border-amber-200 bg-amber-50 text-amber-800",
-    red: "border-red-200 bg-red-50 text-red-800",
-    brand: "border-brand-200 bg-brand-50 text-brand-700",
-  };
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${tones[tone]}`}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone(tone)}`}
     >
-      <Icon className="h-5 w-5 mt-0.5 shrink-0" />
+      <Icon className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="text-sm">
         <div className="font-semibold">{title}</div>
         <div className="mt-0.5">{body}</div>
-      </div>
-    </div>
+            </div>
+            </div>
   );
 }
 
@@ -403,7 +400,7 @@ function CurrentRiskCard({ loading, bundle, level, extras, tone, timestamp }) {
               : "text-brand-500"
         }
         right={
-          <span className="text-[11px] text-ink-400">
+          <span className="text-[11px] text-slate-400">
             {timestamp ? relativeFromNow(timestamp) : "—"}
           </span>
         }
@@ -411,13 +408,13 @@ function CurrentRiskCard({ loading, bundle, level, extras, tone, timestamp }) {
 
       <Card.Body>
         {loading ? (
-          <div className="flex items-center gap-2 text-xs text-ink-500">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
             <RefreshCw className="h-4 w-4 animate-spin" />
             Loading latest…
           </div>
         ) : empty ? (
-          <div className="flex flex-col items-start gap-2 text-sm text-ink-500">
-            <div className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-ink-700">
+          <div className="flex flex-col items-start gap-2 text-sm text-slate-400">
+            <div className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-xs font-semibold text-slate-300">
               No captures yet
             </div>
             <p>
@@ -429,30 +426,28 @@ function CurrentRiskCard({ loading, bundle, level, extras, tone, timestamp }) {
           <>
             <div className="flex items-center gap-3">
               <span
-                className={`inline-flex rounded-md px-2.5 py-1 text-xs font-bold tracking-wider ${
-                  RISK_BADGE[level] || "bg-slate-100 text-ink-700"
-                }`}
+                className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-bold tracking-wider ${riskBadgeClass(level)}`}
               >
                 {level}
               </span>
-              <div className="text-3xl font-bold text-ink-900 tabular-nums">
+              <div className="text-3xl font-bold tabular-nums text-slate-100">
                 {score}
-                <span className="text-sm font-medium text-ink-400">/100</span>
+                <span className="text-sm font-medium text-slate-400">/100</span>
               </div>
-            </div>
+        </div>
 
-            <div className="mt-3 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800">
               <div
                 className={`h-full rounded-full ${tone?.barBg || "bg-brand-500"}`}
                 style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
               />
             </div>
 
-            <p className="mt-3 text-xs text-ink-600 leading-relaxed">
+            <p className="mt-3 text-xs leading-relaxed text-slate-300">
               {message}
             </p>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-ink-500">
+            <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-slate-400">
               <Stat label="Temp" value={extras?.temp_c != null ? `${extras.temp_c}°C` : "—"} />
               <Stat label="Humidity" value={extras?.humidity_pct != null ? `${Math.round(extras.humidity_pct)}%` : "—"} />
               <Stat label="Animals" value={extras?.animal_count ?? "—"} />
@@ -465,7 +460,7 @@ function CurrentRiskCard({ loading, bundle, level, extras, tone, timestamp }) {
       <Card.Footer>
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-1 text-brand-700 hover:text-brand-600 font-semibold"
+          className="inline-flex items-center gap-1 font-semibold text-brand-400 hover:text-brand-300"
         >
           See full snapshot on dashboard
           <ChevronRight className="h-3 w-3" />
@@ -477,12 +472,12 @@ function CurrentRiskCard({ loading, bundle, level, extras, tone, timestamp }) {
 
 function Stat({ label, value }) {
   return (
-    <div className="rounded-md bg-slate-50 px-2 py-1.5">
-      <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-400">
+    <div className="rounded-md border border-slate-700/50 bg-slate-950/40 px-2 py-1.5">
+      <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">
         {label}
-      </div>
-      <div className="text-xs font-semibold text-ink-900">{value}</div>
-    </div>
+                </div>
+      <div className="text-xs font-semibold text-slate-100">{value}</div>
+                </div>
   );
 }
 
@@ -492,25 +487,23 @@ function ForecastChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-card text-xs">
-      <div className="font-semibold text-ink-900">{p.time}</div>
-      <div className="text-[11px] text-ink-500 mt-0.5">
+    <div className="rounded-lg border border-slate-700/60 bg-slate-900 px-3 py-2 text-xs shadow-lg">
+      <div className="font-semibold text-slate-100">{p.time}</div>
+      <div className="mt-0.5 text-[11px] text-slate-400">
         Predicted level:{" "}
         <span
-          className={`inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
-            RISK_BADGE[p.level] || "bg-slate-100 text-ink-700"
-          }`}
+          className={`inline-flex rounded-sm border px-1.5 py-0.5 text-[10px] font-bold ${riskBadgeClass(p.level)}`}
         >
           {p.level || "—"}
         </span>
       </div>
-      <div className="text-[11px] text-ink-500">
-        Score: <span className="font-semibold text-ink-900">{p.score}</span>
+      <div className="text-[11px] text-slate-400">
+        Score: <span className="font-semibold text-slate-100">{p.score}</span>
       </div>
-      <div className="text-[11px] text-ink-500">
+      <div className="text-[11px] text-slate-400">
         {Math.round(p.temp)}°C · {Math.round(p.hum)}%
-      </div>
-    </div>
+              </div>
+              </div>
   );
 }
 
@@ -524,11 +517,11 @@ function ForecastTrendCard({ busy, data, hours, summary, usingStub, thresholds }
         title={`Risk forecast — next ${hours} hours`}
         right={
           usingStub ? (
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 rounded-md px-1.5 py-0.5">
+            <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400">
               Stub feed
             </span>
           ) : (
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-700 bg-brand-50 rounded-md px-1.5 py-0.5">
+            <span className="rounded-md border border-brand-500/30 bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-400">
               Live
             </span>
           )
@@ -537,14 +530,14 @@ function ForecastTrendCard({ busy, data, hours, summary, usingStub, thresholds }
 
       <Card.Body className="min-h-[260px]">
         {busy && data.length === 0 ? (
-          <div className="flex h-[200px] items-center justify-center gap-2 text-xs text-ink-500">
+          <div className="flex h-[200px] items-center justify-center gap-2 text-xs text-slate-400">
             <RefreshCw className="h-4 w-4 animate-spin" />
             Loading forecast…
           </div>
         ) : empty ? (
-          <div className="flex h-[200px] items-center justify-center text-xs text-ink-500">
+          <div className="flex h-[200px] items-center justify-center text-xs text-slate-400">
             No forecast data available.
-          </div>
+        </div>
         ) : (
           <div className="h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -555,33 +548,33 @@ function ForecastTrendCard({ busy, data, hours, summary, usingStub, thresholds }
                     <stop offset="100%" stopColor="#22c55e" stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="time"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  axisLine={{ stroke: "#cbd5e1" }}
+                  tick={{ fontSize: 11, fill: CHART.axis }}
+                  axisLine={{ stroke: CHART.grid }}
                   tickLine={false}
                   interval="preserveStartEnd"
                 />
                 <YAxis
                   domain={[0, 100]}
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  axisLine={{ stroke: "#cbd5e1" }}
+                  tick={{ fontSize: 11, fill: CHART.axis }}
+                  axisLine={{ stroke: CHART.grid }}
                   tickLine={false}
                   width={32}
                 />
-                <Tooltip content={<ForecastChartTooltip />} cursor={{ stroke: "#cbd5e1" }} />
+                <Tooltip content={<ForecastChartTooltip />} cursor={{ stroke: CHART.grid }} />
                 <ReferenceLine
                   y={40}
                   stroke="#f59e0b"
                   strokeDasharray="4 4"
-                  label={{ value: "MEDIUM", fontSize: 9, fill: "#92400e", position: "right" }}
+                  label={{ value: "MEDIUM", fontSize: 9, fill: "#fbbf24", position: "right" }}
                 />
                 <ReferenceLine
                   y={70}
                   stroke="#ef4444"
                   strokeDasharray="4 4"
-                  label={{ value: "HIGH", fontSize: 9, fill: "#991b1b", position: "right" }}
+                  label={{ value: "HIGH", fontSize: 9, fill: "#f87171", position: "right" }}
                 />
                 <Area
                   type="monotone"
@@ -601,22 +594,22 @@ function ForecastTrendCard({ busy, data, hours, summary, usingStub, thresholds }
         <Card.Footer>
           <div className="flex flex-wrap items-start justify-between gap-3">
             {summary?.recommendation ? (
-              <div className="flex items-start gap-2 max-w-[60%]">
-                <Info className="h-3.5 w-3.5 mt-0.5 text-ink-400 shrink-0" />
-                <span className="text-ink-600">{summary.recommendation}</span>
+              <div className="flex max-w-[60%] items-start gap-2">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span className="text-slate-300">{summary.recommendation}</span>
               </div>
             ) : (
-              <span className="text-ink-400">No recommendation yet.</span>
+              <span className="text-slate-400">No recommendation yet.</span>
             )}
             {thresholds ? (
               <div className="flex items-center gap-2 text-[11px]">
-                <span className="text-ink-400">Thresholds:</span>
-                <span className="rounded-md bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-700">
+                <span className="text-slate-400">Thresholds:</span>
+                <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 font-semibold text-amber-400">
                   ≥ {thresholds.HIGH_TEMP_C}°C
                 </span>
-                <span className="rounded-md bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-700">
+                <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 font-semibold text-amber-400">
                   ≥ {thresholds.HIGH_HUMIDITY_PCT}% RH
-                </span>
+              </span>
               </div>
             ) : null}
           </div>
@@ -634,10 +627,10 @@ function ForecastSlotsCard({ data, loading }) {
       <Card>
         <Card.Header icon={Clock} title="Hourly forecast" />
         <Card.Body>
-          <div className="flex items-center gap-2 text-xs text-ink-500">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
             <RefreshCw className="h-4 w-4 animate-spin" />
             Loading…
-          </div>
+        </div>
         </Card.Body>
       </Card>
     );
@@ -647,7 +640,7 @@ function ForecastSlotsCard({ data, loading }) {
   return (
     <Card>
       <Card.Header icon={Clock} title="Hourly forecast" right={
-        <span className="text-[11px] text-ink-400">{data.length} slots</span>
+        <span className="text-[11px] text-slate-400">{data.length} slots</span>
       } />
       <Card.Body>
         <div className="overflow-x-auto -mx-1 px-1 pb-1">
@@ -657,29 +650,29 @@ function ForecastSlotsCard({ data, loading }) {
               return (
                 <div
                   key={`${s.rawTs}-${i}`}
-                  className="w-[88px] shrink-0 rounded-lg border bg-white p-2 text-center"
+                  className="w-[88px] shrink-0 rounded-lg border border-slate-700/50 bg-slate-950/40 p-2 text-center"
                   style={{ borderColor: `${color}55`, boxShadow: `inset 3px 0 0 ${color}` }}
                   title={`${s.level} · ${Math.round(s.temp)}°C · ${Math.round(s.hum)}% RH`}
                 >
-                  <div className="text-[10px] font-semibold text-ink-500">
+                  <div className="text-[10px] font-semibold text-slate-400">
                     {s.time}
                   </div>
                   <div
                     className="mt-1 text-[11px] font-bold tracking-wider"
                     style={{ color }}
                   >
-                    {s.level}
-                  </div>
-                  <div className="mt-1 text-[10px] text-ink-500">
+                      {s.level}
+                    </div>
+                  <div className="mt-1 text-[10px] text-slate-400">
                     {Math.round(s.temp)}°C
                   </div>
-                  <div className="text-[10px] text-ink-400">
+                  <div className="text-[10px] text-slate-500">
                     {Math.round(s.hum)}%
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
         </div>
       </Card.Body>
     </Card>
@@ -692,22 +685,22 @@ function RulesExplainerCard({ thresholds }) {
   const rules = [
     {
       level: "LOW",
-      tone: "bg-brand-50 text-brand-700 border-brand-200",
+      tone: "border-brand-500/30 bg-brand-500/10 text-brand-300",
       desc: "Below medium thresholds. No animals, no organic spike, mild weather.",
     },
     {
       level: "MEDIUM",
-      tone: "bg-amber-50 text-amber-700 border-amber-200",
+      tone: "border-amber-500/30 bg-amber-500/10 text-amber-300",
       desc: `Hot (≥ ${thresholds.HIGH_TEMP_C}°C) OR humid (≥ ${thresholds.HIGH_HUMIDITY_PCT}% RH) — accelerated rotting.`,
     },
     {
       level: "HIGH",
-      tone: "bg-red-50 text-red-700 border-red-200",
+      tone: "border-red-500/30 bg-red-500/15 text-red-400",
       desc: "Animals detected, organic waste in heat, or compounding hot + humid conditions.",
     },
     {
       level: "CRITICAL",
-      tone: "bg-red-100 text-red-800 border-red-300",
+      tone: "border-red-500/40 bg-red-500/20 text-red-300",
       desc: "Reserved for mixed-waste / multiple compounding factors. Engine does not emit yet.",
     },
   ];
@@ -717,9 +710,9 @@ function RulesExplainerCard({ thresholds }) {
       <Card.Header
         icon={Info}
         title="Rules & thresholds"
-        accent="text-ink-500"
+        accent="text-slate-400"
         right={
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Risk engine
           </span>
         }
@@ -746,19 +739,19 @@ function RulesExplainerCard({ thresholds }) {
         <div className="flex flex-wrap items-center gap-3 text-[11px]">
           <span className="inline-flex items-center gap-1">
             <Thermometer className="h-3 w-3 text-amber-500" />
-            <span className="text-ink-500">HIGH_TEMP_C</span>
-            <code className="rounded bg-slate-100 px-1 font-semibold text-ink-900">
+            <span className="text-slate-400">HIGH_TEMP_C</span>
+            <code className="rounded bg-slate-800 px-1 font-semibold text-slate-100">
               {thresholds.HIGH_TEMP_C}
             </code>
           </span>
           <span className="inline-flex items-center gap-1">
             <Droplets className="h-3 w-3 text-sky-500" />
-            <span className="text-ink-500">HIGH_HUMIDITY_PCT</span>
-            <code className="rounded bg-slate-100 px-1 font-semibold text-ink-900">
+            <span className="text-slate-400">HIGH_HUMIDITY_PCT</span>
+            <code className="rounded bg-slate-800 px-1 font-semibold text-slate-100">
               {thresholds.HIGH_HUMIDITY_PCT}
             </code>
           </span>
-          <span className="text-ink-400">
+          <span className="text-slate-500">
             {thresholds.source === "live"
               ? "(from current /forecast assumptions)"
               : "(default values; configure on backend)"}
@@ -795,9 +788,9 @@ function RiskHistoryCard({
       <Card.Header
         icon={CalendarClock}
         title="Risk history"
-        accent="text-ink-500"
+        accent="text-slate-400"
         right={
-          <span className="text-[11px] text-ink-400">
+          <span className="text-[11px] text-slate-400">
             {captures.length} of {totalCount}
           </span>
         }
@@ -806,13 +799,13 @@ function RiskHistoryCard({
       <Card.Body>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400 pointer-events-none" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
               placeholder="Search by waste, case, or bin id…"
               value={search}
               onChange={(e) => onSearch(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+              className={`${inputClass} !mt-0 pl-9`}
             />
           </div>
 
@@ -822,11 +815,9 @@ function RiskHistoryCard({
                 key={f.key}
                 type="button"
                 onClick={() => onFilterLevel(f.key)}
-                className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition ${
-                  filterLevel === f.key
-                    ? "bg-ink-900 text-white"
-                    : "bg-slate-100 text-ink-700 hover:bg-slate-200"
-                }`}
+                className={
+                  filterLevel === f.key ? chipActiveClass : chipClass
+                }
               >
                 {f.label}
               </button>
@@ -835,27 +826,27 @@ function RiskHistoryCard({
         </div>
 
         {dbDisabled ? (
-          <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50 px-4 py-6 text-center text-xs text-amber-800">
+          <div className={`rounded-lg border px-4 py-6 text-center text-xs ${bannerTone("amber")}`}>
             Capture history requires <code>DATABASE_URL</code> on the backend.
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+          <div className={`rounded-lg border px-4 py-3 text-xs ${bannerTone("red")}`}>
             {error}
           </div>
         ) : loading && captures.length === 0 ? (
-          <div className="flex items-center gap-2 text-xs text-ink-500">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
             <RefreshCw className="h-4 w-4 animate-spin" />
             Loading history…
           </div>
         ) : captures.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs text-ink-500">
+          <div className="rounded-lg border border-dashed border-slate-700/50 bg-slate-950/30 px-4 py-6 text-center text-xs text-slate-400">
             No captures match your filters.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <div className="overflow-x-auto rounded-lg border border-slate-700/50">
             <table className="w-full border-collapse text-xs">
-              <thead className="bg-slate-50">
-                <tr className="text-left text-ink-500">
+              <thead className="bg-slate-900/60">
+                <tr className="text-left text-slate-400">
                   <Th>Time</Th>
                   <Th>Risk</Th>
                   <Th>Case</Th>
@@ -866,27 +857,24 @@ function RiskHistoryCard({
                   <Th>Bin</Th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-700/40">
                 {captures.map((c, i) => (
                   <tr
                     key={`${c.id || c.captured_at}-${i}`}
-                    className="hover:bg-slate-50 transition"
+                    className="transition hover:bg-slate-900/40"
                   >
-                    <Td className="text-ink-500 whitespace-nowrap">
+                    <Td className="whitespace-nowrap text-slate-400">
                       {formatTs(c.captured_at)}
                     </Td>
                     <Td>
-                      <span
-                        className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                          RISK_BADGE[c.risk_level] ||
-                          "bg-slate-100 text-ink-500"
-                        }`}
+                        <span
+                        className={`inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${riskBadgeClass(c.risk_level)}`}
                       >
                         {c.risk_level || "—"}
                       </span>
                     </Td>
-                    <Td className="text-ink-700">{c.risk_case || "—"}</Td>
-                    <Td className="text-ink-700">{c.waste_label || "—"}</Td>
+                    <Td className="text-slate-300">{c.risk_case || "—"}</Td>
+                    <Td className="text-slate-300">{c.waste_label || "—"}</Td>
                     <Td className="tabular-nums">
                       {c.animal_count != null ? c.animal_count : "—"}
                     </Td>
@@ -902,7 +890,7 @@ function RiskHistoryCard({
                       {c.device_id ? (
                         <Link
                           to={`/bins/${c.device_id}`}
-                          className="inline-flex items-center gap-0.5 text-brand-700 hover:text-brand-600"
+                          className="inline-flex items-center gap-0.5 text-brand-400 hover:text-brand-300"
                         >
                           #{c.device_id}
                           <ChevronRight className="h-3 w-3" />
@@ -911,7 +899,7 @@ function RiskHistoryCard({
                         "—"
                       )}
                     </Td>
-                  </tr>
+                    </tr>
                 ))}
               </tbody>
             </table>
@@ -920,11 +908,11 @@ function RiskHistoryCard({
       </Card.Body>
 
       <Card.Footer>
-        <div className="flex items-center gap-2 text-[11px] text-ink-500">
+        <div className="flex items-center gap-2 text-[11px] text-slate-400">
           <Activity className="h-3 w-3" />
-          History reads from <code className="rounded bg-slate-100 px-1">/captures</code>{" "}
+          History reads from <code className="rounded bg-slate-800 px-1">/captures</code>{" "}
           (capped at 100 rows · refreshed every 2 minutes).
-        </div>
+          </div>
       </Card.Footer>
     </Card>
   );

@@ -21,10 +21,20 @@ import {
   ChevronRight,
 } from "lucide-react";
 import DashboardInsights from "../components/DashboardInsights";
-import "./ForecastPage.css";
+import DashboardLayout from "../components/dashboard/DashboardLayout";
+import PageShell from "../components/dashboard/PageShell";
+import PageHeader from "../components/dashboard/PageHeader";
+import DashboardSection from "../components/dashboard/DashboardSection";
+import Card from "../components/dashboard/Card";
+import EmptyState from "../components/dashboard/EmptyState";
+import StatusBanner from "../components/dashboard/StatusBanner";
+import { LAYOUT, MAP_TILE_DARK, MAP_ATTRIBUTION } from "../components/dashboard/dashboardTheme";
+import {
+  btnGhost,
+  btnSecondary,
+  inputClass,
+} from "../components/dashboard/dashboardUi";
 import { apiUrl } from "../utils/apiBase";
-
-/* ─── helpers ─────────────────────────────────────────────────────────── */
 
 function fillColor(level) {
   if (level >= 80) return "#ef4444";
@@ -33,74 +43,78 @@ function fillColor(level) {
   return "#22c55e";
 }
 
-function statusBadgeStyle(status) {
-  if (status === "ALERT")
-    return { background: "rgba(239,68,68,0.18)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.4)" };
-  if (status === "WATCH")
-    return { background: "rgba(249,115,22,0.18)", color: "#fdba74", border: "1px solid rgba(249,115,22,0.4)" };
-  return { background: "rgba(34,197,94,0.18)", color: "#86efac", border: "1px solid rgba(34,197,94,0.4)" };
-}
-
-function cardBorderColor(level) {
-  if (level >= 80) return "rgba(239,68,68,0.5)";
-  if (level >= 60) return "rgba(249,115,22,0.5)";
-  if (level >= 40) return "rgba(234,179,8,0.5)";
-  return "rgba(34,197,94,0.5)";
+function statusBadgeClass(status) {
+  if (status === "ALERT") return "border-red-500/40 bg-red-500/15 text-red-300";
+  if (status === "WATCH") return "border-amber-500/30 bg-amber-500/15 text-amber-300";
+  return "border-brand-500/30 bg-brand-500/15 text-brand-300";
 }
 
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/* ─── StatCard ─────────────────────────────────────────────────────────── */
-
-function StatCard({ icon: Icon, label, value, sub, accent }) {
+function StatCard({ icon: Icon, label, value, sub, accentBorder = "border-slate-700/50" }) {
   return (
-    <div className="fp-stat-card" style={{ borderColor: accent?.border || "rgba(71,85,105,0.6)", background: accent?.bg || "rgba(30,41,59,0.4)" }}>
-      <div className="fp-stat-icon" style={{ color: accent?.iconColor || "#67e8f9" }}>
-        <Icon size={16} />
-      </div>
-      <div className="fp-stat-text">
-        <span className="fp-stat-label">{label}</span>
-        <span className="fp-stat-value">{value}</span>
-        {sub && <span className="fp-stat-sub">{sub}</span>}
+    <div className={`rounded-xl border ${accentBorder} bg-slate-900/60 p-4`}>
+      <div className="flex items-start gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/80 text-brand-400">
+          <Icon className="h-4 w-4" />
+        </span>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            {label}
+          </p>
+          <p className="mt-0.5 text-lg font-bold text-slate-100">{value}</p>
+          {sub ? <p className="mt-0.5 text-xs text-slate-500">{sub}</p> : null}
+        </div>
       </div>
     </div>
   );
 }
-
-/* ─── InsightCard ──────────────────────────────────────────────────────── */
 
 function InsightCard({ loc }) {
-  const border = cardBorderColor(loc.fillLevel);
-  const badgeStyle = statusBadgeStyle(loc.status);
   const barColor = fillColor(loc.fillLevel);
-  const IconEl = loc.status === "ALERT" ? AlertTriangle : loc.status === "WATCH" ? Eye : ChevronRight;
+  const IconEl =
+    loc.status === "ALERT"
+      ? AlertTriangle
+      : loc.status === "WATCH"
+        ? Eye
+        : ChevronRight;
 
   return (
-    <div className="fp-insight-card" style={{ borderColor: border, background: `rgba(15,23,42,0.6)` }}>
-      <div className="fp-insight-header">
-        <div className="fp-insight-title">
-          <IconEl size={13} style={{ color: barColor, flexShrink: 0 }} />
+    <div
+      className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3"
+      style={{ borderColor: `${barColor}55` }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2">
+          <IconEl className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: barColor }} />
           <div>
-            <div className="fp-insight-name">{loc.name}</div>
-            <div className="fp-insight-region">{loc.region}</div>
+            <p className="text-sm font-semibold text-slate-100">{loc.name}</p>
+            <p className="text-xs text-slate-500">{loc.region}</p>
           </div>
         </div>
-        <span className="fp-badge" style={badgeStyle}>{loc.status}</span>
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusBadgeClass(loc.status)}`}
+        >
+          {loc.status}
+        </span>
       </div>
-      <div className="fp-bar-row">
-        <span className="fp-bar-label">Fill level</span>
-        <span className="fp-bar-val" style={{ color: barColor }}>{loc.fillLevel}%</span>
+      <div className="mt-2 flex items-center justify-between text-xs">
+        <span className="text-slate-500">Fill level</span>
+        <span className="font-semibold" style={{ color: barColor }}>
+          {loc.fillLevel}%
+        </span>
       </div>
-      <div className="fp-bar-bg">
-        <div className="fp-bar-fill" style={{ width: `${loc.fillLevel}%`, background: barColor }} />
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${loc.fillLevel}%`, background: barColor }}
+        />
       </div>
     </div>
   );
 }
-
-/* ─── ForecastPage ─────────────────────────────────────────────────────── */
 
 export default function ForecastPage() {
   const [selectedDate, setSelectedDate] = useState(today());
@@ -123,304 +137,288 @@ export default function ForecastPage() {
     }
   }, []);
 
-  useEffect(() => { fetchData(selectedDate); }, [selectedDate, fetchData]);
+  useEffect(() => {
+    fetchData(selectedDate);
+  }, [selectedDate, fetchData]);
 
   const alerts = data?.locations?.filter((l) => l.status === "ALERT") ?? [];
   const watches = data?.locations?.filter((l) => l.status === "WATCH") ?? [];
   const normals = data?.locations?.filter((l) => l.status === "NORMAL") ?? [];
   const all = [...alerts, ...watches, ...normals];
 
-  const holiday = data?.holidays?.[0] ?? null;
-
   return (
-    <div className="fp-root">
-
-      {/* ── HEADER ── */}
-      <header className="fp-header">
-        <div className="fp-header-glow" />
-        <div className="fp-header-inner">
-          <div>
-            <div className="fp-header-eyebrow">
-              <Activity size={14} style={{ color: "#67e8f9" }} />
-              <span>VisionWaste · Forecast Dashboard</span>
-            </div>
-            <h1 className="fp-title">Spatio-Temporal Event-Aware Waste Analytics</h1>
-            <p className="fp-subtitle">Sri Lanka · Hotspot Forecast Engine</p>
-          </div>
-          <div className="fp-header-controls">
-            <label className="fp-date-picker">
-              <Calendar size={14} style={{ color: "#67e8f9" }} />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="fp-date-input"
-              />
-            </label>
-            <button
-              className="fp-refresh-btn"
-              onClick={() => fetchData(selectedDate)}
-              disabled={loading}
-              title="Refresh"
-            >
-              <RefreshCw size={14} className={loading ? "fp-spin" : ""} style={{ color: "#67e8f9" }} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── SUMMARY BAR ── */}
-      <div className="fp-summary-bar">
-        <StatCard
-          icon={Calendar}
-          label="Selected Date"
-          value={selectedDate}
-          sub={
-            data?.isLongWeekend
-              ? `🏖 Long Weekend (${data.longWeekendDates?.join(" → ")})`
-              : data?.isWeekend
-                ? "Weekend"
-                : "Weekday"
-          }
-          accent={
-            data?.isLongWeekend
-              ? { border: "rgba(139,92,246,0.55)", bg: "rgba(76,29,149,0.25)", iconColor: "#c4b5fd" }
-              : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
-          }
-        />
-        <StatCard
-          icon={Sun}
-          label="Day Type"
-          value={
-            data?.isLongWeekend
-              ? "LONG WEEKEND"
-              : data?.isHoliday
-              ? "HOLIDAY"
-              : data?.isWeekend
-              ? "WEEKEND"
-              : "NORMAL WEEKDAY"
-          }
-          accent={
-            data?.isLongWeekend
-              ? { border: "rgba(139,92,246,0.55)", bg: "rgba(76,29,149,0.25)", iconColor: "#c4b5fd" }
-              : data?.isHoliday
-                ? { border: "rgba(245,158,11,0.5)", bg: "rgba(120,53,15,0.25)", iconColor: "#fbbf24" }
-                : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
-          }
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Filling Avg "
-          value={data ? `${data.globalAvgFill}%` : "—"}
-          sub={data?.globalAvgFill >= 70 ? "⚠ High load" : data?.globalAvgFill >= 50 ? "Moderate load" : data ? "Normal load" : ""}
-          accent={
-            data?.globalAvgFill >= 70
-              ? { border: "rgba(239,68,68,0.5)", bg: "rgba(127,29,29,0.25)", iconColor: "#f87171" }
-              : data?.globalAvgFill >= 50
-                ? { border: "rgba(249,115,22,0.5)", bg: "rgba(124,45,18,0.25)", iconColor: "#fb923c" }
-                : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
-          }
-        />
-        <StatCard
-          icon={Bell}
-          label="Active Alerts"
-          value={`${alerts.length} Alert · ${watches.length} Watch`}
-          sub={`${data?.locations?.length ?? 0} sites monitored`}
-          accent={
-            alerts.length > 0
-              ? { border: "rgba(239,68,68,0.5)", bg: "rgba(127,29,29,0.25)", iconColor: "#f87171" }
-              : watches.length > 0
-                ? { border: "rgba(249,115,22,0.5)", bg: "rgba(124,45,18,0.25)", iconColor: "#fb923c" }
-                : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
-          }
-        />
-      </div>
-
-      {/* ── BODY ── */}
-      <div className="fp-body">
-
-        {/* MAP */}
-        <div className="fp-map-wrap">
-          {loading && (
-            <div className="fp-map-overlay">
-              <RefreshCw size={26} className="fp-spin" style={{ color: "#67e8f9" }} />
-              <span style={{ color: "#94a3b8", fontSize: 13, marginTop: 8 }}>Fetching forecast…</span>
-            </div>
-          )}
-          {error && (
-            <div className="fp-error-banner">
-              <AlertTriangle size={14} /> {error}
-            </div>
-          )}
-
-          <MapContainer
-            center={[7.8731, 80.7718]}
-            zoom={7}
-            style={{ height: "100%", width: "100%" }}
-            zoomControl
-          >
-            <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://carto.com">CARTO</a>'
-              maxZoom={19}
-            />
-
-            {data?.locations?.map((loc) => (
-              <CircleMarker
-                key={loc.id}
-                center={[loc.lat, loc.lng]}
-                radius={13 + (loc.fillLevel / 100) * 12}
-                pathOptions={{
-                  fillColor: fillColor(loc.fillLevel),
-                  fillOpacity: 0.78,
-                  color: "#fff",
-                  weight: 1.5,
-                  opacity: 0.7,
-                }}
+    <DashboardLayout>
+      <PageShell
+        banner={
+          error ? { tone: "error", text: error, onRetry: () => fetchData(selectedDate) } : null
+        }
+      >
+        <PageHeader
+          title="Spatio-Temporal Forecast"
+          subtitle="Sri Lanka hotspot forecast engine — holiday and tourism demand analytics"
+          actions={
+            <>
+              <label className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-brand-400" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className={`${inputClass} mt-0 w-auto`}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => fetchData(selectedDate)}
+                disabled={loading}
+                className={btnSecondary}
               >
-                <Tooltip direction="top">
-                  <b>{loc.name}</b><br />
-                  {loc.region} · {loc.fillLevel}% · {loc.status}
-                </Tooltip>
-                <Popup>
-                  <div style={{ fontFamily: "system-ui", minWidth: 170, lineHeight: 1.6 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14 }}>{loc.name}</div>
-                    <div>Region: <b>{loc.region}</b></div>
-                    <div>Fill Level: <b style={{ color: fillColor(loc.fillLevel) }}>{loc.fillLevel}%</b></div>
-                    <div>Status: <b>{loc.status}</b></div>
-                    <div style={{ fontSize: 11, color: "#6b7280" }}>{loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</div>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
-          </MapContainer>
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </>
+          }
+        />
 
-          {/* Legend */}
-          <div className="fp-legend">
-            <div className="fp-legend-title"><Info size={11} /> Fill Level</div>
-            {[
-              { color: "#ef4444", label: "≥80% Alert" },
-              { color: "#f97316", label: "≥60% Watch" },
-              { color: "#eab308", label: "≥40% Moderate" },
-              { color: "#22c55e", label: "<40%  Normal" },
-            ].map(({ color, label }) => (
-              <div key={label} className="fp-legend-row">
-                <span className="fp-legend-dot" style={{ background: color }} />
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
+        <div className={LAYOUT.kpiGrid}>
+          <StatCard
+            icon={Calendar}
+            label="Selected Date"
+            value={selectedDate}
+            sub={
+              data?.isLongWeekend
+                ? `Long weekend (${data.longWeekendDates?.join(" → ")})`
+                : data?.isWeekend
+                  ? "Weekend"
+                  : "Weekday"
+            }
+          />
+          <StatCard
+            icon={Sun}
+            label="Day Type"
+            value={
+              data?.isLongWeekend
+                ? "LONG WEEKEND"
+                : data?.isHoliday
+                  ? "HOLIDAY"
+                  : data?.isWeekend
+                    ? "WEEKEND"
+                    : "NORMAL WEEKDAY"
+            }
+          />
+          <StatCard
+            icon={TrendingUp}
+            label="Filling Avg"
+            value={data ? `${data.globalAvgFill}%` : "—"}
+            sub={
+              data?.globalAvgFill >= 70
+                ? "High load"
+                : data?.globalAvgFill >= 50
+                  ? "Moderate load"
+                  : data
+                    ? "Normal load"
+                    : ""
+            }
+            accentBorder={
+              data?.globalAvgFill >= 70
+                ? "border-red-500/40"
+                : data?.globalAvgFill >= 50
+                  ? "border-amber-500/40"
+                  : undefined
+            }
+          />
+          <StatCard
+            icon={Bell}
+            label="Active Alerts"
+            value={`${alerts.length} Alert · ${watches.length} Watch`}
+            sub={`${data?.locations?.length ?? 0} sites monitored`}
+            accentBorder={
+              alerts.length > 0 ? "border-red-500/40" : watches.length > 0 ? "border-amber-500/40" : undefined
+            }
+          />
         </div>
 
-        {/* INSIGHTS PANEL */}
-        <aside className="fp-panel">
-          <div className="fp-panel-header">
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <MapPin size={14} style={{ color: "#a78bfa" }} />
-              <span className="fp-panel-title">Actionable Insights</span>
-            </div>
-            <span className="fp-panel-count">{data?.locations?.length ?? 0} sites</span>
-          </div>
-
-          {/* Long Weekend banner (highest priority) */}
-          {data?.isLongWeekend && (
-            <div className="fp-banner fp-banner-longweekend">
-              <span style={{ fontSize: 16, flexShrink: 0 }}>🏖</span>
-              <div>
-                <div className="fp-banner-title" style={{ color: "#c4b5fd" }}>Long Weekend</div>
-                <div className="fp-banner-sub">
-                  {data.triggerHoliday?.name} ({data.triggerHoliday?.primary_type})
-                  {" · "}{data.longWeekendDates?.join(" → ")}
+        <DashboardSection label="Forecast map & insights">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:min-h-[28rem]">
+            <Card className="relative min-h-[20rem] xl:col-span-8">
+              <Card.Header icon={MapPin} title="Hotspot map" accent="text-sky-400" />
+              <Card.Body className="relative min-h-[18rem] overflow-hidden rounded-xl p-0">
+                {loading ? (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/60 backdrop-blur-sm">
+                    <RefreshCw className="h-6 w-6 animate-spin text-brand-400" />
+                    <span className="mt-2 text-sm text-slate-400">Fetching forecast…</span>
+                  </div>
+                ) : null}
+                <MapContainer
+                  center={[7.8731, 80.7718]}
+                  zoom={7}
+                  style={{ height: "100%", minHeight: "18rem", width: "100%" }}
+                  zoomControl
+                >
+                  <TileLayer
+                    url={MAP_TILE_DARK}
+                    attribution={MAP_ATTRIBUTION}
+                    maxZoom={19}
+                  />
+                  {data?.locations?.map((loc) => (
+                    <CircleMarker
+                      key={loc.id}
+                      center={[loc.lat, loc.lng]}
+                      radius={13 + (loc.fillLevel / 100) * 12}
+                      pathOptions={{
+                        fillColor: fillColor(loc.fillLevel),
+                        fillOpacity: 0.78,
+                        color: "#fff",
+                        weight: 1.5,
+                        opacity: 0.7,
+                      }}
+                    >
+                      <Tooltip direction="top">
+                        <b>{loc.name}</b>
+                        <br />
+                        {loc.region} · {loc.fillLevel}% · {loc.status}
+                      </Tooltip>
+                      <Popup>
+                        <div className="min-w-[170px] text-sm leading-relaxed text-slate-800">
+                          <div className="mb-1 font-bold">{loc.name}</div>
+                          <div>Region: <b>{loc.region}</b></div>
+                          <div>
+                            Fill:{" "}
+                            <b style={{ color: fillColor(loc.fillLevel) }}>
+                              {loc.fillLevel}%
+                            </b>
+                          </div>
+                          <div>Status: <b>{loc.status}</b></div>
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  ))}
+                </MapContainer>
+                <div className="absolute bottom-3 left-3 z-[1000] rounded-xl border border-slate-700/60 bg-slate-950/90 p-3 text-xs text-slate-300 backdrop-blur-sm">
+                  <div className="mb-2 flex items-center gap-1 font-semibold text-slate-400">
+                    <Info className="h-3 w-3" /> Fill Level
+                  </div>
+                  {[
+                    { color: "#ef4444", label: "≥80% Alert" },
+                    { color: "#f97316", label: "≥60% Watch" },
+                    { color: "#eab308", label: "≥40% Moderate" },
+                    { color: "#22c55e", label: "<40% Normal" },
+                  ].map(({ color, label }) => (
+                    <div key={label} className="flex items-center gap-2 py-0.5">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: color }}
+                      />
+                      {label}
+                    </div>
+                  ))}
                 </div>
-                <div className="fp-banner-sub" style={{ marginTop: 2, color: "#a78bfa" }}>
-                  Maximum waste surge expected across all hotspots
-                </div>
-              </div>
-            </div>
-          )}
-          {/* Holiday banner (only if NOT already shown as long weekend trigger) */}
-          {data?.isHoliday && !data?.isLongWeekend && (
-            <div className="fp-banner fp-banner-holiday">
-              <Sun size={13} style={{ color: "#fbbf24", flexShrink: 0 }} />
-              <div>
-                <div className="fp-banner-title">{data.holidays[0].name}</div>
-                <div className="fp-banner-sub">{data.holidays[0].primary_type} · Fill levels boosted</div>
-              </div>
-            </div>
-          )}
-          {/* Plain weekend banner (only if no long weekend and no holiday) */}
-          {data?.isWeekend && !data?.isHoliday && !data?.isLongWeekend && (
-            <div className="fp-banner fp-banner-weekend">
-              <Info size={12} style={{ color: "#38bdf8", flexShrink: 0 }} />
-              <span className="fp-banner-sub">Weekend — moderately elevated fill expected</span>
-            </div>
-          )}
+              </Card.Body>
+            </Card>
 
-          <div className="fp-scroll">
-            {!data && !loading && (
-              <p style={{ color: "#64748b", fontSize: 13, textAlign: "center", marginTop: 40 }}>
-                Select a date to load insights.
-              </p>
-            )}
-            {loading && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginTop: 40 }}>
-                <RefreshCw size={18} className="fp-spin" style={{ color: "#67e8f9" }} />
-                <span style={{ color: "#64748b", fontSize: 12 }}>Loading…</span>
-              </div>
-            )}
+            <Card className="flex min-h-[20rem] flex-col xl:col-span-4">
+              <Card.Header
+                icon={Activity}
+                title="Actionable insights"
+                accent="text-violet-400"
+                right={
+                  <span className="text-[11px] text-slate-500">
+                    {data?.locations?.length ?? 0} sites
+                  </span>
+                }
+              />
+              <Card.Body className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+                {data?.isLongWeekend ? (
+                  <StatusBanner
+                    tone="info"
+                    text={`Long weekend: ${data.triggerHoliday?.name} (${data.longWeekendDates?.join(" → ")})`}
+                  />
+                ) : null}
+                {data?.isHoliday && !data?.isLongWeekend ? (
+                  <StatusBanner
+                    tone="warn"
+                    text={`${data.holidays[0].name} — ${data.holidays[0].primary_type}`}
+                  />
+                ) : null}
+                {data?.isWeekend && !data?.isHoliday && !data?.isLongWeekend ? (
+                  <StatusBanner tone="info" text="Weekend — moderately elevated fill expected" />
+                ) : null}
 
-            {!loading && all.length > 0 && (
-              <>
-                {alerts.length > 0 && (
-                  <div className="fp-section">
-                    <div className="fp-section-label" style={{ color: "#f87171" }}>
-                      <AlertTriangle size={10} /> Critical Alerts ({alerts.length})
-                    </div>
-                    {alerts.map((l) => <InsightCard key={l.id} loc={l} />)}
+                {!data && !loading ? (
+                  <EmptyState title="Select a date to load insights" />
+                ) : null}
+                {loading && !data ? (
+                  <div className="flex flex-col items-center gap-2 py-8">
+                    <RefreshCw className="h-5 w-5 animate-spin text-brand-400" />
+                    <span className="text-xs text-slate-500">Loading…</span>
                   </div>
-                )}
-                {watches.length > 0 && (
-                  <div className="fp-section">
-                    <div className="fp-section-label" style={{ color: "#fb923c" }}>
-                      <Eye size={10} /> Watch ({watches.length})
-                    </div>
-                    {watches.map((l) => <InsightCard key={l.id} loc={l} />)}
+                ) : null}
+
+                {!loading && all.length > 0 ? (
+                  <div className="space-y-4">
+                    {alerts.length > 0 ? (
+                      <div>
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-red-400">
+                          Critical ({alerts.length})
+                        </p>
+                        <div className="space-y-2">
+                          {alerts.map((l) => (
+                            <InsightCard key={l.id} loc={l} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {watches.length > 0 ? (
+                      <div>
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                          Watch ({watches.length})
+                        </p>
+                        <div className="space-y-2">
+                          {watches.map((l) => (
+                            <InsightCard key={l.id} loc={l} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {normals.length > 0 ? (
+                      <div>
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-brand-400">
+                          Normal ({normals.length})
+                        </p>
+                        <div className="space-y-2">
+                          {normals.map((l) => (
+                            <InsightCard key={l.id} loc={l} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                )}
-                {normals.length > 0 && (
-                  <div className="fp-section">
-                    <div className="fp-section-label" style={{ color: "#4ade80" }}>
-                      <ChevronRight size={10} /> Normal ({normals.length})
-                    </div>
-                    {normals.map((l) => <InsightCard key={l.id} loc={l} />)}
-                  </div>
-                )}
-              </>
-            )}
+                ) : null}
+              </Card.Body>
+              {data && !loading ? (
+                <Card.Footer>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Recommendation
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                    {data.isLongWeekend
+                      ? `Long weekend (${data.triggerHoliday?.name}). Deploy maximum collection capacity for ${data.longWeekendDates?.join(", ")}.`
+                      : alerts.length > 0
+                        ? `Dispatch collection units to ${alerts.map((a) => a.region).join(", ")} immediately.`
+                        : watches.length > 0
+                          ? `Pre-position vehicles near ${watches.map((w) => w.region).join(", ")} before peak hours.`
+                          : "All sites within normal parameters. Maintain scheduled routes."}
+                  </p>
+                </Card.Footer>
+              ) : null}
+            </Card>
           </div>
+        </DashboardSection>
 
-          {/* Recommendation footer */}
-          {data && !loading && (
-            <div className="fp-rec">
-              <div className="fp-rec-label">Recommendation</div>
-              <p className="fp-rec-text">
-                {data.isLongWeekend
-                  ? `🏖 Long weekend detected (${data.triggerHoliday?.name}). Deploy maximum collection capacity across all hotspots for ${data.longWeekendDates?.join(", ")}.`
-                  : alerts.length > 0
-                    ? `⚠ Dispatch collection units to ${alerts.map((a) => a.region).join(", ")} immediately.`
-                    : watches.length > 0
-                      ? `🔶 Pre-position vehicles near ${watches.map((w) => w.region).join(", ")} before peak hours.`
-                      : "✅ All sites within normal parameters. Maintain scheduled routes."}
-              </p>
-            </div>
-          )}
-        </aside>
-      </div>
-
-      {/* ── ADVANCED INSIGHTS SECTION ── */}
-      <div className="fp-insights-section">
-        <DashboardInsights selectedDate={selectedDate} />
-      </div>
-    </div>
+        <DashboardSection label="Advanced analytics">
+          <DashboardInsights selectedDate={selectedDate} />
+        </DashboardSection>
+      </PageShell>
+    </DashboardLayout>
   );
 }

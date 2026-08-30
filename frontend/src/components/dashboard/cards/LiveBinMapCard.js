@@ -13,6 +13,7 @@ import Card from "../Card";
 import { MAP_TILE_DARK } from "../dashboardTheme";
 import { apiUrl } from "../../../utils/apiBase";
 import { markerFillFromBin, fillLabel } from "../../../utils/fillTier";
+import { isVirtualBin } from "../../../utils/collectionRoute";
 
 const TILE_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
@@ -139,6 +140,7 @@ export default function LiveBinMapCard() {
                   return null;
                 }
                 const color = markerFillFromBin(b);
+                const virtual = isVirtualBin(b);
                 const fillPctText =
                   b.latest_fill_percentage != null
                     ? `${Math.round(b.latest_fill_percentage)}%`
@@ -153,6 +155,7 @@ export default function LiveBinMapCard() {
                       weight: 2,
                       fillColor: color,
                       fillOpacity: 0.95,
+                      dashArray: virtual ? "4 6" : undefined,
                     }}
                   >
                     <Popup>
@@ -160,6 +163,11 @@ export default function LiveBinMapCard() {
                         <div className="text-sm font-bold">
                           {b.name || `BIN${b.id}`}
                         </div>
+                        {virtual ? (
+                          <div className="text-[10px] font-semibold text-violet-600">
+                            Virtual · manual fill
+                          </div>
+                        ) : null}
                         {b.location ? (
                           <div className="text-[11px] text-slate-500">
                             {b.location}

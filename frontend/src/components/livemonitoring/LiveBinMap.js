@@ -10,6 +10,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import { Activity, Crosshair } from "lucide-react";
 import { markerFillFromBin, fillLabel } from "../../utils/fillTier";
+import { isVirtualBin } from "../../utils/collectionRoute";
 
 /*
  * Live Monitoring map.
@@ -140,6 +141,7 @@ export default function LiveBinMap({
         {/* Bin markers */}
         {bins.map((b) => {
           const color = markerFillFromBin(b);
+          const virtual = isVirtualBin(b);
           const isActive = b.status_inferred !== "inactive";
           const isNearest = b.id === nearestBinId;
           const fillPctText =
@@ -157,6 +159,7 @@ export default function LiveBinMap({
                 weight: isNearest ? 3 : 2,
                 fillColor: color,
                 fillOpacity: isActive ? 0.95 : 0.45,
+                dashArray: virtual ? "4 6" : undefined,
               }}
               ref={(ref) => {
                 if (ref) markerRefs.current.set(b.id, ref);
@@ -188,6 +191,11 @@ export default function LiveBinMap({
                   {b.location ? (
                     <div className="mt-0.5 text-[11px] text-ink-500">
                       {b.location}
+                    </div>
+                  ) : null}
+                  {virtual ? (
+                    <div className="mt-1 text-[10px] font-semibold text-violet-700">
+                      Virtual bin · manual fill
                     </div>
                   ) : null}
 

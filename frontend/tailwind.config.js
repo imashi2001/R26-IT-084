@@ -20,7 +20,7 @@ export default {
 
   theme: {
     extend: {
-      // Project palette — keeps the dark slate / lime-green look from the mockup.
+      // Project palette — dark dashboard + eco landing page.
       colors: {
         brand: {
           50: "#f0fdf4",
@@ -60,8 +60,13 @@ export default {
       },
       fontFamily: {
         sans: [
+          "Inter",
           "Manrope",
           "Plus Jakarta Sans",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
           "system-ui",
           "sans-serif",
         ],
@@ -73,8 +78,15 @@ export default {
         ],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.1)",
+        card: "0 0 0 1px rgba(51, 65, 85, 0.5), 0 8px 32px rgba(0, 0, 0, 0.35)",
+        glow: "0 0 0 1px rgba(34, 197, 94, 0.12), 0 4px 24px rgba(0, 0, 0, 0.45)",
+        "glow-brand": "0 0 20px rgba(34, 197, 94, 0.2)",
+        "glow-red": "0 0 16px rgba(239, 68, 68, 0.25)",
         search: "0 12px 40px rgba(27, 94, 32, 0.18)",
+      },
+      backgroundImage: {
+        "dashboard-radial":
+          "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(34, 197, 94, 0.08), transparent 55%)",
       },
       keyframes: {
         "fade-up": {

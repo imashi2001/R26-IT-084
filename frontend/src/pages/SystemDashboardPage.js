@@ -1,113 +1,167 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
-import LatestCaptureCard from "../components/dashboard/cards/LatestCaptureCard";
-import BinFillLevelCard from "../components/dashboard/cards/BinFillLevelCard";
-import WasteClassificationCard from "../components/dashboard/cards/WasteClassificationCard";
-import AnimalDetectionCard from "../components/dashboard/cards/AnimalDetectionCard";
-import HygienicRiskLevelCard from "../components/dashboard/cards/HygienicRiskLevelCard";
-import RottingPredictionCard from "../components/dashboard/cards/RottingPredictionCard";
-import EnvironmentalConditionsCard from "../components/dashboard/cards/EnvironmentalConditionsCard";
-import NextCollectionCard from "../components/dashboard/cards/NextCollectionCard";
+import DashboardSection from "../components/dashboard/DashboardSection";
+import DashboardHero from "../components/dashboard/DashboardHero";
+import DashboardKpiRow from "../components/dashboard/DashboardKpiRow";
+import DashboardBinsTable from "../components/dashboard/DashboardBinsTable";
+import DashboardBinDetail from "../components/dashboard/DashboardBinDetail";
 import LiveBinMapCard from "../components/dashboard/cards/LiveBinMapCard";
 import RecentAlertsCard from "../components/dashboard/cards/RecentAlertsCard";
 import RiskTrend7dCard from "../components/dashboard/cards/RiskTrend7dCard";
+import { LAYOUT } from "../components/dashboard/dashboardTheme";
 import useSystemSnapshot from "../hooks/useSystemSnapshot";
 import useCaptureHistory from "../hooks/useCaptureHistory";
+import useDevicesOverview from "../hooks/useDevicesOverview";
+import useAlertBadgeCount from "../hooks/useAlertBadgeCount";
+import useDashboardSettings from "../hooks/useDashboardSettings";
+import { binStatusMeta } from "../utils/dashboardBins";
 
-/*
- * System dashboard layout (currently mounted at /system; promoted to / in PR 6).
- *
- * All 11 cards wired. PR 6 will swap routes so this page lives at `/` and the
- * old upload UI moves to `/live-monitoring`, plus add stub pages for the
- * sidebar items that currently 404.
- */
 export default function SystemDashboardPage() {
   const { data: snapshot, loading, error, stale, refresh } = useSystemSnapshot();
   const history = useCaptureHistory();
+  const fleet = useDevicesOverview();
+  const alertCount = useAlertBadgeCount();
+  const { heroUrl } = useDashboardSettings();
+  const [selectedBinId, setSelectedBinId] = useState(null);
+
+  const animalsToday = useMemo(() => {
+    const today = new Date();
+    return (history.captures || []).filter((c) => {
+      const t = new Date(c.captured_at);
+      return (
+        t.getFullYear() === today.getFullYear() &&
+        t.getMonth() === today.getMonth() &&
+        t.getDate() === today.getDate() &&
+        (c.animal_count || 0) > 0
+      );
+    }).length;
+  }, [history.captures]);
+
+  const selectedDevice = useMemo(() => {
+    if (selectedBinId == null) return null;
+    return (fleet.devices || []).find((d) => d.id === selectedBinId) || null;
+  }, [fleet.devices, selectedBinId]);
+
+  useEffect(() => {
+    if (selectedBinId != null) return;
+    const urgent = (fleet.devices || []).find((d) => {
+      const s = binStatusMeta(d);
+      return s.tone === "danger" || s.tone === "warn";
+    });
+    const pick = urgent || fleet.devices?.[0];
+    if (pick?.id != null) setSelectedBinId(pick.id);
+  }, [fleet.devices, selectedBinId]);
 
   const banner = useMemo(() => {
-    if (loading) return null;
+    if (loading && !snapshot) return null;
     if (error) {
       return {
         tone: "error",
         text: `Backend error: ${error}. Will retry automatically.`,
       };
     }
-    if (!snapshot) {
+    if (!snapshot && !fleet.devices?.length) {
       return {
         tone: "info",
-        text: "No capture received yet. Send an image through the bridge or POST /predict.",
+        text: "No capture received yet. Send an image from the ESP32-CAM or POST /predict.",
       };
     }
     if (stale) {
       return {
         tone: "warn",
-        text: "Snapshot is stale - the last refresh did not return a new capture.",
+        text: "Latest snapshot is stale — waiting for a fresh field capture.",
       };
     }
     return null;
-  }, [loading, error, snapshot, stale]);
+  }, [loading, error, snapshot, stale, fleet.devices]);
+
+  const onRefreshAll = () => {
+    refresh();
+    fleet.refresh();
+    history.refresh();
+  };
 
   return (
     <DashboardLayout>
-      {banner ? (
-        <div
-          className={`mb-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-2 text-sm ${
-            banner.tone === "error"
-              ? "border-red-200 bg-red-50 text-red-700"
-              : banner.tone === "warn"
-                ? "border-amber-200 bg-amber-50 text-amber-700"
-                : "border-slate-200 bg-slate-50 text-ink-700"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{banner.text}</span>
-          </div>
-          <button
-            type="button"
-            onClick={refresh}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-ink-700 hover:bg-slate-50"
+      <div className={LAYOUT.page}>
+        {banner ? (
+          <div
+            className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm backdrop-blur-sm ${
+              banner.tone === "error"
+                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                : banner.tone === "warn"
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  : "border-slate-700/60 bg-slate-900/60 text-slate-300"
+            }`}
           >
-            <RefreshCw className="h-3 w-3" /> Refresh
-          </button>
-        </div>
-      ) : null}
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{banner.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={onRefreshAll}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
+            >
+              <RefreshCw className="h-3 w-3" /> Refresh
+            </button>
+          </div>
+        ) : null}
 
-      {/* Row 1 - Latest capture summary */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        <LatestCaptureCard snapshot={snapshot} stale={stale} />
-        <BinFillLevelCard snapshot={snapshot} />
-        <WasteClassificationCard snapshot={snapshot} />
-        <AnimalDetectionCard snapshot={snapshot} />
-      </div>
+        <DashboardHero
+          devices={fleet.devices}
+          alertCount={alertCount}
+          animalsToday={animalsToday}
+          heroUrl={heroUrl}
+        />
 
-      {/* Row 2 - Risk + environment */}
-      <div className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        <HygienicRiskLevelCard snapshot={snapshot} />
-        <RottingPredictionCard snapshot={snapshot} />
-        <EnvironmentalConditionsCard
-          snapshot={snapshot}
-          history={history.last24h}
-          dbDisabled={history.dbDisabled}
-        />
-        <NextCollectionCard snapshot={snapshot} />
-      </div>
+        <DashboardSection label="Fleet overview">
+          <DashboardKpiRow
+            devices={fleet.devices}
+            history={history.captures}
+          />
+        </DashboardSection>
 
-      {/* Row 3 - Fleet view (map spans 2 cols on lg+) */}
-      <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-3 xl:grid-cols-4">
-        <div className="lg:col-span-2 xl:col-span-2">
-          <LiveBinMapCard />
-        </div>
-        <RecentAlertsCard
-          history={history.captures}
-          dbDisabled={history.dbDisabled}
-        />
-        <RiskTrend7dCard
-          history={history.last7d}
-          dbDisabled={history.dbDisabled}
-        />
+        <DashboardSection label="Operations">
+          <div className={LAYOUT.opsGrid}>
+            <div className="flex min-h-0 flex-col xl:col-span-7">
+              <DashboardBinsTable
+                devices={fleet.devices}
+                loading={fleet.loading}
+                dbDisabled={fleet.dbDisabled}
+                selectedId={selectedBinId}
+                onSelect={setSelectedBinId}
+              />
+            </div>
+            <div className="flex min-h-0 flex-col xl:col-span-5">
+              <DashboardBinDetail
+                device={selectedDevice}
+                history={history.captures}
+              />
+            </div>
+          </div>
+        </DashboardSection>
+
+        <DashboardSection label="Analytics">
+          <div className={LAYOUT.analyticsGrid}>
+            <div className="flex min-h-0 flex-col lg:col-span-5">
+              <LiveBinMapCard />
+            </div>
+            <div className="flex min-h-0 flex-col lg:col-span-4">
+              <RecentAlertsCard
+                history={history.captures}
+                dbDisabled={history.dbDisabled}
+              />
+            </div>
+            <div className="flex min-h-0 flex-col lg:col-span-3">
+              <RiskTrend7dCard
+                history={history.last7d}
+                dbDisabled={history.dbDisabled}
+              />
+            </div>
+          </div>
+        </DashboardSection>
       </div>
     </DashboardLayout>
   );

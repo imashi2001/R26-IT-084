@@ -31,6 +31,17 @@ import {
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
 import {
+  btnPrimary,
+  btnSecondary,
+  btnGhost,
+  selectClass,
+  inputClass,
+  labelClass,
+  riskBadgeClass,
+  bannerTone,
+  summaryTone,
+} from "../components/dashboard/dashboardUi";
+import {
   apiUrl,
   fetchBins,
   predictAnimal,
@@ -111,19 +122,8 @@ function relativeFromNow(iso) {
   return `${Math.round(diff / 86400_000)}d ago`;
 }
 
-function riskBadgeClass(level) {
-  switch ((level || "").toUpperCase()) {
-    case "CRITICAL":
-      return "bg-red-100 text-red-800 border-red-200";
-    case "HIGH":
-      return "bg-red-50 text-red-700 border-red-200";
-    case "MEDIUM":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "LOW":
-      return "bg-brand-50 text-brand-700 border-brand-200";
-    default:
-      return "bg-slate-100 text-ink-500 border-slate-200";
-  }
+function riskBadge(level) {
+  return `border ${riskBadgeClass(level)}`;
 }
 
 function captureImageUrl(captureId) {
@@ -320,10 +320,10 @@ function PageHeader({ loading, onRefresh }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink-900">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
           Animal Detection
         </h1>
-        <p className="mt-0.5 max-w-3xl text-sm text-ink-500">
+        <p className="mt-0.5 max-w-3xl text-sm text-slate-400">
           Weekly snapshot of animals detected near every installed bin, plus a
           live log of when the deterrent buzzer fires. Use the demo panel to
           spot-check the YOLO animal model against any image; remove the panel
@@ -335,22 +335,16 @@ function PageHeader({ loading, onRefresh }) {
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50 disabled:opacity-50"
+          className={btnSecondary}
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           {loading ? "Refreshing…" : "Refresh"}
         </button>
-        <Link
-          to="/hygienic-risk"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-        >
+        <Link to="/hygienic-risk" className={btnSecondary}>
           Risk dashboard
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
-        <Link
-          to="/bin-level-detector"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-        >
+        <Link to="/bin-level-detector" className={btnSecondary}>
           Bin Level Detector
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
@@ -406,20 +400,23 @@ function SummaryRow({ summary, loading }) {
 }
 
 function SummaryChip({ icon: Icon, label, value, tone = "default", sub }) {
-  const tones = {
-    default: "bg-white border-slate-200 text-ink-700",
-    brand: "bg-brand-50 border-brand-200 text-brand-800",
-    amber: "bg-amber-50 border-amber-200 text-amber-800",
-    risk: "bg-red-50 border-red-200 text-red-800",
-  };
+  const toneClass = summaryTone(
+    tone === "brand"
+      ? "brand"
+      : tone === "amber"
+        ? "amber"
+        : tone === "risk"
+          ? "risk"
+          : "default"
+  );
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${tones[tone]}`}
+      className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${toneClass}`}
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/70 ring-1 ring-white">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/60 ring-1 ring-slate-700/50">
         <Icon className="h-4 w-4" />
       </div>
-      <div className="leading-tight min-w-0">
+      <div className="min-w-0 leading-tight">
         <div className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
           {label}
         </div>
@@ -435,14 +432,9 @@ function SummaryChip({ icon: Icon, label, value, tone = "default", sub }) {
 }
 
 function Banner({ tone, icon: Icon, title, body }) {
-  const tones = {
-    red: "border-red-200 bg-red-50 text-red-800",
-    amber: "border-amber-200 bg-amber-50 text-amber-800",
-    brand: "border-brand-200 bg-brand-50 text-brand-800",
-  };
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${tones[tone]}`}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone(tone)}`}
     >
       <Icon className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="text-sm">
@@ -534,13 +526,13 @@ function ModelDemoCard({ bins, open, onToggle }) {
         title="Model demo — animal detector"
         right={
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200">
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/30">
               Dev tool
             </span>
             <button
               type="button"
               onClick={onToggle}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-ink-600 hover:bg-slate-50"
+              className={btnGhost}
             >
               {open ? "Hide" : "Show"}
             </button>
@@ -574,17 +566,17 @@ function ModelDemoCard({ bins, open, onToggle }) {
                 }}
                 className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${
                   dragOver
-                    ? "border-brand-500 bg-brand-50/60"
-                    : "border-slate-300 bg-slate-50 hover:border-brand-400 hover:bg-brand-50/40"
+                    ? "border-brand-500 bg-brand-500/10"
+                    : "border-slate-700/60 bg-slate-950/30 hover:border-brand-500/40 hover:bg-brand-500/5"
                 }`}
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
-                  <UploadCloud className="h-6 w-6 text-brand-600" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-900/60 ring-1 ring-slate-700/50">
+                  <UploadCloud className="h-6 w-6 text-brand-400" />
                 </div>
-                <div className="text-sm font-semibold text-ink-900">
+                <div className="text-sm font-semibold text-slate-100">
                   Drop a test image
                 </div>
-                <div className="text-xs text-ink-500">
+                <div className="text-xs text-slate-400">
                   or click to browse — runs only the YOLO animal model
                 </div>
                 <input
@@ -596,8 +588,8 @@ function ModelDemoCard({ bins, open, onToggle }) {
                 />
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+              <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950/40">
+                <div className="border-b border-slate-700/50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                   Source image
                 </div>
                 <img
@@ -609,8 +601,8 @@ function ModelDemoCard({ bins, open, onToggle }) {
             )}
 
             {result?.animal && !result.animal.error ? (
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+              <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950/40">
+                <div className="border-b border-slate-700/50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                   Animal YOLO ·{" "}
                   {typeof result.animal.detection_count === "number"
                     ? `${result.animal.detection_count} detection(s)`
@@ -623,27 +615,25 @@ function ModelDemoCard({ bins, open, onToggle }) {
                     className="block max-h-[360px] w-full object-contain"
                   />
                 ) : (
-                  <div className="px-3 py-6 text-center text-xs text-ink-500">
+                  <div className="px-3 py-6 text-center text-xs text-slate-400">
                     No annotated image available.
                   </div>
                 )}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-xs text-ink-500">
+              <div className="rounded-xl border border-dashed border-slate-700/50 bg-slate-950/30 px-6 py-10 text-center text-xs text-slate-400">
                 Run detection to see the YOLO-annotated output here.
               </div>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs">
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-ink-500">
-                Bin
-              </span>
+            <label className="inline-flex items-center gap-2">
+              <span className={labelClass}>Bin</span>
               <select
                 value={binId}
                 onChange={(e) => setBinId(e.target.value)}
-                className="bg-transparent text-sm font-medium text-ink-900 focus:outline-none"
+                className={`${selectClass} !mt-0 w-auto min-w-[10rem]`}
               >
                 <option value="">No bin (just model)</option>
                 {bins.map((b) => (
@@ -658,7 +648,7 @@ function ModelDemoCard({ bins, open, onToggle }) {
               type="button"
               onClick={runDetection}
               disabled={!imageFile || busy}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className={btnPrimary}
             >
               {busy ? (
                 <>
@@ -677,7 +667,7 @@ function ModelDemoCard({ bins, open, onToggle }) {
               <button
                 type="button"
                 onClick={reset}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-ink-700 hover:bg-slate-50"
+                className={btnSecondary}
               >
                 <RotateCcw className="h-4 w-4" />
                 Reset
@@ -693,14 +683,14 @@ function ModelDemoCard({ bins, open, onToggle }) {
           ) : null}
         </Card.Body>
       ) : (
-        <Card.Body className="!mt-1 text-xs text-ink-500">
+        <Card.Body className="!mt-1 text-xs text-slate-400">
           Demo panel is hidden. Click <strong>Show</strong> on the right to
           open it again.
         </Card.Body>
       )}
       <Card.Footer>
         This panel is intentionally easy to remove later — it only calls the
-        animal microservice (<code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">model=animal</code>) and is not used by any other page.
+        animal microservice (<code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">model=animal</code>) and is not used by any other page.
       </Card.Footer>
     </Card>
   );
@@ -708,8 +698,8 @@ function ModelDemoCard({ bins, open, onToggle }) {
 
 function DetectionListInline({ detections }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+    <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3">
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
         Detections ({detections.length})
       </div>
       <ul className="space-y-1.5">
@@ -720,12 +710,12 @@ function DetectionListInline({ detections }) {
           return (
             <li
               key={i}
-              className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5"
+              className="flex items-center justify-between gap-2 rounded-lg border border-slate-700/40 bg-slate-900/40 px-2.5 py-1.5"
             >
-              <span className="rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-semibold capitalize text-brand-800">
+              <span className="rounded-full border border-brand-500/30 bg-brand-500/15 px-2 py-0.5 text-[11px] font-semibold capitalize text-brand-400">
                 {d.label || d.class_name || "animal"}
               </span>
-              <span className="text-[11px] font-semibold tabular-nums text-ink-700">
+              <span className="text-[11px] font-semibold tabular-nums text-slate-300">
                 {conf}
               </span>
             </li>
@@ -749,10 +739,10 @@ function BinSightingsSection({
     <section>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="text-lg font-bold text-ink-900">
+          <h2 className="text-lg font-bold text-slate-100">
             Weekly bin sightings
           </h2>
-          <p className="text-xs text-ink-500">
+          <p className="text-xs text-slate-400">
             Latest animal sighting captured near each bin in the last 7 days.
             Cards auto-refresh from the capture history; older sightings drop
             off automatically.
@@ -761,7 +751,7 @@ function BinSightingsSection({
         <button
           type="button"
           onClick={onToggleShowAll}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
+          className={btnSecondary}
         >
           {showAllBins ? "Hide bins with no sightings" : "Show all bins"}
         </button>
@@ -804,11 +794,11 @@ function BinCardSkeletonGrid() {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="animate-pulse rounded-xl border border-slate-200 bg-white p-4"
+          className="animate-pulse rounded-xl border border-slate-700/50 bg-slate-900/60 p-4"
         >
-          <div className="h-32 w-full rounded-lg bg-slate-100" />
-          <div className="mt-3 h-4 w-1/2 rounded bg-slate-200" />
-          <div className="mt-2 h-3 w-1/3 rounded bg-slate-100" />
+          <div className="h-32 w-full rounded-lg bg-slate-800/60" />
+          <div className="mt-3 h-4 w-1/2 rounded bg-slate-700/60" />
+          <div className="mt-2 h-3 w-1/3 rounded bg-slate-800/60" />
         </div>
       ))}
     </div>
@@ -817,12 +807,12 @@ function BinCardSkeletonGrid() {
 
 function EmptyCard({ title, body }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
-        <PawPrint className="h-5 w-5 text-ink-400" />
+    <div className="rounded-xl border border-dashed border-slate-700/50 bg-slate-950/30 p-8 text-center">
+      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/60 ring-1 ring-slate-700/50">
+        <PawPrint className="h-5 w-5 text-slate-400" />
       </div>
-      <div className="mt-2 text-sm font-semibold text-ink-900">{title}</div>
-      <div className="mt-0.5 text-xs text-ink-500">{body}</div>
+      <div className="mt-2 text-sm font-semibold text-slate-100">{title}</div>
+      <div className="mt-0.5 text-xs text-slate-400">{body}</div>
     </div>
   );
 }
@@ -835,8 +825,8 @@ function BinSightingCard({ row }) {
   const risk = latest?.risk_level || null;
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
-      <div className="relative aspect-[16/10] w-full bg-slate-100">
+    <article className="flex flex-col overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950/40 shadow-card">
+      <div className="relative aspect-[16/10] w-full bg-slate-900/60">
         {sightingCount > 0 && latestImg ? (
           <img
             src={latestImg}
@@ -845,7 +835,7 @@ function BinSightingCard({ row }) {
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-400">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-slate-500">
             <ImageIcon className="h-7 w-7" />
             <span className="text-xs">No sighting this week</span>
           </div>
@@ -858,7 +848,7 @@ function BinSightingCard({ row }) {
         ) : null}
         {risk ? (
           <div
-            className={`absolute right-2 top-2 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${riskBadgeClass(risk)}`}
+            className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskBadge(risk)}`}
           >
             Risk {risk}
           </div>
@@ -867,10 +857,10 @@ function BinSightingCard({ row }) {
       <div className="flex flex-1 flex-col gap-2 p-3.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-ink-900">
+            <div className="truncate text-sm font-semibold text-slate-100">
               {bin.name}
             </div>
-            <div className="text-[11px] text-ink-500">
+            <div className="text-[11px] text-slate-400">
               {latest
                 ? `Latest sighting · ${formatTime(latest.captured_at)} · ${formatDate(latest.captured_at)}`
                 : "No sightings yet this week"}
@@ -878,7 +868,7 @@ function BinSightingCard({ row }) {
           </div>
           <Link
             to={`/bins/${bin.id}`}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-ink-600 hover:bg-slate-50"
+            className={btnGhost}
           >
             Details
             <ChevronRight className="h-3 w-3" />
@@ -890,21 +880,21 @@ function BinSightingCard({ row }) {
             {top.map((s) => (
               <span
                 key={s.label}
-                className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[10px] font-semibold capitalize text-brand-800"
+                className="inline-flex items-center gap-1 rounded-full border border-brand-500/30 bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold capitalize text-brand-400"
               >
                 {s.label}
-                <span className="rounded-full bg-white/70 px-1 text-[9px] text-brand-700 ring-1 ring-brand-200">
+                <span className="rounded-full bg-slate-900/60 px-1 text-[9px] text-brand-300 ring-1 ring-brand-500/30">
                   {s.count}
                 </span>
               </span>
             ))}
           </div>
         ) : (
-          <div className="text-[11px] text-ink-400">No species labels yet</div>
+          <div className="text-[11px] text-slate-500">No species labels yet</div>
         )}
 
         {latest ? (
-          <div className="mt-1 text-[11px] text-ink-500">
+          <div className="mt-1 text-[11px] text-slate-400">
             {latest.weather_condition ? (
               <span>{latest.weather_condition} · </span>
             ) : null}
@@ -986,13 +976,13 @@ function BuzzerLogSection({ captures, bins, loading, dbDisabled }) {
         icon={Volume2}
         title="Buzzer activations"
         right={
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             {filtered.length}
           </span>
         }
       />
       <Card.Body className="!mt-2 space-y-3">
-        <p className="text-xs text-ink-500">
+        <p className="text-xs text-slate-400">
           Derived from captures where the YOLO model detected at least one
           animal and the rule-based risk engine flagged the moment as MEDIUM
           or higher. Until a dedicated buzzer event table exists, this is the
@@ -1001,23 +991,21 @@ function BuzzerLogSection({ captures, bins, loading, dbDisabled }) {
 
         <div className="flex flex-wrap gap-2">
           <div className="relative min-w-[220px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search bin name, location, date…"
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className={`${inputClass} !mt-0 pl-9`}
             />
           </div>
-          <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs">
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-ink-500">
-              Bin
-            </span>
+          <label className="inline-flex items-center gap-2">
+            <span className={labelClass}>Bin</span>
             <select
               value={binFilter}
               onChange={(e) => setBinFilter(e.target.value)}
-              className="bg-transparent text-sm font-medium text-ink-900 focus:outline-none"
+              className={`${selectClass} !mt-0 w-auto min-w-[8rem]`}
             >
               <option value="all">All bins</option>
               {bins.map((b) => (
@@ -1031,7 +1019,7 @@ function BuzzerLogSection({ captures, bins, loading, dbDisabled }) {
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-ink-600 hover:bg-slate-50"
+              className={btnGhost}
             >
               <XCircle className="h-3 w-3" />
               Clear
@@ -1044,10 +1032,10 @@ function BuzzerLogSection({ captures, bins, loading, dbDisabled }) {
             {[0, 1, 2, 3].map((i) => (
               <li
                 key={i}
-                className="animate-pulse rounded-xl border border-slate-200 bg-white p-3"
+                className="animate-pulse rounded-xl border border-slate-700/50 bg-slate-900/60 p-3"
               >
-                <div className="h-3 w-2/3 rounded bg-slate-200" />
-                <div className="mt-2 h-3 w-1/3 rounded bg-slate-100" />
+                <div className="h-3 w-2/3 rounded bg-slate-700/60" />
+                <div className="mt-2 h-3 w-1/3 rounded bg-slate-800/60" />
               </li>
             ))}
           </ul>
@@ -1071,7 +1059,7 @@ function BuzzerLogSection({ captures, bins, loading, dbDisabled }) {
       </Card.Body>
       <Card.Footer>
         Drop a real buzzer-event table on the backend later and this list
-        becomes a simple <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">GET /buzzer-events</code> without any UI changes.
+        becomes a simple <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">GET /buzzer-events</code> without any UI changes.
       </Card.Footer>
     </Card>
   );
@@ -1079,33 +1067,33 @@ function BuzzerLogSection({ captures, bins, loading, dbDisabled }) {
 
 function BuzzerEventRow({ ev }) {
   return (
-    <li className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3">
+    <li className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-slate-700/50 bg-slate-950/40 p-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200">
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-400 ring-1 ring-amber-500/30">
             <Volume2 className="h-3 w-3" />
             Buzzer activated
           </span>
           <span
-            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${riskBadgeClass(ev.risk)}`}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskBadge(ev.risk)}`}
           >
             Risk {ev.risk}
           </span>
           {!ev.triggered ? (
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-ink-500">
+            <span className="rounded-full border border-slate-700/60 bg-slate-900/40 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
               MEDIUM threshold
             </span>
           ) : null}
         </div>
-        <div className="mt-1 text-sm font-semibold text-ink-900">
+        <div className="mt-1 text-sm font-semibold text-slate-100">
           {ev.bin_name}
           {ev.location ? (
-            <span className="ml-1 text-[11px] font-normal text-ink-500">
+            <span className="ml-1 text-[11px] font-normal text-slate-400">
               · {ev.location}
             </span>
           ) : null}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-ink-500">
+        <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
           <span className="inline-flex items-center gap-1">
             <Clock className="h-3 w-3" />
             {formatTime(ev.captured_at)}
@@ -1130,7 +1118,7 @@ function BuzzerEventRow({ ev }) {
       {ev.device_id != null ? (
         <Link
           to={`/bins/${ev.device_id}`}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
+          className={btnSecondary}
         >
           <Bell className="h-3.5 w-3.5" />
           Bin details

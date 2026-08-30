@@ -24,6 +24,20 @@ frontend/
 └── README.md
 ```
 
+## Design system
+
+All authenticated pages use the dark **DashboardLayout** shell (`#0b131e` background,
+sidebar + topbar). Shared UI tokens live in:
+
+- `src/components/dashboard/dashboardTheme.js` — layout grids, chart colors, map tiles
+- `src/components/dashboard/dashboardUi.js` — inputs, buttons, badges, banners
+- `src/components/dashboard/Card.js`, `PageShell.js`, `PageHeader.js`, `FilterBar.js`, `ListRow.js`
+
+Public pages (`/`, `/login`, `/register`) keep a lighter citizen-facing theme.
+
+> **Note:** The legacy `web/` folder at repo root is deprecated. Deploy and develop
+> only in **`frontend/`** — it is the canonical React app for Railway.
+
 ## Run
 
 ```powershell

@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const { CORS_ORIGINS } = require("./config/env");
 const routes = require("./routes");
@@ -18,6 +19,14 @@ if (CORS_ORIGINS.length > 0) {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+app.use(
+  "/uploads/dashboard",
+  express.static(path.join(__dirname, "uploads", "dashboard"), {
+    maxAge: "1h",
+    fallthrough: true,
+  })
+);
 
 app.use("/", routes);
 

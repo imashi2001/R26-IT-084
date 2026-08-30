@@ -1,55 +1,30 @@
 import { Trash2 } from "lucide-react";
 import Card from "../Card";
+import { tierBadge } from "../dashboardTheme";
 import {
   bestBinFill,
   tierFromPercentage,
 } from "../../../hooks/useSystemSnapshot";
 
-/*
- * Bin Fill Level card.
- *
- * Resolves the tier (Empty / Half / Overflow) using two signals, in order:
- *   1. Highest-confidence bin_fill prediction in `predictions[]` (if YOLO ran).
- *   2. Tier derived from `extras.fill_percentage` (numeric fallback).
- *
- * Renders a circular progress ring (SVG) sized to fill_percentage, colored by
- * tier (green / amber / red) so it reads at a glance like the mockup.
- */
-
-const TIER_THEME = {
-  Empty: {
-    ring: "#22c55e",
-    bg: "bg-brand-50",
-    text: "text-brand-700",
-    label: "Empty",
-  },
-  Half: {
-    ring: "#f59e0b",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    label: "Half",
-  },
-  Overflow: {
-    ring: "#ef4444",
-    bg: "bg-red-50",
-    text: "text-red-700",
-    label: "Overflow",
-  },
+const TIER_RING = {
+  Empty: "#22c55e",
+  Half: "#f59e0b",
+  Overflow: "#ef4444",
 };
 
-function ProgressRing({ percent, color, size = 92, stroke = 9 }) {
+function ProgressRing({ percent, color, size = 100, stroke = 10 }) {
   const safe = Math.max(0, Math.min(100, Number(percent) || 0));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (safe / 100) * circumference;
 
   return (
-    <svg width={size} height={size} className="-rotate-90">
+    <svg width={size} height={size} className="-rotate-90 drop-shadow-glow-brand">
       <circle
         cx={size / 2}
         cy={size / 2}
         r={radius}
-        stroke="#e2e8f0"
+        stroke="#1e293b"
         strokeWidth={stroke}
         fill="none"
       />
@@ -63,6 +38,7 @@ function ProgressRing({ percent, color, size = 92, stroke = 9 }) {
         strokeLinecap="round"
         strokeDasharray={circumference}
         strokeDashoffset={offset}
+        style={{ filter: `drop-shadow(0 0 6px ${color}66)` }}
       />
     </svg>
   );
@@ -79,15 +55,10 @@ export default function BinFillLevelCard({ snapshot }) {
       yoloBest.label.slice(1).toLowerCase()
     : null;
   const tier = tierFromYolo || tierFromPercentage(pct);
-  const theme = tier ? TIER_THEME[tier] : null;
+  const ringColor = tier ? TIER_RING[tier] : "#475569";
 
-  const ringColor = theme?.ring || "#cbd5e1";
   const display = hasPct ? `${Math.round(pct)}%` : "—";
-  const sub = tierFromYolo
-    ? `YOLO ${(yoloBest.confidence * 100).toFixed(0)}% · ${tier}`
-    : tier
-      ? `Derived from fill %`
-      : "No fill reading";
+  const fullLabel = hasPct ? "Full" : tier || "—";
 
   return (
     <Card>
@@ -95,35 +66,39 @@ export default function BinFillLevelCard({ snapshot }) {
         icon={Trash2}
         title="Bin Fill Level"
         right={
-          theme ? (
+          tier ? (
             <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${theme.bg} ${theme.text}`}
+              className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${tierBadge[tier] || tierBadge.Half}`}
             >
-              {theme.label}
+              {tier}
             </span>
           ) : null
         }
       />
 
-      <Card.Body className="flex items-center gap-4">
-        <div className="relative shrink-0">
+      <Card.Body className="flex flex-col items-center justify-center text-center">
+        <div className="relative">
           <ProgressRing percent={hasPct ? pct : 0} color={ringColor} />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-base font-bold text-ink-900">{display}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-white">{display}</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              {fullLabel}
+            </span>
           </div>
         </div>
-        <div className="min-w-0">
-          <div className="text-2xl font-bold text-ink-900">
-            {tier || "—"}
-          </div>
-          <div className="mt-1 text-xs text-ink-500">{sub}</div>
-        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          {yoloBest
+            ? `YOLO ${(yoloBest.confidence * 100).toFixed(0)}% confidence`
+            : "From risk-derived fill estimate"}
+        </p>
       </Card.Body>
 
       <Card.Footer>
-        Bands: <span className="text-brand-600">Empty &lt;40%</span> ·{" "}
-        <span className="text-amber-600">Half 40-70%</span> ·{" "}
-        <span className="text-red-600">Overflow ≥70%</span>
+        <span className="text-brand-400">&lt;40% Empty</span>
+        <span className="mx-1 text-slate-600">·</span>
+        <span className="text-amber-400">40–70% Half</span>
+        <span className="mx-1 text-slate-600">·</span>
+        <span className="text-red-400">≥70% Overflow</span>
       </Card.Footer>
     </Card>
   );

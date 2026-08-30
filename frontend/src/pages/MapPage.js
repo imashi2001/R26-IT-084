@@ -8,6 +8,7 @@ import {
   Circle,
   Popup,
   useMap,
+  useMapEvents,
   Polyline,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -26,6 +27,14 @@ import {
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
+import { MAP_TILE_DARK } from "../components/dashboard/dashboardTheme";
+import {
+  btnPrimary,
+  btnSecondary,
+  fillBadgeClass,
+  bannerTone,
+  chipClass,
+} from "../components/dashboard/dashboardUi";
 import { apiUrl } from "../utils/apiBase";
 import {
   normalizeFill,
@@ -37,14 +46,21 @@ import {
   collectionUrgency,
   needsCollectionSoon,
   sortBinsByCollectionUrgency,
-  urgencyBand,
 } from "../utils/collectionPriority";
+import {
+  fetchCollectionPlan,
+  fetchMultiStopDrivingRoute,
+  buildGoogleMapsMultiStopUrl,
+  formatRouteDistance,
+  formatRouteDuration,
+  isVirtualBin,
+} from "../utils/collectionRoute";
 
 /*
  * /map — Collection planning map (dashboard shell).
  *
  * Goals:
- *   - Same Voyager + CircleMarker visual language as Live Monitoring.
+ *   - Same dark basemap + CircleMarker visual language as Live Monitoring.
  *   - Nearest-bin flows use **driving** OSRM preview + Google Maps (driving)
  *     for collection trucks (not walking).
  *   - "Collect ASAP" panel: bins sorted by transparent urgency heuristic
@@ -52,8 +68,6 @@ import {
  *   - Keeps GET /devices/map + GET /devices/nearest — no backend changes.
  */
 
-const TILE_URL =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const TILE_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
@@ -148,23 +162,31 @@ function FitRouteBounds({ positions }) {
   return null;
 }
 
-function fillBadgeClass(tierKey) {
-  switch (tierKey) {
-    case "overflow":
-      return "bg-red-50 text-red-700 border-red-200";
-    case "half":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "empty":
-      return "bg-brand-50 text-brand-700 border-brand-200";
-    default:
-      return "bg-slate-100 text-ink-500 border-slate-200";
-  }
+function MapDepotPicker({ active, onPick }) {
+  useMapEvents({
+    click(e) {
+      if (!active) return;
+      onPick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+function fillBadge(tierKey) {
+  return `border ${fillBadgeClass(tierKey)}`;
 }
 
 function riskTextClass(level) {
-  if (level === "HIGH" || level === "CRITICAL") return "text-red-600 font-semibold";
-  if (level === "MEDIUM") return "text-amber-600 font-semibold";
-  return "text-ink-600";
+  if (level === "HIGH" || level === "CRITICAL") return "text-red-400 font-semibold";
+  if (level === "MEDIUM") return "text-amber-400 font-semibold";
+  return "text-slate-300";
+}
+
+function urgencyBandDark(score) {
+  if (score >= 95) return { label: "Critical", className: "border-red-500/30 bg-red-500/15 text-red-400" };
+  if (score >= 75) return { label: "High", className: "border-amber-500/30 bg-amber-500/15 text-amber-400" };
+  if (score >= 55) return { label: "Elevated", className: "border-slate-600/50 bg-slate-800/50 text-slate-300" };
+  return { label: "Routine", className: "border-brand-500/30 bg-brand-500/15 text-brand-400" };
 }
 
 export default function MapPage() {
@@ -178,6 +200,12 @@ export default function MapPage() {
   const [routeApproximate, setRouteApproximate] = useState(false);
   const [routeTargetBinId, setRouteTargetBinId] = useState(null);
   const [focusBinId, setFocusBinId] = useState(null);
+  const [startMode, setStartMode] = useState("gps");
+  const [depotLatLng, setDepotLatLng] = useState(null);
+  const [depotPickActive, setDepotPickActive] = useState(false);
+  const [collectionStops, setCollectionStops] = useState([]);
+  const [collectionMeta, setCollectionMeta] = useState(null);
+  const [collectionBusy, setCollectionBusy] = useState(false);
   const markerRefs = useRef(new Map());
 
   const defaultCenter = useMemo(() => [7.8731, 80.7718], []);
@@ -211,6 +239,9 @@ export default function MapPage() {
     setRoutePath(null);
     setRouteApproximate(false);
     setRouteTargetBinId(null);
+    setCollectionStops([]);
+    setCollectionMeta(null);
+    setDepotPickActive(false);
   }, []);
 
   const loadMap = useCallback(async () => {
@@ -369,8 +400,93 @@ export default function MapPage() {
     [clearNavigationUi]
   );
 
+  const runCollectionRoute = useCallback(() => {
+    clearNavigationUi();
+
+    const finishPlan = async (start) => {
+      setCollectionBusy(true);
+      try {
+        const plan = await fetchCollectionPlan(start, startMode);
+        if (!plan.stops?.length) {
+          setToast({
+            tone: "warn",
+            message: `No Half or Overflow bins to collect (${plan.excluded_empty_count || 0} empty bins excluded).`,
+          });
+          setUserLatLng(startMode === "gps" ? start : null);
+          if (startMode === "depot") setDepotLatLng(start);
+          return;
+        }
+        setCollectionStops(plan.stops);
+        setCollectionMeta({
+          excluded: plan.excluded_empty_count,
+          total: plan.total_stops,
+        });
+        if (startMode === "gps") setUserLatLng(start);
+        else setDepotLatLng(start);
+
+        const { path, approximate, distanceM, durationS } =
+          await fetchMultiStopDrivingRoute(start, plan.stops);
+        setRoutePath(path);
+        setRouteApproximate(approximate);
+        const mapsUrl = buildGoogleMapsMultiStopUrl(start, plan.stops);
+        setRouteSummary({
+          mode: "collection",
+          name: `${plan.total_stops} stops`,
+          distanceM,
+          durationS,
+          approximate,
+          mapsUrl,
+          stopCount: plan.total_stops,
+          excludedEmpty: plan.excluded_empty_count,
+        });
+      } catch (e) {
+        setToast({
+          tone: "error",
+          message: e.message || "Collection route failed.",
+        });
+      } finally {
+        setCollectionBusy(false);
+        setDepotPickActive(false);
+      }
+    };
+
+    if (startMode === "depot") {
+      if (!depotLatLng) {
+        setToast({
+          tone: "warn",
+          message: "Click the map to set a depot start point first.",
+        });
+        setDepotPickActive(true);
+        return;
+      }
+      finishPlan(depotLatLng);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setToast({
+        tone: "error",
+        message: "Geolocation is not supported in this browser.",
+      });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        finishPlan([pos.coords.latitude, pos.coords.longitude]);
+      },
+      () => {
+        setToast({
+          tone: "error",
+          message: "Location permission denied or unavailable.",
+        });
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }, [clearNavigationUi, startMode, depotLatLng]);
+
   const center = useMemo(() => {
     if (userLatLng) return userLatLng;
+    if (depotLatLng) return depotLatLng;
     if (binsOnMap.length) {
       let la = 0;
       let lo = 0;
@@ -382,7 +498,7 @@ export default function MapPage() {
       return [la / n, lo / n];
     }
     return defaultCenter;
-  }, [userLatLng, binsOnMap, defaultCenter]);
+  }, [userLatLng, depotLatLng, binsOnMap, defaultCenter]);
 
   const mapZoom = userLatLng ? 13 : binsOnMap.length ? 10 : 7;
 
@@ -406,29 +522,21 @@ export default function MapPage() {
       <div className="flex min-h-0 flex-1 flex-col gap-5 p-4 lg:p-6">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-ink-900">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-100">
               Map &amp; collection routes
             </h1>
-            <p className="mt-0.5 max-w-3xl text-sm text-ink-500">
-              Plan truck runs: see bins that need pickup soon, find the{" "}
-              <strong>nearest urgent</strong> stop from your current location
-              (driving preview), or locate the nearest bin with{" "}
-              <strong>spare capacity</strong> for disposal crews. Open Google Maps
-              for turn-by-turn navigation.
+            <p className="mt-0.5 max-w-3xl text-sm text-slate-400">
+              Use <strong className="text-slate-200">Generate collection route</strong> for
+              all Half + Overflow bins (empty excluded). Start from GPS or a depot pin.
+              Single-stop tools below for nearest urgent / capacity bins.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link
-              to="/live-monitoring"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-            >
+            <Link to="/live-monitoring" className={btnSecondary}>
               Live Monitoring
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-            >
+            <Link to="/dashboard" className={btnSecondary}>
               Dashboard
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -436,18 +544,23 @@ export default function MapPage() {
         </header>
 
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-800">
+          <span className="inline-flex items-center gap-2 rounded-lg border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-300">
+            <Truck className="h-3.5 w-3.5" />
+            <span className="uppercase tracking-wider opacity-80">Collection</span>
+            <span className="font-semibold">Half + Overflow</span>
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/25 px-3 py-1.5 text-xs font-medium text-red-300">
             <ListOrdered className="h-3.5 w-3.5" />
             <span className="uppercase tracking-wider opacity-70">Urgent</span>
             <span className="font-semibold">{urgentBins.length}</span>
           </span>
-          <span className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-ink-700">
+          <span className="inline-flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-slate-300">
             <Database className="h-3.5 w-3.5" />
             <span className="uppercase tracking-wider opacity-70">On map</span>
             <span className="font-semibold">{binsOnMap.length}</span>
           </span>
           {routeSummary ? (
-            <span className="inline-flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800">
+            <span className="inline-flex items-center gap-2 rounded-lg border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-300">
               <Truck className="h-3.5 w-3.5" />
               Route · {formatDistance(routeSummary.distanceM)}
             </span>
@@ -455,7 +568,7 @@ export default function MapPage() {
         </div>
 
         {error ? (
-          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${bannerTone("red")}`}>
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div>{error}</div>
           </div>
@@ -463,20 +576,18 @@ export default function MapPage() {
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 lg:grid-cols-[minmax(280px,380px)_1fr] lg:items-stretch">
           {/* Left column */}
-          <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto lg:max-h-[calc(100vh-11rem)] lg:pr-1">
             {toast ? (
               <div
                 className={`flex items-start justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${
-                  toast.tone === "error"
-                    ? "border-red-200 bg-red-50 text-red-800"
-                    : "border-amber-200 bg-amber-50 text-amber-900"
+                  toast.tone === "error" ? bannerTone("red") : bannerTone("amber")
                 }`}
                 role="status"
               >
                 <span>{toast.message}</span>
                 <button
                   type="button"
-                  className="shrink-0 rounded p-0.5 hover:bg-black/5"
+                  className="shrink-0 rounded p-0.5 hover:bg-white/5"
                   aria-label="Dismiss"
                   onClick={() => setToast(null)}
                 >
@@ -485,15 +596,126 @@ export default function MapPage() {
               </div>
             ) : null}
 
-            <Card className="min-h-0 !min-h-0 flex-shrink-0">
-              <Card.Header icon={Navigation} title="Route tools" />
+            <Card glow className="flex-shrink-0 shrink-0">
+              <Card.Header
+                icon={Truck}
+                title="Collection route"
+                subtitle="Multi-stop plan · smart + virtual bins"
+              />
+              <Card.Body className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-1 rounded-xl border border-slate-800/60 bg-slate-950/40 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setStartMode("gps")}
+                    className={[
+                      "flex-1 rounded-lg px-2 py-2 text-[11px] font-semibold",
+                      startMode === "gps"
+                        ? "bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/30"
+                        : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                    ].join(" ")}
+                  >
+                    My location
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartMode("depot");
+                      setDepotPickActive(true);
+                    }}
+                    className={[
+                      "flex-1 rounded-lg px-2 py-2 text-[11px] font-semibold",
+                      startMode === "depot"
+                        ? "bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/30"
+                        : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                    ].join(" ")}
+                  >
+                    Depot on map
+                  </button>
+                </div>
+                {startMode === "depot" ? (
+                  <p className="text-[11px] text-slate-400">
+                    {depotLatLng
+                      ? `Depot: ${depotLatLng[0].toFixed(5)}, ${depotLatLng[1].toFixed(5)}`
+                      : depotPickActive
+                        ? "Click the map to place the purple depot pin…"
+                        : "Choose Depot, then click the map to set start."}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={collectionBusy || loading}
+                  onClick={runCollectionRoute}
+                  className={`${btnPrimary} w-full`}
+                >
+                  <ListOrdered className="h-4 w-4" />
+                  {collectionBusy ? "Planning route…" : "Generate collection route"}
+                </button>
+                <p className="text-[11px] leading-snug text-slate-500">
+                  Includes all <strong className="text-slate-300">Half</strong> and{" "}
+                  <strong className="text-slate-300">Overflow</strong> bins. Empty bins
+                  are excluded. Priority: overflow → half.
+                </p>
+                {collectionMeta ? (
+                  <p className="text-[11px] font-semibold text-brand-400">
+                    {collectionMeta.total} stops · {collectionMeta.excluded} empty
+                    excluded
+                  </p>
+                ) : null}
+              </Card.Body>
+            </Card>
+
+            {collectionStops.length > 0 ? (
+              <Card className="flex-shrink-0 shrink-0">
+                <Card.Header
+                  icon={ListOrdered}
+                  title="Route stops"
+                  right={
+                    <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      {collectionStops.length} bins
+                    </span>
+                  }
+                />
+                <Card.Body className="max-h-48 overflow-y-auto !mt-2">
+                  <ul className="space-y-1.5">
+                    {collectionStops.map((stop) => {
+                      const tier = effectiveFillTier(stop);
+                      const tierKey = normalizeFill(tier) || "unknown";
+                      return (
+                        <li key={stop.id}>
+                          <button
+                            type="button"
+                            onClick={() => setFocusBinId(stop.id)}
+                            className="flex w-full items-center gap-2 rounded-lg border border-slate-800/60 bg-slate-950/40 px-2 py-1.5 text-left hover:border-brand-500/30 hover:bg-brand-500/10"
+                          >
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                              {stop.order}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-200">
+                              {stop.name}
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold capitalize ${fillBadge(tierKey)}`}
+                            >
+                              {fillLabel(tier === "unknown" ? "" : tier)}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </Card.Body>
+              </Card>
+            ) : null}
+
+            <Card className="min-h-0 shrink-0 flex-shrink-0">
+              <Card.Header icon={Navigation} title="Quick route tools" subtitle="Single nearest bin" />
               <Card.Body className="flex flex-col gap-2">
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     disabled={loading}
                     onClick={loadMap}
-                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-ink-700 hover:bg-slate-50 disabled:opacity-50 min-w-[120px]"
+                    className={`${btnSecondary} min-w-[120px] flex-1`}
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                     Refresh
@@ -501,7 +723,7 @@ export default function MapPage() {
                   <button
                     type="button"
                     onClick={() => runGeo("urgent")}
-                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 min-w-[140px]"
+                    className={`${btnPrimary} min-w-[140px] flex-1`}
                   >
                     <Truck className="h-3.5 w-3.5" />
                     Nearest urgent
@@ -510,124 +732,149 @@ export default function MapPage() {
                 <button
                   type="button"
                   onClick={() => runGeo("capacity")}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-ink-700 hover:bg-slate-50"
+                  className={`${btnSecondary} w-full`}
                 >
                   <MapPinned className="h-3.5 w-3.5" />
                   Nearest with spare capacity
                 </button>
-                {(routePath?.length || userLatLng) && (
+                {(routePath?.length || userLatLng || depotLatLng) && (
                   <button
                     type="button"
                     onClick={clearNavigationUi}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/15"
                   >
                     <XCircle className="h-3.5 w-3.5" />
                     Clear route &amp; location
                   </button>
                 )}
-                <p className="text-[11px] leading-snug text-ink-500">
+                <p className="text-[11px] leading-snug text-slate-500">
                   Uses your browser location once per action. Driving path preview
                   via{" "}
-                  <span className="font-medium text-ink-600">OSRM</span>; open
+                  <span className="font-medium text-slate-300">OSRM</span>; open
                   Google Maps for live traffic.
                 </p>
               </Card.Body>
             </Card>
 
             {routeSummary ? (
-              <Card className="flex-shrink-0 border-brand-200 bg-brand-50/40">
+              <Card className="flex-shrink-0 border-brand-500/30 bg-brand-500/5">
                 <Card.Header
                   icon={Truck}
                   title={
-                    routeSummary.mode === "urgent"
-                      ? "Suggested urgent pickup"
-                      : "Suggested bin (capacity)"
+                    routeSummary.mode === "collection"
+                      ? "Collection route ready"
+                      : routeSummary.mode === "urgent"
+                        ? "Suggested urgent pickup"
+                        : "Suggested bin (capacity)"
                   }
                   right={
-                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-700 ring-1 ring-brand-200">
+                    <span className="rounded-full border border-brand-500/30 bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-400">
                       Driving
                     </span>
                   }
                 />
                 <Card.Body className="space-y-2">
-                  <div className="text-lg font-bold text-ink-900">
+                  <div className="text-lg font-bold text-slate-100">
                     {routeSummary.name}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-ink-700 ring-1 ring-slate-200">
-                      ~{formatDistance(routeSummary.distanceM)}
+                    <span className={`${chipClass} font-semibold`}>
+                      {routeSummary.mode === "collection"
+                        ? formatRouteDistance(routeSummary.distanceM)
+                        : `~${formatDistance(routeSummary.distanceM)}`}
                     </span>
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-semibold capitalize ${fillBadgeClass(
-                        normalizeFill(routeSummary.fillTier) || "unknown"
-                      )}`}
-                    >
-                      {fillLabel(
-                        routeSummary.fillTier === "unknown"
-                          ? ""
-                          : routeSummary.fillTier
-                      )}
-                    </span>
-                    {routeSummary.risk ? (
-                      <span
-                        className={`rounded-full bg-white px-2 py-0.5 text-xs font-semibold ring-1 ring-slate-200 ${riskTextClass(routeSummary.risk)}`}
-                      >
-                        Risk {routeSummary.risk}
-                      </span>
-                    ) : null}
+                    {routeSummary.mode === "collection" ? (
+                      <>
+                        <span className={`${chipClass} font-semibold`}>
+                          {formatRouteDuration(routeSummary.durationS)}
+                        </span>
+                        <span className={`${chipClass} font-semibold`}>
+                          {routeSummary.stopCount} stops
+                        </span>
+                        {routeSummary.excludedEmpty ? (
+                          <span className={`${chipClass} text-slate-400`}>
+                            {routeSummary.excludedEmpty} empty skipped
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${fillBadge(
+                            normalizeFill(routeSummary.fillTier) || "unknown"
+                          )}`}
+                        >
+                          {fillLabel(
+                            routeSummary.fillTier === "unknown"
+                              ? ""
+                              : routeSummary.fillTier
+                          )}
+                        </span>
+                        {routeSummary.risk ? (
+                          <span
+                            className={`${chipClass} font-semibold ${riskTextClass(routeSummary.risk)}`}
+                          >
+                            Risk {routeSummary.risk}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
                   </div>
-                  {routeSummary.fillPct != null &&
+                  {routeSummary.mode !== "collection" &&
+                  routeSummary.fillPct != null &&
                   Number.isFinite(Number(routeSummary.fillPct)) ? (
-                    <p className="text-xs text-ink-600">
+                    <p className="text-xs text-slate-400">
                       Fill estimate:{" "}
-                      <span className="font-semibold">
+                      <span className="font-semibold text-slate-200">
                         {Math.round(Number(routeSummary.fillPct))}%
                       </span>
                       {" · "}
                       Urgency score:{" "}
-                      <span className="font-semibold">
+                      <span className="font-semibold text-slate-200">
                         {routeSummary.urgency}
                       </span>
                     </p>
                   ) : null}
                   {routeSummary.approximate ? (
-                    <p className="text-xs text-amber-800">
+                    <p className="text-xs text-amber-400">
                       Straight-line preview — open Maps for roads and traffic.
                     </p>
                   ) : (
-                    <p className="text-xs text-brand-800">
+                    <p className="text-xs text-brand-400">
                       Driving route preview on map (OpenStreetMap).
                     </p>
                   )}
-                  <a
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
-                    href={routeSummary.mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open in Google Maps
-                  </a>
+                  {routeSummary.mapsUrl ? (
+                    <a
+                      className={`${btnPrimary} w-full`}
+                      href={routeSummary.mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open in Google Maps
+                    </a>
+                  ) : null}
                 </Card.Body>
               </Card>
             ) : null}
 
-            <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <Card className="shrink-0 flex-shrink-0">
               <Card.Header
                 icon={ListOrdered}
                 title="Collect ASAP"
                 right={
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                     By urgency
                   </span>
                 }
               />
-              <Card.Body className="min-h-0 flex-1 overflow-y-auto !mt-2">
+              <Card.Body className="max-h-64 overflow-y-auto !mt-2">
                 {!binsOnMap.length && !loading ? (
-                  <p className="text-sm text-ink-500">
+                  <p className="text-sm text-slate-400">
                     No bins with coordinates. Add lat/lng in Admin.
                   </p>
                 ) : urgentBins.length === 0 ? (
-                  <p className="text-sm text-ink-500">
+                  <p className="text-sm text-slate-400">
                     No bins currently match urgent-collection rules. When bins
                     reach overflow, high fill %, or elevated risk, they appear
                     here automatically.
@@ -638,7 +885,7 @@ export default function MapPage() {
                       const tier = effectiveFillTier(b);
                       const tierKey = normalizeFill(tier) || "unknown";
                       const score = collectionUrgency(b);
-                      const band = urgencyBand(score);
+                      const band = urgencyBandDark(score);
                       const pct =
                         b.latest_fill_percentage != null &&
                         Number.isFinite(Number(b.latest_fill_percentage))
@@ -654,18 +901,18 @@ export default function MapPage() {
                           <button
                             type="button"
                             onClick={() => setFocusBinId(b.id)}
-                            className={`flex w-full flex-col gap-1 rounded-xl border px-3 py-2.5 text-left transition hover:bg-slate-50 ${
+                            className={`flex w-full flex-col gap-1 rounded-xl border px-3 py-2.5 text-left transition ${
                               activeRow
-                                ? "border-brand-400 bg-brand-50/60 ring-1 ring-brand-200"
-                                : "border-slate-200 bg-white"
+                                ? "border-brand-500/40 bg-brand-500/10 ring-1 ring-brand-500/30"
+                                : "border-slate-700/50 bg-slate-950/40 hover:border-slate-600/60 hover:bg-slate-900/40"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <span className="flex items-center gap-2 min-w-0">
-                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-bold text-white">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">
                                   {idx + 1}
                                 </span>
-                                <span className="truncate font-semibold text-ink-900">
+                                <span className="truncate font-semibold text-slate-100">
                                   {b.name}
                                 </span>
                               </span>
@@ -677,11 +924,11 @@ export default function MapPage() {
                             </div>
                             <div className="flex flex-wrap items-center gap-2 pl-8">
                               <span
-                                className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize ${fillBadgeClass(tierKey)}`}
+                                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${fillBadge(tierKey)}`}
                               >
                                 {fillLabel(tier === "unknown" ? "" : tier)}
                               </span>
-                              <span className="text-[11px] text-ink-500">
+                              <span className="text-[11px] text-slate-400">
                                 Fill {pct}
                               </span>
                               {b.latest_risk_level ? (
@@ -691,19 +938,19 @@ export default function MapPage() {
                                   {b.latest_risk_level}
                                 </span>
                               ) : null}
-                              <span className="text-[11px] text-ink-400">
+                              <span className="text-[11px] text-slate-500">
                                 {relativeCapture(b.latest_captured_at)}
                               </span>
                             </div>
-                            <div className="pl-8 flex items-center gap-2">
+                            <div className="flex items-center gap-2 pl-8">
                               <Link
                                 to={`/bins/${b.id}`}
-                                className="text-[11px] font-semibold text-brand-700 hover:text-brand-600"
+                                className="text-[11px] font-semibold text-brand-400 hover:text-brand-300"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 Bin details →
                               </Link>
-                              <span className="text-[11px] text-ink-400">
+                              <span className="text-[11px] text-slate-500">
                                 Score {score}
                               </span>
                             </div>
@@ -723,7 +970,7 @@ export default function MapPage() {
             <Card className="max-h-[240px] flex-shrink-0 flex flex-col overflow-hidden">
               <Card.Header icon={Database} title="All bins on map" />
               <Card.Body className="min-h-0 flex-1 overflow-y-auto !mt-2">
-                <ul className="divide-y divide-slate-100">
+                <ul className="divide-y divide-slate-700/40">
                   {sortedAllByUrgency.map((b) => {
                     const tier = effectiveFillTier(b);
                     const tierKey = normalizeFill(tier) || "unknown";
@@ -737,18 +984,18 @@ export default function MapPage() {
                         <button
                           type="button"
                           onClick={() => setFocusBinId(b.id)}
-                          className="flex w-full items-center justify-between gap-2 py-2 text-left hover:bg-slate-50"
+                          className="flex w-full items-center justify-between gap-2 py-2 text-left transition hover:bg-slate-900/40"
                         >
-                          <span className="truncate text-sm font-medium text-ink-900">
+                          <span className="truncate text-sm font-medium text-slate-100">
                             {b.name}
                           </span>
-                          <span className="flex items-center gap-2 shrink-0">
+                          <span className="flex shrink-0 items-center gap-2">
                             <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${fillBadgeClass(tierKey)}`}
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${fillBadge(tierKey)}`}
                             >
                               {fillLabel(tier === "unknown" ? "" : tier)}
                             </span>
-                            <span className="text-xs tabular-nums text-ink-500 w-10 text-right">
+                            <span className="w-10 text-right text-xs tabular-nums text-slate-400">
                               {pct}
                             </span>
                           </span>
@@ -762,7 +1009,7 @@ export default function MapPage() {
           </div>
 
           {/* Map */}
-          <div className="relative min-h-[min(62vh,560px)] overflow-hidden rounded-xl border border-slate-200 bg-slate-100 lg:min-h-[calc(100vh-220px)]">
+          <div className="relative min-h-[min(62vh,560px)] overflow-hidden rounded-xl border border-slate-800/60 bg-slate-950 lg:min-h-[calc(100vh-220px)]">
             <MapContainer
               center={center}
               zoom={mapZoom}
@@ -770,7 +1017,14 @@ export default function MapPage() {
               className="z-0"
               style={{ height: "100%", width: "100%", minHeight: "min(62vh,560px)" }}
             >
-              <TileLayer attribution={TILE_ATTR} url={TILE_URL} />
+              <TileLayer attribution={TILE_ATTR} url={MAP_TILE_DARK} />
+              <MapDepotPicker
+                active={depotPickActive && startMode === "depot"}
+                onPick={(lat, lng) => {
+                  setDepotLatLng([lat, lng]);
+                  setDepotPickActive(false);
+                }}
+              />
               {flyTarget ? (
                 <FlyTo center={flyTarget.center} zoom={flyTarget.zoom} />
               ) : null}
@@ -791,6 +1045,28 @@ export default function MapPage() {
                 </>
               ) : null}
 
+              {depotLatLng ? (
+                <CircleMarker
+                  center={depotLatLng}
+                  radius={11}
+                  pathOptions={{
+                    color: "#fff",
+                    weight: 3,
+                    fillColor: "#a855f7",
+                    fillOpacity: 1,
+                  }}
+                >
+                  <Popup>
+                    <div className="text-xs font-semibold text-slate-100">
+                      Depot start
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      Collection route begins here
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              ) : null}
+
               {userLatLng ? (
                 <CircleMarker
                   center={userLatLng}
@@ -803,10 +1079,10 @@ export default function MapPage() {
                   }}
                 >
                   <Popup>
-                    <div className="text-xs font-semibold text-ink-900">
+                    <div className="text-xs font-semibold text-slate-100">
                       Truck / crew location
                     </div>
-                    <div className="text-[11px] text-ink-500">
+                    <div className="text-[11px] text-slate-400">
                       Used for nearest-stop routing
                     </div>
                   </Popup>
@@ -835,11 +1111,15 @@ export default function MapPage() {
                 const tier = effectiveFillTier(b);
                 const tierKey = normalizeFill(tier) || "unknown";
                 const urgent = needsCollectionSoon(b);
+                const virtual = isVirtualBin(b);
                 const isRouteTarget =
                   routeTargetBinId != null &&
                   Number(b.id) === Number(routeTargetBinId);
                 const isFocused =
                   focusBinId != null && Number(b.id) === Number(focusBinId);
+                const routeStop = collectionStops.find(
+                  (s) => Number(s.id) === Number(b.id)
+                );
                 const fillPctText =
                   b.latest_fill_percentage != null &&
                   Number.isFinite(Number(b.latest_fill_percentage))
@@ -851,7 +1131,15 @@ export default function MapPage() {
                     key={b.id}
                     center={[Number(b.latitude), Number(b.longitude)]}
                     radius={
-                      isRouteTarget ? 14 : urgent ? 12 : isFocused ? 11 : 9
+                      routeStop
+                        ? 13
+                        : isRouteTarget
+                          ? 14
+                          : urgent
+                            ? 12
+                            : isFocused
+                              ? 11
+                              : 9
                     }
                     pathOptions={{
                       color:
@@ -859,6 +1147,7 @@ export default function MapPage() {
                       weight: isRouteTarget || isFocused ? 3 : 2,
                       fillColor: markerFillFromBin(b),
                       fillOpacity: 0.95,
+                      dashArray: virtual ? "4 6" : undefined,
                     }}
                     ref={(ref) => {
                       if (ref) markerRefs.current.set(b.id, ref);
@@ -874,59 +1163,69 @@ export default function MapPage() {
                     <Popup>
                       <div className="min-w-[200px] text-xs leading-tight">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-bold text-ink-900">
+                          <span className="text-sm font-bold text-slate-100">
                             {b.name}
                           </span>
                           {isRouteTarget ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 ring-1 ring-brand-200">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-brand-500/30 bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold text-brand-400">
                               <Crosshair className="h-2.5 w-2.5" />
                               Route target
                             </span>
                           ) : urgent ? (
-                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                            <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-400">
                               Urgent
                             </span>
                           ) : null}
                         </div>
                         {b.location ? (
-                          <div className="mt-0.5 text-[11px] text-ink-500">
+                          <div className="mt-0.5 text-[11px] text-slate-400">
                             {b.location}
+                          </div>
+                        ) : null}
+                        {virtual ? (
+                          <div className="mt-1 text-[10px] font-semibold text-violet-400">
+                            Virtual bin · manual fill
+                          </div>
+                        ) : null}
+                        {routeStop ? (
+                          <div className="mt-1 text-[10px] font-semibold text-brand-400">
+                            Route stop #{routeStop.order}
                           </div>
                         ) : null}
                         {b.latest_image_url ? (
                           <img
-                            className="mt-2 max-h-24 w-full rounded-lg object-cover ring-1 ring-slate-200"
+                            className="mt-2 max-h-24 w-full rounded-lg object-cover ring-1 ring-slate-700/50"
                             src={b.latest_image_url}
                             alt=""
                           />
                         ) : null}
                         <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
-                          <span className="text-ink-500">Fill</span>
-                          <span className="font-semibold">
+                          <span className="text-slate-400">Fill</span>
+                          <span className="font-semibold text-slate-200">
                             <span
-                              className={`mr-1 rounded border px-1.5 py-0.5 text-[10px] capitalize ${fillBadgeClass(tierKey)}`}
+                              className={`mr-1 rounded px-1.5 py-0.5 text-[10px] capitalize ${fillBadge(tierKey)}`}
                             >
                               {fillLabel(tier === "unknown" ? "" : tier)}
                             </span>
                             {fillPctText}
                           </span>
-                          <span className="text-ink-500">Risk</span>
+                          <span className="text-slate-400">Risk</span>
                           <span
                             className={`font-semibold ${riskTextClass(b.latest_risk_level)}`}
                           >
                             {b.latest_risk_level || "—"}
                           </span>
-                          <span className="text-ink-500">Urgency</span>
-                          <span className="font-semibold">
+                          <span className="text-slate-400">Urgency</span>
+                          <span className="font-semibold text-slate-200">
                             {collectionUrgency(b)}
                           </span>
-                          <span className="text-ink-500">Updated</span>
-                          <span className="font-medium">
+                          <span className="text-slate-400">Updated</span>
+                          <span className="font-medium text-slate-300">
                             {relativeCapture(b.latest_captured_at)}
                           </span>
                         </div>
                         <Link
-                          className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-700"
+                          className={`${btnPrimary} mt-3 w-full py-1.5 text-[12px]`}
                           to={`/bins/${b.id}`}
                         >
                           Bin details
@@ -938,30 +1237,30 @@ export default function MapPage() {
               })}
             </MapContainer>
 
-            <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-card backdrop-blur-sm">
+            <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-lg border border-slate-700/60 bg-slate-900/95 px-3 py-2 shadow-lg backdrop-blur-sm">
               <div className="pointer-events-auto">
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                   Legend
                 </div>
                 <ul className="space-y-1">
                   {LEGEND.map((l) => (
                     <li
                       key={l.label}
-                      className="flex items-center gap-2 text-[11px] text-ink-700"
+                      className="flex items-center gap-2 text-[11px] text-slate-300"
                     >
                       <span
-                        className="inline-block h-2.5 w-2.5 rounded-full ring-2 ring-white"
+                        className="inline-block h-2.5 w-2.5 rounded-full ring-2 ring-slate-800"
                         style={{ backgroundColor: l.color }}
                       />
                       {l.label}
                     </li>
                   ))}
-                  <li className="flex items-center gap-2 border-t border-slate-100 pt-1 text-[11px] text-ink-700">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-white" />
+                  <li className="flex items-center gap-2 border-t border-slate-700/50 pt-1 text-[11px] text-slate-300">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-slate-800" />
                     Your location
                   </li>
-                  <li className="flex items-center gap-2 text-[11px] text-ink-700">
-                    <span className="inline-block h-3 w-3 rounded-full border-2 border-brand-600 bg-transparent" />
+                  <li className="flex items-center gap-2 text-[11px] text-slate-300">
+                    <span className="inline-block h-3 w-3 rounded-full border-2 border-brand-500 bg-transparent" />
                     Route target ring
                   </li>
                 </ul>

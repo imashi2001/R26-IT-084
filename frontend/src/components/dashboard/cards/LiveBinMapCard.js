@@ -8,25 +8,13 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import axios from "axios";
-import { Map as MapIcon, Database } from "lucide-react";
+import { Map as MapIcon, Database, ExternalLink } from "lucide-react";
 import Card from "../Card";
+import { MAP_TILE_DARK } from "../dashboardTheme";
 import { apiUrl } from "../../../utils/apiBase";
 import { markerFillFromBin, fillLabel } from "../../../utils/fillTier";
+import { isVirtualBin } from "../../../utils/collectionRoute";
 
-/*
- * Live Bin Map card.
- *
- * Mirrors the MapPage's data fetch (`GET /devices/map`) but uses a smaller
- * fixed-height map sized for the dashboard grid. Markers are CircleMarkers
- * colored by the same `fillTier.js` palette teammate Charuka established, so
- * legend stays consistent across pages.
- *
- * 503 (DB off) is handled by rendering an empty-state with a CTA hint instead
- * of a red error - lots of demo deployments will run without Postgres.
- */
-
-const TILE_URL =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const TILE_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
@@ -94,45 +82,54 @@ export default function LiveBinMapCard() {
   const hasBins = bins.length > 0;
 
   return (
-    <Card className="min-h-[320px]">
+    <Card className="h-full">
       <Card.Header
         icon={MapIcon}
-        accent="text-sky-500"
+        accent="text-sky-400"
         title="Live Bin Map"
+        subtitle="Colombo region · color-coded by fill risk"
         right={
-          <span className="text-[11px] font-medium text-ink-400">
-            {hasBins ? `${bins.length} bin${bins.length === 1 ? "" : "s"}` : ""}
-          </span>
+          <Link
+            to="/map"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-400 hover:text-brand-300"
+          >
+            View Full Map
+            <ExternalLink className="h-3 w-3" />
+          </Link>
         }
       />
 
-      <Card.Body className="relative overflow-hidden rounded-lg bg-slate-100">
+      <Card.Body className="flex min-h-0 flex-1 flex-col p-0">
+        <div className="relative min-h-[14rem] flex-1 overflow-hidden rounded-xl border border-slate-800/60 bg-slate-950/60">
         {dbDisabled ? (
-          <div className="flex h-64 flex-col items-center justify-center gap-2 text-center text-sm text-ink-500">
-            <Database className="h-6 w-6 text-ink-400" />
-            <div className="font-medium text-ink-700">DB not configured</div>
+          <div className="flex h-full min-h-[14rem] flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-500">
+            <Database className="h-6 w-6 text-slate-600" />
+            <div className="font-medium text-slate-300">DB not configured</div>
             <div className="text-xs">
-              Set <code className="rounded bg-slate-200 px-1">DATABASE_URL</code>{" "}
+              Set{" "}
+              <code className="rounded bg-slate-800 px-1 text-brand-400">
+                DATABASE_URL
+              </code>{" "}
               on the backend to register bins and see them here.
             </div>
           </div>
         ) : error ? (
-          <div className="flex h-64 items-center justify-center text-sm text-red-600">
+          <div className="flex h-full min-h-[14rem] items-center justify-center text-sm text-red-400">
             {error}
           </div>
         ) : !hasBins && !loading ? (
-          <div className="flex h-64 items-center justify-center text-sm text-ink-500">
+          <div className="flex h-full min-h-[14rem] items-center justify-center text-sm text-slate-500">
             No bins registered yet. Add one from the Admin page.
           </div>
         ) : (
-          <div className="h-64">
+          <div className="absolute inset-0 [&_.leaflet-container]:h-full [&_.leaflet-container]:rounded-xl [&_.leaflet-container]:bg-slate-950">
             <MapContainer
               center={SRI_LANKA_CENTER}
               zoom={7}
               scrollWheelZoom={false}
               style={{ height: "100%", width: "100%" }}
             >
-              <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
+              <TileLayer url={MAP_TILE_DARK} attribution={TILE_ATTR} />
               {bins.map((b) => {
                 if (
                   b.latitude == null ||
@@ -143,6 +140,7 @@ export default function LiveBinMapCard() {
                   return null;
                 }
                 const color = markerFillFromBin(b);
+                const virtual = isVirtualBin(b);
                 const fillPctText =
                   b.latest_fill_percentage != null
                     ? `${Math.round(b.latest_fill_percentage)}%`
@@ -157,6 +155,7 @@ export default function LiveBinMapCard() {
                       weight: 2,
                       fillColor: color,
                       fillOpacity: 0.95,
+                      dashArray: virtual ? "4 6" : undefined,
                     }}
                   >
                     <Popup>
@@ -164,21 +163,26 @@ export default function LiveBinMapCard() {
                         <div className="text-sm font-bold">
                           {b.name || `BIN${b.id}`}
                         </div>
+                        {virtual ? (
+                          <div className="text-[10px] font-semibold text-violet-600">
+                            Virtual · manual fill
+                          </div>
+                        ) : null}
                         {b.location ? (
-                          <div className="text-[11px] text-ink-500">
+                          <div className="text-[11px] text-slate-500">
                             {b.location}
                           </div>
                         ) : null}
                         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
-                          <span className="text-ink-500">Fill</span>
+                          <span className="text-slate-500">Fill</span>
                           <span className="font-semibold">
                             {fillLabel(b.latest_fill_level)} · {fillPctText}
                           </span>
-                          <span className="text-ink-500">Risk</span>
+                          <span className="text-slate-500">Risk</span>
                           <span className="font-semibold">
                             {b.latest_risk_level || "—"}
                           </span>
-                          <span className="text-ink-500">Updated</span>
+                          <span className="text-slate-500">Updated</span>
                           <span>{formatTs(b.latest_captured_at)}</span>
                         </div>
                         <Link
@@ -195,6 +199,12 @@ export default function LiveBinMapCard() {
             </MapContainer>
           </div>
         )}
+        {hasBins ? (
+          <div className="absolute right-2 top-2 rounded-lg border border-slate-700/60 bg-slate-900/90 px-2 py-1 text-[10px] font-medium text-slate-400 backdrop-blur-sm">
+            {bins.length} bin{bins.length === 1 ? "" : "s"}
+          </div>
+        ) : null}
+        </div>
       </Card.Body>
 
       <Card.Footer>
@@ -202,8 +212,11 @@ export default function LiveBinMapCard() {
           {LEGEND.map((l) => (
             <div key={l.tier} className="flex items-center gap-1.5">
               <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: l.color }}
+                className="inline-block h-2.5 w-2.5 rounded-full shadow-sm"
+                style={{
+                  backgroundColor: l.color,
+                  boxShadow: `0 0 6px ${l.color}88`,
+                }}
               />
               <span>{l.label}</span>
             </div>

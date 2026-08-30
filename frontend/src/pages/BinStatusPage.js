@@ -1,13 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  MapContainer,
-  TileLayer,
-  CircleMarker,
-  useMapEvents,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import {
   Database,
   PlusCircle,
   Pencil,
@@ -22,7 +15,6 @@ import {
   AlertTriangle,
   ChevronRight,
   Save,
-  Crosshair,
   CircleAlert,
   CircleCheck,
   Settings as SettingsIcon,
@@ -31,6 +23,20 @@ import {
 
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
+import BinLocationPicker from "../components/bins/BinLocationPicker";
+import {
+  inputClass,
+  selectClass,
+  labelClass,
+  btnPrimary,
+  btnSecondary,
+  btnGhost,
+  fillBadgeClass,
+  statusBadgeClass,
+  riskBadgeClass,
+  bannerTone,
+  summaryTone,
+} from "../components/bins/binStatusUi";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../utils/apiBase";
 import {
@@ -86,48 +92,25 @@ const SORT_OPTIONS = [
   { id: "captured_at", label: "Last update (newest)" },
 ];
 
+const MANUAL_FILL_OPTIONS = [
+  { id: "Empty", label: "Empty" },
+  { id: "Half", label: "Half" },
+  { id: "Overflow", label: "Overflow" },
+];
+
+const FORM_STEPS_SMART = [
+  { id: "details", label: "Bin details", icon: Database },
+  { id: "location", label: "Location", icon: MapPin },
+  { id: "device", label: "Device link", icon: Cpu },
+];
+
+const FORM_STEPS_VIRTUAL = [
+  { id: "details", label: "Bin details", icon: Database },
+  { id: "location", label: "Location", icon: MapPin },
+  { id: "fill", label: "Manual fill", icon: Activity },
+];
+
 /* ============================ helpers ============================ */
-
-function fillBadgeClass(tierKey) {
-  switch (tierKey) {
-    case "overflow":
-      return "bg-red-50 text-red-700 border-red-200";
-    case "half":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "empty":
-      return "bg-brand-50 text-brand-700 border-brand-200";
-    default:
-      return "bg-slate-100 text-ink-500 border-slate-200";
-  }
-}
-
-function statusBadgeClass(status) {
-  switch ((status || "").toLowerCase()) {
-    case "active":
-      return "bg-brand-50 text-brand-700 border-brand-200";
-    case "maintenance":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "inactive":
-      return "bg-slate-100 text-ink-500 border-slate-200";
-    default:
-      return "bg-slate-100 text-ink-500 border-slate-200";
-  }
-}
-
-function riskBadgeClass(level) {
-  switch ((level || "").toUpperCase()) {
-    case "CRITICAL":
-      return "bg-red-100 text-red-800 border-red-200";
-    case "HIGH":
-      return "bg-red-50 text-red-700 border-red-200";
-    case "MEDIUM":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "LOW":
-      return "bg-brand-50 text-brand-700 border-brand-200";
-    default:
-      return "bg-slate-100 text-ink-500 border-slate-200";
-  }
-}
 
 function parseTs(v) {
   if (!v) return 0;
@@ -145,25 +128,20 @@ function relativeFromNow(iso) {
   return `${Math.round(diff / 86400_000)}d ago`;
 }
 
-function MapClickHandler({ onPick }) {
-  useMapEvents({
-    click(e) {
-      onPick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
 const EMPTY_FORM = {
+  binType: "smart",
   name: "",
   esp32Id: "",
   bridgeInstanceId: "",
+  cameraBaseUrl: "",
   status: "active",
   locationLabel: "",
   address: "",
   latitude: "",
   longitude: "",
   geoQuery: "",
+  manualFillLevel: "Half",
+  manualFillPct: "",
 };
 
 /* ============================ page ============================ */
@@ -184,6 +162,7 @@ export default function BinStatusPage() {
   const [sortBy, setSortBy] = useState("urgency");
 
   const [editingId, setEditingId] = useState(null);
+  const [formStep, setFormStep] = useState("details");
   const [form, setForm] = useState(EMPTY_FORM);
   const [formMsg, setFormMsg] = useState(null);
   const [formError, setFormError] = useState(null);
@@ -191,6 +170,10 @@ export default function BinStatusPage() {
   const [audioBusyId, setAudioBusyId] = useState(null);
   const [stopBusyId, setStopBusyId] = useState(null);
   const [audioMsgs, setAudioMsgs] = useState({});
+
+  const isVirtualForm = form.binType === "virtual";
+  const formSteps = isVirtualForm ? FORM_STEPS_VIRTUAL : FORM_STEPS_SMART;
+  const lastFormStep = isVirtualForm ? "fill" : "device";
 
   /* ----- data ----- */
 
@@ -376,6 +359,7 @@ export default function BinStatusPage() {
 
   const resetForm = useCallback(() => {
     setEditingId(null);
+    setFormStep("details");
     setForm(EMPTY_FORM);
     setFormMsg(null);
     setFormError(null);
@@ -383,10 +367,13 @@ export default function BinStatusPage() {
 
   const startEdit = (d) => {
     setEditingId(d.id);
+    setFormStep("details");
     setForm({
+      binType: (d.bin_type || "smart").toLowerCase() === "virtual" ? "virtual" : "smart",
       name: d.name || "",
       esp32Id: d.esp32_id || "",
       bridgeInstanceId: d.bridge_instance_id || "",
+      cameraBaseUrl: d.camera_base_url || "",
       status: d.status || "active",
       locationLabel: d.location || "",
       address: d.address || "",
@@ -398,7 +385,14 @@ export default function BinStatusPage() {
         d.longitude != null && Number.isFinite(Number(d.longitude))
           ? String(d.longitude)
           : "",
-      geoQuery: "",
+      geoQuery: d.address || d.location || "",
+      manualFillLevel: d.manual_fill_level || d.latest_fill_level || "Half",
+      manualFillPct:
+        d.manual_fill_percentage != null
+          ? String(d.manual_fill_percentage)
+          : d.latest_fill_percentage != null
+            ? String(d.latest_fill_percentage)
+            : "",
     });
     setFormMsg(null);
     setFormError(null);
@@ -409,32 +403,6 @@ export default function BinStatusPage() {
 
   const updateField = (key, value) => {
     setForm((f) => ({ ...f, [key]: value }));
-  };
-
-  const onGeocode = async () => {
-    setFormError(null);
-    setFormMsg(null);
-    const q = form.geoQuery.trim();
-    if (!q) return;
-    try {
-      const res = await fetch(apiUrl(`/geo/search?q=${encodeURIComponent(q)}`));
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      const results = Array.isArray(body.results) ? body.results : [];
-      if (!results.length) {
-        setFormMsg("No results.");
-        return;
-      }
-      const top = results[0];
-      setForm((f) => ({
-        ...f,
-        latitude: String(top.latitude),
-        longitude: String(top.longitude),
-      }));
-      setFormMsg(`Pinned: ${top.label}`);
-    } catch (err) {
-      setFormError(err.message || "Geocode failed.");
-    }
   };
 
   const onSaveDevice = async (e) => {
@@ -459,23 +427,71 @@ export default function BinStatusPage() {
       setFormError(
         "Latitude and longitude must be valid numbers (or leave blank)."
       );
+      setFormStep("location");
+      return;
+    }
+    if (lat !== null && (lat < -90 || lat > 90)) {
+      setFormError("Latitude must be between -90 and 90.");
+      setFormStep("location");
+      return;
+    }
+    if (lng !== null && (lng < -180 || lng > 180)) {
+      setFormError("Longitude must be between -180 and 180.");
+      setFormStep("location");
       return;
     }
     if (!form.name.trim()) {
       setFormError("Bin name is required.");
+      setFormStep("details");
       return;
+    }
+
+    if (form.binType === "virtual") {
+      if (lat == null || lng == null) {
+        setFormError("Virtual bins require map coordinates.");
+        setFormStep("location");
+        return;
+      }
+      if (!form.manualFillLevel) {
+        setFormError("Select a manual fill level for virtual bins.");
+        setFormStep("fill");
+        return;
+      }
     }
 
     const payload = {
       name: form.name.trim(),
       status: form.status,
-      esp32_id: form.esp32Id.trim() || null,
-      bridge_instance_id: form.bridgeInstanceId.trim() || null,
+      bin_type: form.binType,
       location: form.locationLabel.trim() || null,
       address: form.address.trim() || null,
       latitude: lat,
       longitude: lng,
     };
+
+    if (form.binType === "virtual") {
+      payload.manual_fill_level = form.manualFillLevel;
+      const pctRaw = form.manualFillPct.trim();
+      payload.manual_fill_percentage =
+        pctRaw === "" ? null : Number(pctRaw);
+      if (
+        payload.manual_fill_percentage != null &&
+        (!Number.isFinite(payload.manual_fill_percentage) ||
+          payload.manual_fill_percentage < 0 ||
+          payload.manual_fill_percentage > 100)
+      ) {
+        setFormError("Fill percentage must be between 0 and 100.");
+        setFormStep("fill");
+        return;
+      }
+      payload.esp32_id = null;
+      payload.bridge_instance_id = null;
+      payload.camera_base_url = null;
+    } else {
+      payload.esp32_id = form.esp32Id.trim() || null;
+      payload.bridge_instance_id = form.bridgeInstanceId.trim() || null;
+      payload.camera_base_url = form.cameraBaseUrl.trim().replace(/\/+$/, "") || null;
+    }
 
     setBusy(true);
     try {
@@ -525,15 +541,6 @@ export default function BinStatusPage() {
     setSortBy("urgency");
   };
 
-  /* ----- map preview center ----- */
-
-  const mapCenter = useMemo(() => {
-    const lat = Number(form.latitude);
-    const lng = Number(form.longitude);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
-    return [7.8731, 80.7718];
-  }, [form.latitude, form.longitude]);
-
   return (
     <DashboardLayout>
       <div className="space-y-6 p-4 lg:p-6">
@@ -580,80 +587,74 @@ export default function BinStatusPage() {
 
         <SummaryRow summary={summary} />
 
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_minmax(360px,420px)]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_minmax(400px,480px)]">
           {/* LEFT: list */}
           <div className="space-y-5">
             <Card>
               <Card.Header
-                icon={Search}
-                title="Search & filters"
-                right={
-                  query || statusFilter !== "all" || fillFilter !== "all" || riskFilter !== "all" ? (
-                    <button
-                      type="button"
-                      onClick={clearFilters}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-ink-600 hover:bg-slate-50"
-                    >
-                      <XCircle className="h-3 w-3" />
-                      Clear
-                    </button>
-                  ) : null
-                }
-              />
-              <Card.Body className="space-y-3">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by name, ESP32 ID, location, address…"
-                    className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <SelectField
-                    label="Status"
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    options={[
-                      { id: "all", label: "All statuses" },
-                      ...STATUS_OPTIONS.map((s) => ({ id: s, label: s })),
-                    ]}
-                  />
-                  <SelectField
-                    label="Fill"
-                    value={fillFilter}
-                    onChange={setFillFilter}
-                    options={FILL_FILTERS}
-                  />
-                  <SelectField
-                    label="Risk"
-                    value={riskFilter}
-                    onChange={setRiskFilter}
-                    options={RISK_FILTERS}
-                  />
-                  <SelectField
-                    label="Sort"
-                    value={sortBy}
-                    onChange={setSortBy}
-                    options={SORT_OPTIONS}
-                  />
-                </div>
-              </Card.Body>
-            </Card>
-
-            <Card>
-              <Card.Header
                 icon={Database}
                 title={editingId ? "Bins" : "Bin registry"}
+                subtitle="Search and filter the list — edit or add bins using the panel on the right."
                 right={
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-                    {filtered.length} / {devices.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {query ||
+                    statusFilter !== "all" ||
+                    fillFilter !== "all" ||
+                    riskFilter !== "all" ? (
+                      <button type="button" onClick={clearFilters} className={btnGhost}>
+                        <XCircle className="h-3 w-3" />
+                        Clear
+                      </button>
+                    ) : null}
+                    <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      {filtered.length} / {devices.length}
+                    </span>
+                  </div>
                 }
               />
-              <Card.Body className="!mt-2">
+              <Card.Body className="!mt-2 space-y-3">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                  <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-950/50 px-3 py-2">
+                    <Search className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type="search"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search bins…"
+                      className="w-full border-0 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <CompactFilterSelect
+                      label="Status"
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                      options={[
+                        { id: "all", label: "All statuses" },
+                        ...STATUS_OPTIONS.map((s) => ({ id: s, label: s })),
+                      ]}
+                    />
+                    <CompactFilterSelect
+                      label="Fill"
+                      value={fillFilter}
+                      onChange={setFillFilter}
+                      options={FILL_FILTERS}
+                    />
+                    <CompactFilterSelect
+                      label="Risk"
+                      value={riskFilter}
+                      onChange={setRiskFilter}
+                      options={RISK_FILTERS}
+                    />
+                    <CompactFilterSelect
+                      label="Sort"
+                      value={sortBy}
+                      onChange={setSortBy}
+                      options={SORT_OPTIONS}
+                    />
+                  </div>
+                </div>
+
                 {loading ? (
                   <ListSkeleton />
                 ) : devices.length === 0 ? (
@@ -687,24 +688,21 @@ export default function BinStatusPage() {
                 )}
               </Card.Body>
               <Card.Footer>
-                Bins are sourced from <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">GET /devices?latest=1</code>. Latest fill / risk reflects the most recent capture from any model.
+                Bins are sourced from <code className="rounded bg-slate-800/80 px-1 py-0.5 text-[10px] text-brand-400">GET /devices?latest=1</code>. Latest fill / risk reflects the most recent capture from any model.
               </Card.Footer>
             </Card>
           </div>
 
-          {/* RIGHT: form + map */}
-          <div className="space-y-5">
-            <Card id="bin-form">
+          {/* RIGHT: add / edit form */}
+          <div id="bin-form" className="space-y-5">
+            <Card glow={Boolean(editingId)}>
               <Card.Header
                 icon={editingId ? Pencil : PlusCircle}
                 title={editingId ? `Edit bin #${editingId}` : "Register new bin"}
+                subtitle="Complete each section — use map, address search, or coordinates for location."
                 right={
                   editingId ? (
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-ink-600 hover:bg-slate-50"
-                    >
+                    <button type="button" onClick={resetForm} className={btnGhost}>
                       <XCircle className="h-3 w-3" />
                       Cancel edit
                     </button>
@@ -716,7 +714,7 @@ export default function BinStatusPage() {
                   <Banner
                     tone="red"
                     icon={CircleAlert}
-                    title="Save failed"
+                    title="Could not save"
                     body={formError}
                     compact
                   />
@@ -725,197 +723,253 @@ export default function BinStatusPage() {
                   <Banner
                     tone="brand"
                     icon={CircleCheck}
-                    title="Saved"
+                    title="Success"
                     body={formMsg}
                     compact
                   />
                 ) : null}
 
-                <form className="space-y-3 mt-3" onSubmit={onSaveDevice}>
-                  <FieldRow
-                    label="Bin name"
-                    required
-                    value={form.name}
-                    onChange={(v) => updateField("name", v)}
-                    placeholder="e.g. Faculty Gate Bin"
-                    disabled={!isAdmin || busy}
-                  />
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <SelectField
-                      label="Status"
-                      value={form.status}
-                      onChange={(v) => updateField("status", v)}
-                      options={STATUS_OPTIONS.map((s) => ({ id: s, label: s }))}
+                {!editingId ? (
+                  <div className="mt-3 flex flex-wrap gap-1 rounded-xl border border-slate-800/60 bg-slate-950/40 p-1">
+                    <button
+                      type="button"
                       disabled={!isAdmin || busy}
-                    />
-                    <FieldRow
-                      label="ESP32 ID"
-                      helperRight="(bridge DEVICE_ESP32_ID)"
-                      value={form.esp32Id}
-                      onChange={(v) => updateField("esp32Id", v)}
-                      placeholder="ESP32_xxxxxx"
+                      onClick={() => {
+                        updateField("binType", "smart");
+                        if (formStep === "fill") setFormStep("device");
+                      }}
+                      className={[
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold transition sm:flex-none",
+                        form.binType === "smart"
+                          ? "bg-brand-500/15 text-brand-400 ring-1 ring-brand-500/25"
+                          : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                      ].join(" ")}
+                    >
+                      <Cpu className="h-3.5 w-3.5" />
+                      Smart bin
+                    </button>
+                    <button
+                      type="button"
                       disabled={!isAdmin || busy}
-                    />
+                      onClick={() => {
+                        updateField("binType", "virtual");
+                        if (formStep === "device") setFormStep("fill");
+                      }}
+                      className={[
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold transition sm:flex-none",
+                        form.binType === "virtual"
+                          ? "bg-brand-500/15 text-brand-400 ring-1 ring-brand-500/25"
+                          : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                      ].join(" ")}
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                      Virtual bin
+                    </button>
                   </div>
-                  <FieldRow
-                    label="Bridge / laptop ID"
-                    helperRight="(optional)"
-                    value={form.bridgeInstanceId}
-                    onChange={(v) => updateField("bridgeInstanceId", v)}
-                    placeholder="BRIDGE_xxxxxxxxxxxx"
-                    autoComplete="off"
-                    disabled={!isAdmin || busy}
-                    help="From bridge startup logs / .bridge_id file. When set, only that laptop can attach captures."
-                  />
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <FieldRow
-                      label="Location name"
-                      value={form.locationLabel}
-                      onChange={(v) => updateField("locationLabel", v)}
-                      placeholder="e.g. Faculty gate"
-                      disabled={!isAdmin || busy}
-                    />
-                    <FieldRow
-                      label="Address"
-                      value={form.address}
-                      onChange={(v) => updateField("address", v)}
-                      placeholder="Street / city"
-                      disabled={!isAdmin || busy}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <FieldRow
-                      label="Latitude"
-                      value={form.latitude}
-                      onChange={(v) => updateField("latitude", v)}
-                      placeholder="click map →"
-                      disabled={!isAdmin || busy}
-                    />
-                    <FieldRow
-                      label="Longitude"
-                      value={form.longitude}
-                      onChange={(v) => updateField("longitude", v)}
-                      placeholder="click map →"
-                      disabled={!isAdmin || busy}
-                    />
-                  </div>
+                ) : null}
 
-                  <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 sm:flex-row sm:items-end">
-                    <div className="min-w-0 flex-1">
-                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-ink-500">
-                        Address search (Nominatim)
-                      </label>
-                      <input
-                        type="text"
-                        value={form.geoQuery}
-                        onChange={(e) => updateField("geoQuery", e.target.value)}
-                        placeholder="Search place or address…"
-                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                <div className="mt-3 flex flex-wrap gap-1 rounded-xl border border-slate-800/60 bg-slate-950/40 p-1">
+                  {formSteps.map(({ id, label, icon: Icon }, idx) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setFormStep(id)}
+                      className={[
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition sm:flex-none sm:px-3",
+                        formStep === id
+                          ? "bg-brand-500/15 text-brand-400 ring-1 ring-brand-500/25"
+                          : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300",
+                      ].join(" ")}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="hidden sm:inline">{idx + 1}.</span> {label}
+                    </button>
+                  ))}
+                </div>
+
+                <form className="mt-4 space-y-4" onSubmit={onSaveDevice}>
+                  {formStep === "details" ? (
+                    <div className="space-y-3 rounded-xl border border-slate-800/50 bg-slate-950/20 p-3">
+                      <FieldRow
+                        label="Bin name"
+                        required
+                        value={form.name}
+                        onChange={(v) => updateField("name", v)}
+                        placeholder="e.g. Faculty Gate Bin"
+                        disabled={!isAdmin || busy}
+                      />
+                      <SelectField
+                        label="Operational status"
+                        value={form.status}
+                        onChange={(v) => updateField("status", v)}
+                        options={STATUS_OPTIONS.map((s) => ({ id: s, label: s }))}
+                        disabled={!isAdmin || busy}
+                      />
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <FieldRow
+                          label="Location name"
+                          value={form.locationLabel}
+                          onChange={(v) => updateField("locationLabel", v)}
+                          placeholder="e.g. Faculty gate"
+                          disabled={!isAdmin || busy}
+                        />
+                        <FieldRow
+                          label="Address (display)"
+                          value={form.address}
+                          onChange={(v) => updateField("address", v)}
+                          placeholder="Street / city — filled by search or manual"
+                          disabled={!isAdmin || busy}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {formStep === "location" ? (
+                    <div className="rounded-xl border border-slate-800/50 bg-slate-950/20 p-3">
+                      <p className="mb-3 text-xs text-slate-400">
+                        Set the bin pin using <strong className="text-slate-300">any</strong> method below — map click, address search with result picker, manual coordinates, or GPS.
+                      </p>
+                      <BinLocationPicker
+                        latitude={form.latitude}
+                        longitude={form.longitude}
+                        geoQuery={form.geoQuery}
+                        onGeoQueryChange={(v) => updateField("geoQuery", v)}
+                        onCoordsChange={(lat, lng) => {
+                          setForm((f) => ({ ...f, latitude: lat, longitude: lng }));
+                        }}
+                        onAddressPick={(label) => {
+                          if (!form.address.trim()) updateField("address", label);
+                          if (!form.locationLabel.trim()) {
+                            const short = label.split(",")[0]?.trim();
+                            if (short) updateField("locationLabel", short);
+                          }
+                        }}
                         disabled={!isAdmin || busy}
                       />
                     </div>
-                    <button
-                      type="button"
-                      onClick={onGeocode}
-                      disabled={!isAdmin || busy || !form.geoQuery.trim()}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs font-semibold text-ink-700 hover:bg-slate-100 disabled:opacity-50"
-                    >
-                      <MapPin className="h-4 w-4" />
-                      Pin
-                    </button>
-                  </div>
+                  ) : null}
 
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <button
-                      type="submit"
-                      disabled={!isAdmin || busy}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
-                    >
-                      <Save className="h-4 w-4" />
-                      {busy
-                        ? "Saving…"
-                        : editingId
-                          ? "Update bin"
-                          : "Save bin"}
-                    </button>
-                    {editingId ? (
+                  {formStep === "device" && !isVirtualForm ? (
+                    <div className="space-y-3 rounded-xl border border-slate-800/50 bg-slate-950/20 p-3">
+                      <FieldRow
+                        label="ESP32 device ID"
+                        helperRight="(matches bridge DEVICE_ESP32_ID)"
+                        value={form.esp32Id}
+                        onChange={(v) => updateField("esp32Id", v)}
+                        placeholder="esp-cam-1"
+                        disabled={!isAdmin || busy}
+                        help="Required for ESP32-CAM captures and remote audio tests."
+                      />
+                      <FieldRow
+                        label="Bridge / laptop ID"
+                        helperRight="(optional)"
+                        value={form.bridgeInstanceId}
+                        onChange={(v) => updateField("bridgeInstanceId", v)}
+                        placeholder="BRIDGE_xxxxxxxxxxxx"
+                        autoComplete="off"
+                        disabled={!isAdmin || busy}
+                        help="From bridge startup logs. When set, only that laptop can attach captures."
+                      />
+                      <FieldRow
+                        label="Camera base URL"
+                        helperRight="(optional)"
+                        value={form.cameraBaseUrl}
+                        onChange={(v) => updateField("cameraBaseUrl", v)}
+                        placeholder="http://192.168.1.50"
+                        disabled={!isAdmin || busy}
+                        help="ESP32 stream root URL — no trailing slash. Used by bridge and speaker check."
+                      />
+                    </div>
+                  ) : null}
+
+                  {formStep === "fill" && isVirtualForm ? (
+                    <div className="space-y-3 rounded-xl border border-slate-800/50 bg-slate-950/20 p-3">
+                      <p className="text-xs text-slate-400">
+                        Virtual bins use a manual fill level for map display and collection route planning (no camera required).
+                      </p>
+                      <SelectField
+                        label="Manual fill level"
+                        value={form.manualFillLevel}
+                        onChange={(v) => updateField("manualFillLevel", v)}
+                        options={MANUAL_FILL_OPTIONS}
+                        disabled={!isAdmin || busy}
+                      />
+                      <FieldRow
+                        label="Fill percentage (optional)"
+                        value={form.manualFillPct}
+                        onChange={(v) => updateField("manualFillPct", v)}
+                        placeholder="e.g. 55"
+                        disabled={!isAdmin || busy}
+                        help="Used for urgency scoring on collection routes. Leave blank for a default based on level."
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col gap-2 border-t border-slate-800/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap gap-2">
+                      {formStep !== "details" ? (
+                        <button
+                          type="button"
+                          disabled={!isAdmin || busy}
+                          onClick={() =>
+                            setFormStep(
+                              formStep === lastFormStep ? "location" : "details"
+                            )
+                          }
+                          className={btnSecondary}
+                        >
+                          Back
+                        </button>
+                      ) : null}
+                      {formStep !== lastFormStep ? (
+                        <button
+                          type="button"
+                          disabled={!isAdmin || busy}
+                          onClick={() =>
+                            setFormStep(
+                              formStep === "details"
+                                ? "location"
+                                : isVirtualForm
+                                  ? "fill"
+                                  : "device"
+                            )
+                          }
+                          className={btnSecondary}
+                        >
+                          Next:{" "}
+                          {formStep === "details"
+                            ? "Location"
+                            : isVirtualForm
+                              ? "Manual fill"
+                              : "Device link"}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       <button
-                        type="button"
-                        onClick={resetForm}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-ink-700 hover:bg-slate-50"
+                        type="submit"
+                        disabled={!isAdmin || busy}
+                        className={btnPrimary}
                       >
-                        Cancel
+                        <Save className="h-4 w-4" />
+                        {busy
+                          ? "Saving…"
+                          : editingId
+                            ? "Update bin"
+                            : "Save bin"}
                       </button>
-                    ) : null}
+                      {editingId ? (
+                        <button type="button" onClick={resetForm} className={btnSecondary}>
+                          Cancel
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </form>
               </Card.Body>
               <Card.Footer>
-                ESP32 ID must match bridge <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">DEVICE_ESP32_ID</code> for ESP32-CAM captures to associate with this bin.
+                Tip: use <strong className="text-slate-300">Location → Search address</strong> to pick from multiple results, then fine-tune on the map.
               </Card.Footer>
-            </Card>
-
-            <Card>
-              <Card.Header
-                icon={Crosshair}
-                title="Pick on map"
-                right={
-                  <Link
-                    to="/map"
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-ink-600 hover:bg-slate-50"
-                  >
-                    Full map
-                    <ChevronRight className="h-3 w-3" />
-                  </Link>
-                }
-              />
-              <Card.Body className="!mt-2">
-                <div className="overflow-hidden rounded-xl border border-slate-200">
-                  <MapContainer
-                    center={mapCenter}
-                    zoom={
-                      Number.isFinite(Number(form.latitude)) &&
-                      Number.isFinite(Number(form.longitude))
-                        ? 15
-                        : 7
-                    }
-                    scrollWheelZoom
-                    style={{ height: "320px", width: "100%" }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    />
-                    <MapClickHandler
-                      onPick={(lat, lng) => {
-                        if (!isAdmin) return;
-                        updateField("latitude", lat.toFixed(6));
-                        updateField("longitude", lng.toFixed(6));
-                      }}
-                    />
-                    {Number.isFinite(Number(form.latitude)) &&
-                      Number.isFinite(Number(form.longitude)) && (
-                        <CircleMarker
-                          center={[
-                            Number(form.latitude),
-                            Number(form.longitude),
-                          ]}
-                          radius={10}
-                          pathOptions={{
-                            color: "#fff",
-                            weight: 2,
-                            fillColor: "#16a34a",
-                            fillOpacity: 0.95,
-                          }}
-                        />
-                      )}
-                  </MapContainer>
-                </div>
-                <p className="mt-2 text-[11px] text-ink-500">
-                  Click anywhere on the map to set the bin&apos;s coordinates,
-                  or use the address search above.
-                </p>
-              </Card.Body>
             </Card>
           </div>
         </div>
@@ -930,10 +984,10 @@ function PageHeader({ isAdmin, loading, onRefresh, onAdd }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink-900">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
           Bin Status
         </h1>
-        <p className="mt-0.5 max-w-3xl text-sm text-ink-500">
+        <p className="mt-0.5 max-w-3xl text-sm text-slate-400">
           Registry of every smart bin connected to the system. Each row shows
           its latest fill level, hygienic risk band, and ESP32 / bridge
           binding. Use the form to register a new bin, edit an existing one,
@@ -945,25 +999,18 @@ function PageHeader({ isAdmin, loading, onRefresh, onAdd }) {
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50 disabled:opacity-50"
+          className={btnSecondary}
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           {loading ? "Refreshing…" : "Refresh"}
         </button>
         {isAdmin ? (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-700"
-          >
+          <button type="button" onClick={onAdd} className={btnPrimary}>
             <PlusCircle className="h-3.5 w-3.5" />
             Add bin
           </button>
         ) : null}
-        <Link
-          to="/map"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-        >
+        <Link to="/map" className={btnSecondary}>
           Open map
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
@@ -1022,18 +1069,20 @@ function SummaryRow({ summary }) {
 }
 
 function SummaryChip({ icon: Icon, label, value, tone }) {
-  const tones = {
-    default: "bg-white border-slate-200 text-ink-700",
-    brand: "bg-brand-50 border-brand-200 text-brand-800",
-    amber: "bg-amber-50 border-amber-200 text-amber-800",
-    risk: "bg-red-50 border-red-200 text-red-800",
-    slate: "bg-slate-50 border-slate-200 text-ink-700",
-  };
+  const toneClass = summaryTone(
+    tone === "brand"
+      ? "brand"
+      : tone === "amber"
+        ? "amber"
+        : tone === "risk"
+          ? "risk"
+          : "default"
+  );
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${tones[tone] || tones.default}`}
+      className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${toneClass}`}
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/70 ring-1 ring-white">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/60 ring-1 ring-slate-700/50">
         <Icon className="h-4 w-4" />
       </div>
       <div className="leading-tight">
@@ -1047,19 +1096,14 @@ function SummaryChip({ icon: Icon, label, value, tone }) {
 }
 
 function Banner({ tone, icon: Icon, title, body, compact = false }) {
-  const tones = {
-    red: "border-red-200 bg-red-50 text-red-800",
-    amber: "border-amber-200 bg-amber-50 text-amber-800",
-    brand: "border-brand-200 bg-brand-50 text-brand-800",
-  };
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border ${compact ? "px-3 py-2" : "px-4 py-3"} ${tones[tone]}`}
+      className={`flex items-start gap-3 rounded-xl border ${compact ? "px-3 py-2" : "px-4 py-3"} ${bannerTone(tone)}`}
     >
       <Icon className={`${compact ? "h-4 w-4" : "h-5 w-5"} mt-0.5 shrink-0`} />
       <div className="text-sm">
         <div className="font-semibold">{title}</div>
-        <div className={`${compact ? "mt-0" : "mt-0.5"} break-words`}>{body}</div>
+        <div className={`${compact ? "mt-0" : "mt-0.5"} break-words opacity-90`}>{body}</div>
       </div>
     </div>
   );
@@ -1071,13 +1115,13 @@ function ListSkeleton() {
       {[0, 1, 2, 3].map((i) => (
         <li
           key={i}
-          className="animate-pulse rounded-xl border border-slate-200 bg-white p-3"
+          className="animate-pulse rounded-xl border border-slate-800/60 bg-slate-900/40 p-3"
         >
-          <div className="h-4 w-1/3 rounded bg-slate-200" />
+          <div className="h-4 w-1/3 rounded bg-slate-700/60" />
           <div className="mt-2 flex gap-2">
-            <div className="h-3 w-16 rounded-full bg-slate-200" />
-            <div className="h-3 w-16 rounded-full bg-slate-200" />
-            <div className="h-3 w-24 rounded-full bg-slate-100" />
+            <div className="h-3 w-16 rounded-full bg-slate-700/50" />
+            <div className="h-3 w-16 rounded-full bg-slate-700/50" />
+            <div className="h-3 w-24 rounded-full bg-slate-800/60" />
           </div>
         </li>
       ))}
@@ -1087,12 +1131,12 @@ function ListSkeleton() {
 
 function EmptyState({ title, body }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
-        <Database className="h-5 w-5 text-ink-400" />
+    <div className="rounded-xl border border-dashed border-slate-700/60 bg-slate-950/30 p-6 text-center">
+      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-800/80 ring-1 ring-slate-700/50">
+        <Database className="h-5 w-5 text-slate-500" />
       </div>
-      <div className="mt-2 text-sm font-semibold text-ink-900">{title}</div>
-      <div className="mt-0.5 text-xs text-ink-500">{body}</div>
+      <div className="mt-2 text-sm font-semibold text-slate-200">{title}</div>
+      <div className="mt-0.5 text-xs text-slate-500">{body}</div>
     </div>
   );
 }
@@ -1120,48 +1164,60 @@ function BinRow({
   const urgency = collectionUrgency(d);
   const urgent = needsCollectionSoon(d);
   const hasEsp32 = Boolean(d.esp32_id && String(d.esp32_id).trim());
+  const isVirtual = String(d.bin_type || "smart").toLowerCase() === "virtual";
   const camOnline = isCameraOnline(d);
 
   return (
     <li>
       <div
-        className={`rounded-xl border bg-white p-3 transition ${
-          editing ? "border-brand-400 ring-1 ring-brand-200" : "border-slate-200"
+        className={`rounded-xl border bg-slate-900/40 p-3 transition ${
+          editing
+            ? "border-brand-500/40 ring-1 ring-brand-500/20"
+            : "border-slate-800/60 hover:border-slate-700/60"
         }`}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate text-sm font-semibold text-ink-900">
+              <span className="truncate text-sm font-semibold text-slate-100">
                 {d.name}
               </span>
-              <span className="text-[11px] text-ink-400">#{d.id}</span>
+              <span className="text-[11px] text-slate-500">#{d.id}</span>
               <span
                 className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${statusBadgeClass(d.status)}`}
               >
                 {d.status || "—"}
               </span>
-              {hasEsp32 ? (
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                  isVirtual
+                    ? "border-violet-500/30 bg-violet-500/15 text-violet-300"
+                    : "border-slate-600/50 bg-slate-800/50 text-slate-400"
+                }`}
+              >
+                {isVirtual ? "Virtual" : "Smart"}
+              </span>
+              {hasEsp32 && !isVirtual ? (
                 <span
                   className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
                     camOnline
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-slate-200 bg-slate-50 text-ink-500"
+                      ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-400"
+                      : "border-slate-600/50 bg-slate-800/50 text-slate-400"
                   }`}
                 >
                   Camera {camOnline ? "Online" : "Offline"}
                 </span>
               ) : null}
               {urgent ? (
-                <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-400">
                   Urgent pickup
                 </span>
               ) : null}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-500">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
               {d.location ? (
                 <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
+                  <MapPin className="h-3 w-3 text-brand-400" />
                   {d.location}
                 </span>
               ) : null}
@@ -1169,8 +1225,8 @@ function BinRow({
               {d.esp32_id ? (
                 <span className="inline-flex items-center gap-1">
                   <Cpu className="h-3 w-3" />
-                  ESP32 ID:{" "}
-                  <code className="rounded bg-slate-100 px-1">
+                  ESP32:{" "}
+                  <code className="rounded bg-slate-800/80 px-1 text-brand-300">
                     {d.esp32_id}
                   </code>
                 </span>
@@ -1178,13 +1234,13 @@ function BinRow({
               {d.bridge_instance_id ? (
                 <span className="inline-flex items-center gap-1">
                   <Wifi className="h-3 w-3" />
-                  <code className="rounded bg-slate-100 px-1">
+                  <code className="rounded bg-slate-800/80 px-1 text-slate-400">
                     {d.bridge_instance_id}
                   </code>
                 </span>
               ) : null}
               {hasEsp32 ? (
-                <span className="text-ink-400">
+                <span className="text-slate-500">
                   Last seen: {formatLastSeen(d.last_seen_at)}
                 </span>
               ) : null}
@@ -1195,8 +1251,8 @@ function BinRow({
               >
                 {fillLabel(tier === "unknown" ? "" : tier)}
               </span>
-              <span className="text-[11px] tabular-nums text-ink-600">
-                Fill <span className="font-semibold">{pct}</span>
+              <span className="text-[11px] tabular-nums text-slate-400">
+                Fill <span className="font-semibold text-slate-200">{pct}</span>
               </span>
               {d.latest_risk_level ? (
                 <span
@@ -1205,44 +1261,44 @@ function BinRow({
                   Risk {d.latest_risk_level}
                 </span>
               ) : (
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-ink-500">
+                <span className="rounded-full border border-slate-700/50 bg-slate-800/50 px-2 py-0.5 text-[11px] text-slate-500">
                   Risk —
                 </span>
               )}
-              <span className="text-[11px] text-ink-400">
-                Updated {relativeFromNow(d.latest_captured_at)}
+              <span className="text-[11px] text-slate-500">
+                Updated{" "}
+                {isVirtual && !d.latest_captured_at
+                  ? "manual fill"
+                  : relativeFromNow(d.latest_captured_at)}
               </span>
-              <span className="text-[11px] text-ink-400">
-                Urgency <span className="font-semibold">{urgency}</span>
+              <span className="text-[11px] text-slate-500">
+                Urgency <span className="font-semibold text-slate-300">{urgency}</span>
               </span>
               {Number.isFinite(Number(d.latitude)) &&
               Number.isFinite(Number(d.longitude)) ? (
-                <span className="text-[11px] text-ink-400">
+                <span className="font-mono text-[11px] text-slate-500">
                   {Number(d.latitude).toFixed(4)}, {Number(d.longitude).toFixed(4)}
                 </span>
               ) : (
-                <span className="text-[11px] text-amber-700">No coordinates</span>
+                <span className="text-[11px] text-amber-400">No coordinates</span>
               )}
             </div>
             {audioMsg ? (
-              <p className="mt-2 text-xs text-ink-700">{audioMsg}</p>
+              <p className="mt-2 text-xs text-slate-400">{audioMsg}</p>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              to={`/bins/${d.id}`}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50"
-            >
+            <Link to={`/bins/${d.id}`} className={btnSecondary}>
               Details
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
-            {canEdit && hasEsp32 ? (
+            {canEdit && hasEsp32 && !isVirtual ? (
               <>
                 <button
                   type="button"
                   disabled={audioBusy || stopBusy}
                   onClick={onTestAudio}
-                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Volume2 className="h-3.5 w-3.5" />
                   {audioBusy ? "Testing…" : "Test Audio"}
@@ -1251,7 +1307,7 @@ function BinRow({
                   type="button"
                   disabled={stopBusy}
                   onClick={onStopAudio}
-                  className="inline-flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {stopBusy ? "Stopping…" : "Stop"}
                 </button>
@@ -1259,11 +1315,7 @@ function BinRow({
             ) : null}
             {canEdit ? (
               <>
-                <button
-                  type="button"
-                  onClick={onEdit}
-                  className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-700"
-                >
+                <button type="button" onClick={onEdit} className={btnPrimary}>
                   <Pencil className="h-3.5 w-3.5" />
                   Edit
                 </button>
@@ -1280,6 +1332,26 @@ function BinRow({
   );
 }
 
+function CompactFilterSelect({ label, value, onChange, options }) {
+  return (
+    <label className="flex items-center gap-1.5 rounded-xl border border-slate-800/80 bg-slate-950/50 px-2 py-1.5 text-xs text-slate-400">
+      <span className="hidden sm:inline">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        className="max-w-[8.5rem] border-0 bg-transparent text-slate-300 outline-none sm:max-w-none"
+      >
+        {options.map((opt) => (
+          <option key={opt.id} value={opt.id} className="bg-slate-900">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function QuickStatusMenu({ current, onChange }) {
   return (
     <select
@@ -1289,7 +1361,7 @@ function QuickStatusMenu({ current, onChange }) {
         const v = e.target.value;
         if (v && v !== current) onChange(v);
       }}
-      className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-semibold text-ink-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+      className={`${selectClass.replace("mt-1 ", "")} w-auto py-1.5 text-xs`}
     >
       {STATUS_OPTIONS.map((s) => (
         <option key={s} value={s}>
@@ -1314,12 +1386,12 @@ function FieldRow({
   return (
     <label className="block">
       <span className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+        <span className={labelClass}>
           {label}
-          {required ? <span className="ml-0.5 text-red-500">*</span> : null}
+          {required ? <span className="ml-0.5 text-red-400">*</span> : null}
         </span>
         {helperRight ? (
-          <span className="text-[10px] text-ink-400">{helperRight}</span>
+          <span className="text-[10px] text-slate-500">{helperRight}</span>
         ) : null}
       </span>
       <input
@@ -1330,10 +1402,10 @@ function FieldRow({
         placeholder={placeholder}
         autoComplete={autoComplete}
         disabled={disabled}
-        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-ink-500"
+        className={inputClass}
       />
       {help ? (
-        <span className="mt-1 block text-[11px] text-ink-400">{help}</span>
+        <span className="mt-1 block text-[11px] text-slate-500">{help}</span>
       ) : null}
     </label>
   );
@@ -1342,14 +1414,12 @@ function FieldRow({
 function SelectField({ label, value, onChange, options, disabled = false }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">
-        {label}
-      </span>
+      <span className={labelClass}>{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-ink-500"
+        className={selectClass}
       >
         {options.map((opt) => (
           <option key={opt.id} value={opt.id}>

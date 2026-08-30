@@ -9,27 +9,11 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Activity, Crosshair } from "lucide-react";
+import { MAP_TILE_DARK } from "../dashboard/dashboardTheme";
 import { markerFillFromBin, fillLabel } from "../../utils/fillTier";
+import { isVirtualBin } from "../../utils/collectionRoute";
 
-/*
- * Live Monitoring map.
- *
- * Visual rules:
- *   - One CircleMarker per bin, fill color from `markerFillFromBin` (matches
- *     the dashboard's LiveBinMapCard so legends stay consistent).
- *   - Inactive bins (no captures yet) are rendered with reduced opacity so
- *     they don't compete with active bins.
- *   - The nearest bin gets a translucent halo Circle (250 m radius) and a
- *     CSS-pulse class so admins can spot it instantly.
- *   - Markers open a Popup on mouseover (Leaflet handles auto-close on
- *     mouseout-with-grace). The popup carries fill + risk + last-seen and a
- *     "More details" button that bubbles up to the page.
- *   - When `focusBinId` changes (e.g. user clicked a list row) we fly the
- *     map to that bin and open its popup.
- */
-
-const TILE_URL =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const TILE_URL = MAP_TILE_DARK;
 const TILE_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
@@ -140,6 +124,7 @@ export default function LiveBinMap({
         {/* Bin markers */}
         {bins.map((b) => {
           const color = markerFillFromBin(b);
+          const virtual = isVirtualBin(b);
           const isActive = b.status_inferred !== "inactive";
           const isNearest = b.id === nearestBinId;
           const fillPctText =
@@ -157,6 +142,7 @@ export default function LiveBinMap({
                 weight: isNearest ? 3 : 2,
                 fillColor: color,
                 fillOpacity: isActive ? 0.95 : 0.45,
+                dashArray: virtual ? "4 6" : undefined,
               }}
               ref={(ref) => {
                 if (ref) markerRefs.current.set(b.id, ref);
@@ -188,6 +174,11 @@ export default function LiveBinMap({
                   {b.location ? (
                     <div className="mt-0.5 text-[11px] text-ink-500">
                       {b.location}
+                    </div>
+                  ) : null}
+                  {virtual ? (
+                    <div className="mt-1 text-[10px] font-semibold text-violet-700">
+                      Virtual bin · manual fill
                     </div>
                   ) : null}
 

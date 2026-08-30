@@ -8,6 +8,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
+import { btnSecondary, bannerTone, summaryTone } from "../components/dashboard/dashboardUi";
 import LiveBinMap from "../components/livemonitoring/LiveBinMap";
 import BinListPanel from "../components/livemonitoring/BinListPanel";
 import BinDetailsModal from "../components/livemonitoring/BinDetailsModal";
@@ -34,15 +35,18 @@ import useLiveBinMap from "../hooks/useLiveBinMap";
  */
 
 function StatChip({ icon: Icon, label, value, tone = "default" }) {
-  const tones = {
-    default: "bg-slate-100 text-ink-700",
-    brand: "bg-brand-50 text-brand-700",
-    risk: "bg-red-50 text-red-700",
-    amber: "bg-amber-50 text-amber-700",
-  };
+  const toneClass = summaryTone(
+    tone === "brand"
+      ? "brand"
+      : tone === "amber"
+        ? "amber"
+        : tone === "risk"
+          ? "risk"
+          : "default"
+  );
   return (
     <div
-      className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium ${tones[tone]}`}
+      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${toneClass}`}
     >
       <Icon className="h-3.5 w-3.5" />
       <span className="text-[11px] uppercase tracking-wider opacity-70">
@@ -103,10 +107,10 @@ export default function LiveMonitoringPage() {
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-ink-900 tracking-tight">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-100">
               Live Monitoring
             </h1>
-            <p className="text-sm text-ink-500 mt-0.5">
+            <p className="mt-0.5 text-sm text-slate-400">
               Real-time map of registered bins. Hover a marker to see status,
               click <strong>More details</strong> to inspect a bin.
             </p>
@@ -117,7 +121,7 @@ export default function LiveMonitoringPage() {
               <button
                 type="button"
                 onClick={() => setFocusBinId(nearestBin.id)}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-100 transition"
+                className="inline-flex items-center gap-2 rounded-lg border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-300 transition hover:bg-brand-500/15"
               >
                 <Crosshair className="h-3.5 w-3.5" />
                 <span className="text-[11px] uppercase tracking-wider opacity-70">
@@ -126,7 +130,7 @@ export default function LiveMonitoringPage() {
                 <span className="font-semibold">
                   {nearestBin.name || `BIN${nearestBin.id}`}
                 </span>
-                <span className="text-[10px] text-brand-500">
+                <span className="text-[10px] text-brand-400">
                   · {formatDistance(nearestDistanceM)}
                 </span>
               </button>
@@ -151,7 +155,7 @@ export default function LiveMonitoringPage() {
             <button
               type="button"
               onClick={refresh}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-slate-50 transition"
+              className={btnSecondary}
               aria-label="Refresh bin data"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -162,11 +166,11 @@ export default function LiveMonitoringPage() {
 
         {/* Banners */}
         {dbDisabled ? (
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <Database className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
-            <div className="text-sm text-amber-800">
+          <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone("amber")}`}>
+            <Database className="mt-0.5 h-5 w-5 shrink-0" />
+            <div className="text-sm">
               <strong>Database is not configured.</strong> Set{" "}
-              <code className="rounded bg-amber-100 px-1">DATABASE_URL</code>{" "}
+              <code className="rounded bg-amber-500/20 px-1 text-amber-200">DATABASE_URL</code>{" "}
               on the backend service to register bins and start seeing live
               activity here.
             </div>
@@ -174,9 +178,9 @@ export default function LiveMonitoringPage() {
         ) : null}
 
         {error ? (
-          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
-            <div className="text-sm text-red-800">{error}</div>
+          <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone("red")}`}>
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div className="text-sm">{error}</div>
           </div>
         ) : null}
 
@@ -193,16 +197,16 @@ export default function LiveMonitoringPage() {
 
           <div className="lg:col-span-8">
             {loading && bins.length === 0 ? (
-              <div className="flex h-[78vh] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-sm text-ink-500">
-                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+              <div className="flex h-[78vh] items-center justify-center rounded-xl border border-slate-700/50 bg-slate-950/40 text-sm text-slate-400">
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                 Loading bins…
               </div>
             ) : bins.length === 0 && !dbDisabled && !error ? (
-              <div className="flex h-[78vh] flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-ink-500 p-6">
-                <div className="text-base font-semibold text-ink-700 mb-1">
+              <div className="flex h-[78vh] flex-col items-center justify-center rounded-xl border border-dashed border-slate-700/50 bg-slate-950/30 p-6 text-center text-slate-400">
+                <div className="mb-1 text-base font-semibold text-slate-200">
                   No bins on the map
                 </div>
-                <p className="text-sm max-w-md">
+                <p className="max-w-md text-sm">
                   Register a bin from the Admin page and assign coordinates to
                   see it appear here in real time.
                 </p>

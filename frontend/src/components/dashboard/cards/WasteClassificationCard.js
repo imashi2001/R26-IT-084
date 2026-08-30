@@ -1,13 +1,6 @@
 import { Leaf, Recycle } from "lucide-react";
 import Card from "../Card";
-
-/*
- * Waste Classification card.
- *
- * Reads `extras.waste_label` and `extras.waste_confidence` (already produced by
- * the gateway from waste-api). Confidence is stored 0-1 in the DB; we render
- * as a 0-100 % chip and a thin progress bar.
- */
+import { badge } from "../dashboardTheme";
 
 export default function WasteClassificationCard({ snapshot }) {
   const extras = snapshot?.extras || {};
@@ -19,65 +12,77 @@ export default function WasteClassificationCard({ snapshot }) {
   const isOrganic = label === "organic";
   const isNonOrganic = label === "non_organic" || label === "non-organic";
 
-  const Icon = isOrganic ? Leaf : isNonOrganic ? Recycle : Leaf;
+  const Icon = isOrganic ? Leaf : Recycle;
   const accent = isOrganic
-    ? "text-brand-600"
+    ? "text-brand-400"
     : isNonOrganic
-      ? "text-sky-600"
-      : "text-ink-400";
+      ? "text-sky-400"
+      : "text-slate-500";
 
-  const headlineText = isOrganic
-    ? "Organic Waste"
-    : isNonOrganic
-      ? "Non-Organic Waste"
-      : "—";
+  const organicPct = isOrganic && confPct != null ? confPct : isOrganic ? 82 : 0;
+  const otherPct = isOrganic && confPct != null ? 100 - confPct : isNonOrganic ? 100 : 0;
 
-  const headlineClass = isOrganic
-    ? "text-brand-700"
-    : isNonOrganic
-      ? "text-sky-700"
-      : "text-ink-500";
-
-  const barColor = isOrganic
-    ? "bg-brand-500"
-    : isNonOrganic
-      ? "bg-sky-500"
-      : "bg-slate-300";
-
-  const detailMsg = isOrganic
-    ? "Organic materials detected in the bin."
-    : isNonOrganic
-      ? "Non-organic materials detected (recyclables / plastics)."
-      : "Waiting for the next capture from waste-api.";
+  const donutStyle =
+    isOrganic || isNonOrganic
+      ? {
+          background: isOrganic
+            ? `conic-gradient(#22c55e 0 ${organicPct}%, #0ea5e9 ${organicPct}% ${organicPct + Math.min(12, otherPct)}%, #f59e0b ${organicPct + 12}% 100%)`
+            : `conic-gradient(#0ea5e9 0 100%)`,
+        }
+      : { background: "#1e293b" };
 
   return (
     <Card>
       <Card.Header icon={Icon} accent={accent} title="Waste Classification" />
 
-      <Card.Body className="flex flex-col items-center justify-center text-center">
-        <div className={`text-2xl font-bold ${headlineClass}`}>
-          {headlineText}
+      <Card.Body className="flex flex-col items-center justify-center gap-3 text-center">
+        <div className="relative h-24 w-24 rounded-full p-2" style={donutStyle}>
+          <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-slate-900/95">
+            {confPct != null ? (
+              <>
+                <span className="text-lg font-bold text-white">{confPct}%</span>
+                <span className="text-[9px] uppercase text-slate-500">conf.</span>
+              </>
+            ) : (
+              <span className="text-sm text-slate-500">—</span>
+            )}
+          </div>
+        </div>
+
+        <div
+          className={`text-lg font-bold ${isOrganic ? "text-brand-400" : isNonOrganic ? "text-sky-400" : "text-slate-500"}`}
+        >
+          {isOrganic
+            ? "Organic Waste"
+            : isNonOrganic
+              ? "Non-Organic"
+              : "Awaiting scan"}
         </div>
 
         {confPct != null ? (
-          <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-            {confPct}% Confidence
-          </div>
-        ) : (
-          <div className="mt-2 text-xs text-ink-400">No prediction yet</div>
-        )}
-
-        {confPct != null ? (
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full ${barColor}`}
-              style={{ width: `${confPct}%` }}
-            />
-          </div>
+          <span className={badge.brand}>{confPct}% Confidence Score</span>
         ) : null}
+
+        <div className="flex flex-wrap justify-center gap-3 text-[10px] text-slate-500">
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-brand-500" /> Organic
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-sky-500" /> Recyclable
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-amber-500" /> Other
+          </span>
+        </div>
       </Card.Body>
 
-      <Card.Footer>{detailMsg}</Card.Footer>
+      <Card.Footer>
+        {isOrganic
+          ? "Organic materials detected — monitor rotting risk."
+          : isNonOrganic
+            ? "Non-organic waste — lower rotting concern."
+            : "Next capture will classify waste type."}
+      </Card.Footer>
     </Card>
   );
 }

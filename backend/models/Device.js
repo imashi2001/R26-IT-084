@@ -66,6 +66,21 @@ module.exports = (sequelize) =>
         type: DataTypes.DATE,
         allowNull: true,
       },
+      /** smart = IoT/capture bins; virtual = manual location + manual fill. */
+      bin_type: {
+        type: DataTypes.STRING(16),
+        allowNull: false,
+        defaultValue: "smart",
+      },
+      /** Virtual bins only: Empty | Half | Overflow */
+      manual_fill_level: {
+        type: DataTypes.STRING(24),
+        allowNull: true,
+      },
+      manual_fill_percentage: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+      },
     },
     {
       tableName: "devices",

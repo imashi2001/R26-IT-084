@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
 import '../../theme/app_theme.dart';
+import '../shared/widgets.dart';
 
 class StaffShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
@@ -295,6 +296,16 @@ class StaffDrawer extends ConsumerWidget {
                 Navigator.pop(context);
                 context.go('/staff/alerts');
               },
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ref.watch(dashboardSettingsProvider).when(
+                    data: (settings) =>
+                        PromoFooterCard(imageUrl: settings.promoImageUrl),
+                    loading: () => const PromoFooterCard(imageUrl: null),
+                    error: (_, __) => const PromoFooterCard(imageUrl: null),
+                  ),
             ),
             const Spacer(),
             ListTile(

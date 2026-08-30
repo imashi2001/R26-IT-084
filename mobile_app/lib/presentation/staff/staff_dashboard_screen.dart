@@ -150,7 +150,7 @@ class _DashboardBody extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           SizedBox(
-            height: 118,
+            height: 128,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
@@ -322,7 +322,7 @@ class _PerfStatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: AppColors.textMuted),
+        Icon(icon, size: 14, color: AppColors.textSecondary),
         const SizedBox(width: 6),
         Expanded(
           child: Text(

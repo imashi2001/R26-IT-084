@@ -140,6 +140,10 @@ final alertCountsProvider = FutureProvider<Map<String, int>>((_) async {
   return BinRepository.instance.alertStatusCounts();
 });
 
+final dashboardSettingsProvider = FutureProvider<DashboardSettings>((_) async {
+  return BinRepository.instance.dashboardSettings();
+});
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 String _msg(Exception e) {

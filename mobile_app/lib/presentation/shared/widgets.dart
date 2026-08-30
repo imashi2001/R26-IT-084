@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../domain/models.dart';
 import '../../theme/app_theme.dart';
@@ -78,6 +79,274 @@ String formatTs(String? iso) {
     return '${t.day}/${t.month}/${t.year}  $hh:$mm';
   } catch (_) {
     return iso;
+  }
+}
+
+// ── Last capture photo ────────────────────────────────────────────────────────
+
+class LastCapturePhoto extends StatelessWidget {
+  final String? imageUrl;
+  final double height;
+  final double? width;
+  final BorderRadius borderRadius;
+  final String? capturedAt;
+  final bool showHeader;
+
+  const LastCapturePhoto({
+    super.key,
+    required this.imageUrl,
+    this.height = 180,
+    this.width,
+    this.borderRadius = const BorderRadius.all(Radius.circular(14)),
+    this.capturedAt,
+    this.showHeader = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl == null || imageUrl!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showHeader) ...[
+          const SectionTitle('Last capture'),
+          const SizedBox(height: 8),
+        ],
+        ClipRRect(
+          borderRadius: borderRadius,
+          child: SizedBox(
+            height: height,
+            width: width ?? double.infinity,
+            child: CachedNetworkImage(
+              imageUrl: imageUrl!,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                color: AppColors.surfaceElevated,
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                color: AppColors.surfaceElevated,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.broken_image_outlined,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (capturedAt != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Captured ${formatTs(capturedAt)}',
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class LastCaptureThumbnail extends StatelessWidget {
+  final String? imageUrl;
+  final double size;
+  final BorderRadius borderRadius;
+  final Widget fallback;
+
+  const LastCaptureThumbnail({
+    super.key,
+    required this.imageUrl,
+    this.size = 44,
+    this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+    required this.fallback,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl == null || imageUrl!.isEmpty) {
+      return fallback;
+    }
+
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => fallback,
+          errorWidget: (_, __, ___) => fallback,
+        ),
+      ),
+    );
+  }
+}
+
+/// Sidebar promo card — matches web PromoFooter ("Cleaner City, Better Tomorrow").
+class PromoFooterCard extends StatelessWidget {
+  final String? imageUrl;
+  final double height;
+
+  const PromoFooterCard({
+    super.key,
+    required this.imageUrl,
+    this.height = 148,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.brand.withValues(alpha: 0.25)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasImage)
+              CachedNetworkImage(
+                imageUrl: imageUrl!,
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.high,
+                placeholder: (_, __) => _fallbackBackground(),
+                errorWidget: (_, __, ___) => _fallbackBackground(),
+              )
+            else
+              _fallbackBackground(),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.background.withValues(alpha: 0.05),
+                    AppColors.background.withValues(alpha: 0.45),
+                    AppColors.background.withValues(alpha: 0.92),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    AppColors.background.withValues(alpha: 0.72),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 14,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.brand.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.brand,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Cleaner City,',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.15,
+                          ),
+                        ),
+                        const Text(
+                          'Better Tomorrow',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.brandGlow,
+                            height: 1.15,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.eco,
+                              size: 12,
+                              color: AppColors.brand.withValues(alpha: 0.9),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Smart waste for sustainable cities',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF065F46),
+            AppColors.background,
+            Color(0xFF0F172A),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -174,33 +443,32 @@ class KpiStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      height: 118,
+      height: 128,
       child: StaffCard(
         padding: const EdgeInsets.all(14),
-        tint: color.withValues(alpha: 0.08),
+        tint: color.withValues(alpha: 0.1),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.18),
+                color: color.withValues(alpha: 0.22),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(icon, color: Colors.white, size: 18),
             ),
-            const Spacer(),
             Text(
               value,
-              style: TextStyle(
-                fontSize: 26,
+              style: const TextStyle(
+                fontSize: 28,
                 fontWeight: FontWeight.w800,
-                color: color,
+                color: AppColors.textPrimary,
                 height: 1,
               ),
             ),
-            const SizedBox(height: 4),
             Text(
               label,
               maxLines: 2,
@@ -208,7 +476,7 @@ class KpiStatCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: AppColors.textPrimary,
               ),
             ),
           ],
@@ -242,15 +510,15 @@ class SummaryMiniCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: color),
+            Icon(icon, size: 16, color: Colors.white),
             const SizedBox(height: 6),
           ],
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: color == AppColors.brand ? AppColors.textPrimary : color,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
@@ -258,7 +526,11 @@ class SummaryMiniCard extends StatelessWidget {
             label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -380,14 +652,17 @@ class PriorityBinTile extends StatelessWidget {
           decoration: AppColors.glassCard(tint: color.withValues(alpha: 0.06)),
           child: Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+              LastCaptureThumbnail(
+                imageUrl: bin.latestImageUrl,
+                fallback: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.delete_outline, color: color, size: 22),
                 ),
-                child: Icon(Icons.delete_outline, color: color, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -901,6 +1176,15 @@ class BinLevelCard extends StatelessWidget {
                     fontSize: 12, color: AppColors.textSecondary),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            if (bin.latestImageUrl != null) ...[
+              const SizedBox(height: 10),
+              LastCapturePhoto(
+                imageUrl: bin.latestImageUrl,
+                height: selected ? 140 : 100,
+                showHeader: false,
+                capturedAt: bin.latestCapturedAt,
               ),
             ],
             const SizedBox(height: 12),

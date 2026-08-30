@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/map_layers.dart';
 import '../../data/providers.dart';
 import '../../domain/models.dart';
+import '../../domain/navigation_args.dart';
+import '../../services/google_maps_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../shared/widgets.dart';
 
@@ -95,15 +96,37 @@ class _PublicNearestScreenState extends ConsumerState<PublicNearestScreen> {
   Future<void> _openGoogleMaps(NearestBinResult bin) async {
     final origin = _userLatLng;
     if (origin == null) return;
-    final url = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1'
-      '&origin=${origin.latitude},${origin.longitude}'
-      '&destination=${bin.latitude},${bin.longitude}'
-      '&travelmode=driving',
+    final ok = await openGoogleMapsDriving(
+      destLat: bin.latitude,
+      destLng: bin.longitude,
+      originLat: origin.latitude,
+      originLng: origin.longitude,
     );
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      _showSnack('Could not open Google Maps');
+    if (!ok) _showSnack('Could not open Google Maps');
+  }
+
+  void _startInAppNavigation(NearestBinResult bin) {
+    if (_userLatLng == null) {
+      _showSnack('Waiting for your location…');
+      return;
     }
+    final route = ref.read(nearestProvider).route;
+    context.push(
+      '/navigate',
+      extra: InAppNavigationArgs(
+        title: 'Navigate to bin',
+        waypoints: [
+          NavWaypoint(
+            latitude: bin.latitude,
+            longitude: bin.longitude,
+            label: bin.name,
+            subtitle: formatDistance(bin.distanceMeters),
+          ),
+        ],
+        previewPath: route?.path,
+        darkMap: false,
+      ),
+    );
   }
 
   @override
@@ -277,6 +300,7 @@ class _PublicNearestScreenState extends ConsumerState<PublicNearestScreen> {
                   _safeMove(LatLng(bin.latitude, bin.longitude), 16);
                 },
                 onOpenMaps: _openGoogleMaps,
+                onStartNavigation: _startInAppNavigation,
                 onRefresh: _fetchLocation,
                 userLatLng: _userLatLng,
               );
@@ -325,6 +349,7 @@ class _BottomPanel extends StatelessWidget {
   final NearestState state;
   final void Function(NearestBinResult) onSelectBin;
   final void Function(NearestBinResult) onOpenMaps;
+  final void Function(NearestBinResult) onStartNavigation;
   final VoidCallback onRefresh;
   final LatLng? userLatLng;
 
@@ -333,6 +358,7 @@ class _BottomPanel extends StatelessWidget {
     required this.state,
     required this.onSelectBin,
     required this.onOpenMaps,
+    required this.onStartNavigation,
     required this.onRefresh,
     required this.userLatLng,
   });
@@ -401,6 +427,7 @@ class _BottomPanel extends StatelessWidget {
               _SelectedBinPanel(
                 bin: state.selected!,
                 route: state.route,
+                onStartNavigation: () => onStartNavigation(state.selected!),
                 onOpenMaps: () => onOpenMaps(state.selected!),
               ),
             if (state.bins.length > 1) ...[
@@ -436,11 +463,13 @@ class _BottomPanel extends StatelessWidget {
 class _SelectedBinPanel extends StatelessWidget {
   final NearestBinResult bin;
   final RouteResult? route;
+  final VoidCallback onStartNavigation;
   final VoidCallback onOpenMaps;
 
   const _SelectedBinPanel({
     required this.bin,
     required this.route,
+    required this.onStartNavigation,
     required this.onOpenMaps,
   });
 
@@ -486,6 +515,15 @@ class _SelectedBinPanel extends StatelessWidget {
         FillMeter(
             fillLevel: bin.latestFillLevel,
             fillPercentage: bin.latestFillPercentage),
+        if (bin.latestImageUrl != null) ...[
+          const SizedBox(height: 12),
+          LastCapturePhoto(
+            imageUrl: bin.latestImageUrl,
+            height: 160,
+            showHeader: false,
+            capturedAt: bin.latestCapturedAt,
+          ),
+        ],
         if (route != null) ...[
           const SizedBox(height: 8),
           Text(
@@ -500,13 +538,16 @@ class _SelectedBinPanel extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 14),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: onOpenMaps,
-            icon: const Icon(Icons.map, size: 18),
-            label: const Text('Open in Google Maps'),
-          ),
+        GlowPrimaryButton(
+          label: 'Start in-app navigation',
+          icon: Icons.navigation_outlined,
+          onPressed: onStartNavigation,
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: onOpenMaps,
+          icon: const Icon(Icons.map_outlined, size: 18),
+          label: const Text('Open in Google Maps'),
         ),
       ],
     );

@@ -14,9 +14,9 @@ class AppColors {
   static const brandGlow = Color(0xFF66BB6A);
   static const brandDark = Color(0xFF388E3C);
 
-  static const textPrimary = Color(0xFFF1F5F9);
-  static const textSecondary = Color(0xFF94A3B8);
-  static const textMuted = Color(0xFF64748B);
+  static const textPrimary = Color(0xFFF8FAFC);
+  static const textSecondary = Color(0xFFCBD5E1);
+  static const textMuted = Color(0xFF94A3B8);
 
   static const riskLow = Color(0xFF4CAF50);
   static const riskMedium = Color(0xFFF59E0B);

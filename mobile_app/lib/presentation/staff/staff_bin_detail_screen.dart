@@ -3,11 +3,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/map_layers.dart';
 import '../../data/providers.dart';
 import '../../domain/models.dart';
+import '../../domain/navigation_args.dart';
+import '../../services/google_maps_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../shared/staff_charts.dart';
 import '../shared/widgets.dart';
@@ -61,13 +62,34 @@ class _DetailBody extends StatelessWidget {
   final BinLatest data;
   const _DetailBody({required this.data});
 
-  Future<void> _openMaps(Bin device) async {
-    final url = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1'
-      '&destination=${device.latitude},${device.longitude}'
-      '&travelmode=driving',
+  void _startInAppNavigation(BuildContext context, Bin device) {
+    context.push(
+      '/navigate',
+      extra: InAppNavigationArgs(
+        title: 'Navigate to ${binCode(device.id)}',
+        waypoints: [
+          NavWaypoint(
+            latitude: device.latitude,
+            longitude: device.longitude,
+            label: binCode(device.id),
+            subtitle: device.address ?? device.location ?? device.name,
+          ),
+        ],
+        darkMap: true,
+      ),
     );
-    await launchUrl(url, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _openGoogleMaps(BuildContext context, Bin device) async {
+    final ok = await openGoogleMapsDriving(
+      destLat: device.latitude,
+      destLng: device.longitude,
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Google Maps')),
+      );
+    }
   }
 
   @override
@@ -139,6 +161,16 @@ class _DetailBody extends StatelessWidget {
             ],
           ),
         ),
+        if ((data.imageUrl ?? device.latestImageUrl) != null) ...[
+          const SizedBox(height: 12),
+          StaffCard(
+            child: LastCapturePhoto(
+              imageUrl: data.imageUrl ?? device.latestImageUrl,
+              height: 200,
+              capturedAt: data.capturedAt ?? device.latestCapturedAt,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2,
@@ -253,21 +285,27 @@ class _DetailBody extends StatelessWidget {
         ],
         const SizedBox(height: 20),
         GlowPrimaryButton(
-          label: 'Add to Route',
-          icon: Icons.add,
-          onPressed: () => context.go('/staff/routes'),
+          label: 'Start in-app navigation',
+          icon: Icons.navigation_outlined,
+          onPressed: () => _startInAppNavigation(context, device),
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
-          onPressed: () => context.go('/staff/alerts'),
-          icon: const Icon(Icons.bar_chart_outlined),
-          label: const Text('View History'),
+          onPressed: () => _openGoogleMaps(context, device),
+          icon: const Icon(Icons.map_outlined),
+          label: const Text('Open in Google Maps'),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: () => context.go('/staff/routes'),
+          icon: const Icon(Icons.add_road_outlined),
+          label: const Text('Add to collection route'),
         ),
         const SizedBox(height: 10),
         TextButton.icon(
-          onPressed: () => _openMaps(device),
-          icon: const Icon(Icons.navigation_outlined, size: 18),
-          label: const Text('Navigate to bin'),
+          onPressed: () => context.go('/staff/alerts'),
+          icon: const Icon(Icons.bar_chart_outlined, size: 18),
+          label: const Text('View History'),
         ),
         const SizedBox(height: 24),
       ],

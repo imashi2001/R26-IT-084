@@ -51,7 +51,7 @@ class DonutChart extends StatelessWidget {
                   centerSub!,
                   style: const TextStyle(
                     fontSize: 9,
-                    color: AppColors.textMuted,
+                    color: AppColors.textSecondary,
                   ),
                 ),
             ],

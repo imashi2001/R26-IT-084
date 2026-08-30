@@ -301,6 +301,28 @@ class CollectionPlan {
   }
 }
 
+class DashboardSettings {
+  final String? heroImageUrl;
+  final String? promoImageUrl;
+  final bool hasCustomHero;
+  final bool hasCustomPromo;
+
+  const DashboardSettings({
+    this.heroImageUrl,
+    this.promoImageUrl,
+    this.hasCustomHero = false,
+    this.hasCustomPromo = false,
+  });
+
+  factory DashboardSettings.fromJson(Map<String, dynamic> j) =>
+      DashboardSettings(
+        heroImageUrl: j['hero_image_url'] as String?,
+        promoImageUrl: j['promo_image_url'] as String?,
+        hasCustomHero: j['has_custom_hero'] == true,
+        hasCustomPromo: j['has_custom_promo'] == true,
+      );
+}
+
 // helpers
 double _d(dynamic v) {
   if (v == null) return 0.0;

@@ -13,6 +13,7 @@ const weatherRoutes = require("./weather.routes");
 const alertsRoutes = require("./alerts.routes");
 const litterRoutes = require("./litter.routes");
 const bridgeRoutes = require("./bridge.routes");
+const dashboardSettingsRoutes = require("./dashboardSettings.routes");
 const collectionRoutes = require("./collection.routes");
 
 const router = Router();

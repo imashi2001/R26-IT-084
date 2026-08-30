@@ -44,4 +44,34 @@ class BinRepository {
     final res = await _dio.get('/devices/$id/latest');
     return BinLatest.fromJson(res.data as Map<String, dynamic>);
   }
+
+  Future<List<StaffAlert>> alerts({String status = 'all', int limit = 50}) async {
+    final res = await _dio.get('/alerts', queryParameters: {
+      'status': status,
+      'limit': limit,
+    });
+    final list = (res.data['alerts'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    return list.map(StaffAlert.fromJson).toList();
+  }
+
+  Future<Map<String, int>> alertStatusCounts() async {
+    final res = await _dio.get('/alerts', queryParameters: {'limit': 1});
+    final counts = res.data['status_counts'];
+    if (counts is Map) {
+      return counts.map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
+    }
+    return {};
+  }
+
+  Future<CollectionPlan> collectionPlan({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final res = await _dio.post('/collection/plan', data: {
+      'start': {'latitude': latitude, 'longitude': longitude},
+      'start_mode': 'gps',
+    });
+    return CollectionPlan.fromJson(res.data as Map<String, dynamic>);
+  }
 }

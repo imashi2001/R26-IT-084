@@ -33,7 +33,7 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen> {
 
     final state = ref.read(authProvider);
     if (state.isLoggedIn && mounted) {
-      context.go('/staff/bins');
+      context.go('/staff/dashboard');
     }
   }
 
@@ -43,6 +43,19 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

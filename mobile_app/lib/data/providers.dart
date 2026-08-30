@@ -132,6 +132,14 @@ final binDetailProvider =
   return BinRepository.instance.latestForDevice(id);
 });
 
+final staffAlertsProvider = FutureProvider<List<StaffAlert>>((_) async {
+  return BinRepository.instance.alerts(limit: 100);
+});
+
+final alertCountsProvider = FutureProvider<Map<String, int>>((_) async {
+  return BinRepository.instance.alertStatusCounts();
+});
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 String _msg(Exception e) {

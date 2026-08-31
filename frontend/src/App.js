@@ -92,31 +92,22 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* ---- Public ---- */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/register" element={<Navigate to="/dashboard" replace />} />
 
           {/* ---- New dashboard (system shell) ---- */}
-          <Route
-            path="/dashboard"
-            element={protectedShell(<SystemDashboardPage />)}
-          />
+          <Route path="/dashboard" element={<SystemDashboardPage />} />
           <Route
             path="/system"
             element={<Navigate to="/dashboard" replace />}
           />
 
           {/* ---- Live monitoring (new map view, dashboard shell) ---- */}
-          <Route
-            path="/live-monitoring"
-            element={protectedShell(<LiveMonitoringPage />)}
-          />
+          <Route path="/live-monitoring" element={<LiveMonitoringPage />} />
 
           {/* ---- Bin Level Detector (dashboard shell, redesigned) ---- */}
-          <Route
-            path="/bin-level-detector"
-            element={protectedShell(<HomePage />)}
-          />
+          <Route path="/bin-level-detector" element={<HomePage />} />
           {/* Back-compat: old /bin-fill stub now points at the renamed page. */}
           <Route
             path="/bin-fill"
@@ -124,65 +115,35 @@ export default function App() {
           />
 
           {/* ---- Risk Dashboard (dashboard shell, redesigned) ---- */}
-          <Route
-            path="/hygienic-risk"
-            element={protectedShell(<HygienicRiskDashboardPage />)}
-          />
+          <Route path="/hygienic-risk" element={<HygienicRiskDashboardPage />} />
 
           {/* ---- Legacy pages (top NavBar) ---- */}
-          <Route
-            path="/mobile-report"
-            element={protectedShell(<MobileReportPage />)}
-          />
-          <Route path="/map" element={protectedShell(<MapPage />)} />
+          <Route path="/mobile-report" element={<MobileReportPage />} />
+          <Route path="/map" element={<MapPage />} />
           <Route
             path="/bins/:id"
-            element={protectedShell(
+            element={
               <LegacyShell>
                 <BinDetailPage />
               </LegacyShell>
-            )}
+            }
           />
-          <Route path="/admin" element={legacyProtected(AdminPage)} />
+          <Route path="/admin" element={<AdminPage />} />
 
           {/* ---- Stub routes (sidebar placeholders) ---- */}
-          <Route
-            path="/animals"
-            element={protectedShell(<AnimalDetectionPage />)}
-          />
-          <Route
-            path="/litter-severity"
-            element={protectedShell(<LitterSeverityPage />)}
-          />
-          <Route
-            path="/forecast"
-            element={protectedShell(<ForecastPage />)}
-          />
-          <Route
-            path="/alerts"
-            element={protectedShell(<AlertsNotificationsPage />)}
-          />
-          <Route
-            path="/reports"
-            element={protectedShell(<ReportsPage />)}
-          />
-          <Route
-            path="/history"
-            element={protectedShell(<HistoryPage />)}
-          />
-          <Route
-            path="/speaker"
-            element={protectedShell(<SpeakerCheckPage />)}
-          />
+          <Route path="/animals" element={<AnimalDetectionPage />} />
+          <Route path="/litter-severity" element={<LitterSeverityPage />} />
+          <Route path="/forecast" element={<ForecastPage />} />
+          <Route path="/alerts" element={<AlertsNotificationsPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/speaker" element={<SpeakerCheckPage />} />
           {/* IoT Devices replaced by /bins — keep route as redirect for legacy links. */}
           <Route
             path="/devices"
             element={<Navigate to="/bins" replace />}
           />
-          <Route
-            path="/bins"
-            element={protectedShell(<BinStatusPage />)}
-          />
+          <Route path="/bins" element={<BinStatusPage />} />
 
           {/* Anything else falls back to the landing page. */}
           <Route path="*" element={<Navigate to="/" replace />} />

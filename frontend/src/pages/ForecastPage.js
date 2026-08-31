@@ -24,14 +24,6 @@ import DashboardInsights from "../components/DashboardInsights";
 import "./ForecastPage.css";
 import { apiUrl } from "../utils/apiBase";
 
-/* ─── helpers ─────────────────────────────────────────────────────────── */
-
-function fillColor(level) {
-  if (level >= 80) return "#ef4444";
-  if (level >= 60) return "#f97316";
-  if (level >= 40) return "#eab308";
-  return "#22c55e";
-}
 
 function statusBadgeStyle(status) {
   if (status === "ALERT")
@@ -50,6 +42,13 @@ function cardBorderColor(level) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function fillColor(level) {
+  if (level >= 80) return "#ef4444";
+  if (level >= 60) return "#f97316";
+  if (level >= 40) return "#eab308";
+  return "#22c55e";
 }
 
 /* ─── StatCard ─────────────────────────────────────────────────────────── */
@@ -195,10 +194,10 @@ export default function ForecastPage() {
             data?.isLongWeekend
               ? "LONG WEEKEND"
               : data?.isHoliday
-              ? "HOLIDAY"
-              : data?.isWeekend
-              ? "WEEKEND"
-              : "NORMAL WEEKDAY"
+                ? "HOLIDAY"
+                : data?.isWeekend
+                  ? "WEEKEND"
+                  : "NORMAL WEEKDAY"
           }
           accent={
             data?.isLongWeekend
@@ -210,13 +209,21 @@ export default function ForecastPage() {
         />
         <StatCard
           icon={TrendingUp}
-          label="Filling Avg "
-          value={data ? `${data.globalAvgFill}%` : "—"}
-          sub={data?.globalAvgFill >= 70 ? "⚠ High load" : data?.globalAvgFill >= 50 ? "Moderate load" : data ? "Normal load" : ""}
+          label="Avg Waste"
+          value={data ? `${Number(data.globalAvgWasteKg ?? 0).toFixed(1)} kg` : "—"}
+          sub={
+            data?.globalAvgUtilizationPercent >= 85
+              ? "⚠ Above alert threshold"
+              : data?.globalAvgUtilizationPercent >= 60
+                ? "Moderate load"
+                : data
+                  ? "Normal daily load"
+                  : ""
+          }
           accent={
-            data?.globalAvgFill >= 70
+            data?.globalAvgUtilizationPercent >= 85
               ? { border: "rgba(239,68,68,0.5)", bg: "rgba(127,29,29,0.25)", iconColor: "#f87171" }
-              : data?.globalAvgFill >= 50
+              : data?.globalAvgUtilizationPercent >= 60
                 ? { border: "rgba(249,115,22,0.5)", bg: "rgba(124,45,18,0.25)", iconColor: "#fb923c" }
                 : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
           }
@@ -254,45 +261,53 @@ export default function ForecastPage() {
           )}
 
           <MapContainer
-            center={[7.8731, 80.7718]}
-            zoom={7}
+            center={[6.84, 79.92]}
+            zoom={11}
             style={{ height: "100%", width: "100%" }}
             zoomControl
           >
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://carto.com">CARTO</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               maxZoom={19}
             />
 
-            {data?.locations?.map((loc) => (
-              <CircleMarker
-                key={loc.id}
-                center={[loc.lat, loc.lng]}
-                radius={13 + (loc.fillLevel / 100) * 12}
-                pathOptions={{
-                  fillColor: fillColor(loc.fillLevel),
-                  fillOpacity: 0.78,
-                  color: "#fff",
-                  weight: 1.5,
-                  opacity: 0.7,
-                }}
-              >
-                <Tooltip direction="top">
-                  <b>{loc.name}</b><br />
-                  {loc.region} · {loc.fillLevel}% · {loc.status}
-                </Tooltip>
-                <Popup>
-                  <div style={{ fontFamily: "system-ui", minWidth: 170, lineHeight: 1.6 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14 }}>{loc.name}</div>
-                    <div>Region: <b>{loc.region}</b></div>
-                    <div>Fill Level: <b style={{ color: fillColor(loc.fillLevel) }}>{loc.fillLevel}%</b></div>
-                    <div>Status: <b>{loc.status}</b></div>
-                    <div style={{ fontSize: 11, color: "#6b7280" }}>{loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</div>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
+            {data?.locations?.map((loc) => {
+              if (loc.lat === undefined || loc.lng === undefined) return null;
+
+              let markerColor = "#2eb82e"; // NORMAL
+              if (loc.status === "ALERT") markerColor = "#ff4d4d";
+              else if (loc.status === "WATCH") markerColor = "#ffa64d";
+
+              return (
+                <CircleMarker
+                  key={loc.id}
+                  center={[loc.lat, loc.lng]}
+                  radius={10}
+                  pathOptions={{
+                    fillColor: markerColor,
+                    color: markerColor,
+                    fillOpacity: 0.8,
+                    weight: 2
+                  }}
+                >
+                  <Tooltip sticky direction="top">
+                    <b>{loc.name}</b><br />
+                    Forecasted: {loc.totalWaste} kg<br />
+                    Status: <b>{loc.status}</b>
+                  </Tooltip>
+                  <Popup>
+                    <div style={{ fontFamily: "system-ui", minWidth: 180, lineHeight: 1.6 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14 }}>{loc.name}</div>
+                      <div>Region: <b>{loc.region}</b></div>
+                      <div>Total Forecasted: <b>{loc.totalWaste} kg</b></div>
+                      <div>Fill Level: <span style={{ color: fillColor(loc.fillLevel), fontWeight: 700 }}>{loc.fillLevel}%</span></div>
+                      <div>Status: <span style={{ color: markerColor, fontWeight: 700 }}>{loc.status}</span></div>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              );
+            })}
           </MapContainer>
 
           {/* Legend */}
@@ -419,7 +434,7 @@ export default function ForecastPage() {
 
       {/* ── ADVANCED INSIGHTS SECTION ── */}
       <div className="fp-insights-section">
-        <DashboardInsights selectedDate={selectedDate} />
+        <DashboardInsights selectedDate={selectedDate} locationsData={data?.locations} />
       </div>
     </div>
   );

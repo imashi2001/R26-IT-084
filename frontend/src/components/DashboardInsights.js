@@ -12,11 +12,10 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
-  ComposedChart,
   ReferenceLine,
+  ResponsiveContainer,
 } from "recharts";
-import { FileDown, TrendingUp, Zap, Calendar, MapPin } from "lucide-react";
+import { FileDown, TrendingUp, Zap, MapPin } from "lucide-react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import "./DashboardInsights.css";
@@ -386,109 +385,6 @@ function WasteTrendChart({ selectedDate, locationId, onHover, onHoverLeave }) {
   );
 }
 
-/* ─── 3. Seasonal Impact Analysis (Composed Chart) ────────────────────────── */
-function SeasonalImpactChart() {
-  const seasonalData = generateSeasonalData();
-
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length > 0) {
-      const data = payload[0].payload;
-      return (
-        <div className="di-tooltip">
-          <p className="di-tooltip-date">{data.event}</p>
-          <p style={{ color: "#10b981" }}>Waste: {data.waste} kg</p>
-          <p style={{ color: "#94a3b8" }}>Baseline: {data.baseline} kg</p>
-          <p style={{ color: "#fbbf24" }}>+{Math.round(((data.waste / data.baseline - 1) * 100))}%</p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  return (
-    <div className="di-chart-card">
-      <div className="di-chart-header">
-        <div>
-          <h3 className="di-chart-title">Seasonal Impact Analysis</h3>
-          <p className="di-chart-subtitle">
-            Sri Lankan events correlation with waste spikes
-          </p>
-        </div>
-        <div className="di-header-icon" style={{ color: "#8b5cf6" }}>
-          <Calendar size={18} />
-        </div>
-      </div>
-
-      <ResponsiveContainer width="100%" height={320}>
-        <ComposedChart
-          data={seasonalData}
-          margin={{ top: 20, right: 30, left: 0, bottom: 80 }}
-        >
-          <defs>
-            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.3} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(51,65,85,0.3)" />
-          <XAxis
-            dataKey="name"
-            angle={-45}
-            textAnchor="end"
-            height={100}
-            stroke="#94a3b8"
-            style={{ fontSize: "11px" }}
-          />
-          <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            wrapperStyle={{ fontSize: "12px" }}
-            contentStyle={{
-              background: "rgba(15,23,42,0.8)",
-              border: "1px solid rgba(51,65,85,0.5)",
-              borderRadius: "6px",
-            }}
-          />
-          <Bar
-            dataKey="waste"
-            fill="url(#barGradient)"
-            stroke="#06b6d4"
-            strokeWidth={1}
-            name="Total Waste"
-          />
-          <Line
-            type="monotone"
-            dataKey="baseline"
-            stroke="#94a3b8"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={false}
-            name="Average Baseline"
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-
-      <div className="di-event-legend">
-        <div className="di-event-item">
-          <span className="di-event-badge">📅</span>
-          <span>Sinhala/Tamil New Year (Apr 13-14)</span>
-        </div>
-        <div className="di-event-item">
-          <span className="di-event-badge">🕯️</span>
-          <span>Poya Days (Monthly observances)</span>
-        </div>
-        <div className="di-event-item">
-          <span className="di-event-badge">🎓</span>
-          <span>School Vacations (3 months/year)</span>
-        </div>
-        <div className="di-event-item">
-          <span className="di-event-badge">🏛️</span>
-          <span>Temple Festivals (Variable dates)</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ─── Download Report Function (PDF) ──────────────────────────────────── */
 function downloadReport(locationId, selectedDate, locationsData) {
@@ -677,9 +573,7 @@ export default function DashboardInsights({ selectedDate, locationsData }) {
                 onHoverLeave={() => setHoveredChartData(null)}
               />
             </div>
-            <div className="di-chart-wrapper di-full-width">
-              <SeasonalImpactChart />
-            </div>
+
           </div>
         </div>
       </div>

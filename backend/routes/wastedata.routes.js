@@ -2,6 +2,15 @@ const { Router } = require("express");
 const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
+const {
+  calculateLongWeekend,
+  getForecastStatus,
+  getHolidaysForDate,
+  getKgThresholds,
+  isHolidayDate,
+  isPoyaDay,
+  isWeekendDate,
+} = require("../utils/dateUtils");
 
 const router = Router();
 
@@ -40,78 +49,8 @@ function loadGeocodeCache() {
   }
 }
 
-function getHolidaysForDate(dateStr, cache) {
-  const year = dateStr.slice(0, 4);
-  const holidays = cache[year] || [];
-  return holidays.filter((h) => h.iso_date.slice(0, 10) === dateStr);
-}
-
-function shiftDate(dateStr, days) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function detectLongWeekend(dateStr, cache) {
-  const d = new Date(dateStr);
-  const dow = d.getDay(); // 0=Sun,1=Mon,...,5=Fri,6=Sat
-
-  const check = (ds) => getHolidaysForDate(ds, cache);
-
-  let triggerHoliday = null;
-  let longWeekendDates = [];
-
-  if (dow === 5) {
-    const h = check(dateStr);
-    if (h.length > 0) {
-      triggerHoliday = h[0];
-      longWeekendDates = [dateStr, shiftDate(dateStr, 1), shiftDate(dateStr, 2)];
-    }
-  } else if (dow === 6) {
-    const fri = shiftDate(dateStr, -1);
-    const hFri = check(fri);
-    if (hFri.length > 0) {
-      triggerHoliday = hFri[0];
-      longWeekendDates = [fri, dateStr, shiftDate(dateStr, 1)];
-    }
-    if (!triggerHoliday) {
-      const mon = shiftDate(dateStr, 2);
-      const hMon = check(mon);
-      if (hMon.length > 0) {
-        triggerHoliday = hMon[0];
-        longWeekendDates = [dateStr, shiftDate(dateStr, 1), mon];
-      }
-    }
-  } else if (dow === 0) {
-    const fri = shiftDate(dateStr, -2);
-    const hFri = check(fri);
-    if (hFri.length > 0) {
-      triggerHoliday = hFri[0];
-      longWeekendDates = [fri, shiftDate(dateStr, -1), dateStr];
-    }
-    if (!triggerHoliday) {
-      const mon = shiftDate(dateStr, 1);
-      const hMon = check(mon);
-      if (hMon.length > 0) {
-        triggerHoliday = hMon[0];
-        longWeekendDates = [shiftDate(dateStr, -1), dateStr, mon];
-      }
-    }
-  } else if (dow === 1) {
-    const h = check(dateStr);
-    if (h.length > 0) {
-      triggerHoliday = h[0];
-      longWeekendDates = [shiftDate(dateStr, -2), shiftDate(dateStr, -1), dateStr];
-    }
-  }
-
-  const isLongWeekend = triggerHoliday !== null;
-  return { isLongWeekend, longWeekendDates, triggerHoliday };
-}
-
 function isWeekend(dateStr) {
-  const dow = new Date(dateStr).getDay();
-  return dow === 0 || dow === 6;
+  return isWeekendDate(dateStr);
 }
 
 // ---------- GET /api/waste-data ----------
@@ -121,26 +60,32 @@ router.get("/", (req, res) => {
 
   const matchedHolidays = getHolidaysForDate(dateStr, cache);
   const isHoliday = matchedHolidays.length > 0;
-  const weekend   = isWeekend(dateStr);
+  const weekend = isWeekend(dateStr);
+  const poyaDay = isPoyaDay(dateStr, cache);
 
-  const { isLongWeekend, longWeekendDates, triggerHoliday } =
-    detectLongWeekend(dateStr, cache);
+  const { isLongWeekend, longWeekendDays, longWeekendDates, triggerHoliday } =
+    calculateLongWeekend(dateStr, cache);
+
+  // A long weekend can be 3, 4, or 5 days depending on the Sri Lankan holiday pattern.
+  const effectiveLongWeekendDates = longWeekendDates && longWeekendDates.length ? longWeekendDates : [];
 
   // Construct input rows for model
   const rows = [];
   const month = parseInt(dateStr.slice(5, 7), 10);
-  
+
   for (const loc of LOCATIONS) {
     for (const cat of CATEGORIES) {
       const row = {
         Is_Weekend: weekend ? 1 : 0,
         Is_Holiday: isHoliday ? 1 : 0,
         Is_Long_Weekend: isLongWeekend ? 1 : 0,
+        Is_Poya_Day: poyaDay ? 1 : 0,
+        Month: month,
+        Month_December: month === 12 ? 1 : 0,
         Rainfall_mm: 0,
         Max_Temp_C: 30,
         Waste_Lag_1: Math.round(loc.maxCapacity * 0.4),
         Waste_Lag_7: Math.round(loc.maxCapacity * 0.4),
-        Month: month,
       };
 
       // One-hot encode location
@@ -182,11 +127,14 @@ router.get("/", (req, res) => {
     }
   } catch (err) {
     console.error("ML model execution failed, falling back to deterministic predictions:", err.message);
-    // Plausible fallback values (deterministic based on index)
     predictions = rows.map((_, idx) => 5 + (idx % 10));
   }
 
-  // Parse predictions back to locations
+  const kgConversionFactor = 1.0;
+
+  // Parse predictions back to locations.
+  // All model output is treated as kg, and status is derived from capacity-based kg thresholds,
+  // not from a synthetic/rounded percentage that can falsely clamp to 100%.
   let index = 0;
   const locations = LOCATIONS.map((loc) => {
     const composition = {};
@@ -197,13 +145,18 @@ router.get("/", (req, res) => {
       if (predVal === undefined || typeof predVal !== "number" || isNaN(predVal)) {
         predVal = 5.0;
       }
+
+      predVal = Number(predVal) * kgConversionFactor;
       predVal = Math.max(0, Math.round(predVal * 10) / 10);
       composition[cat] = predVal;
       totalWaste += predVal;
     }
 
     totalWaste = Math.round(totalWaste * 10) / 10;
-    const fillLevel = Math.min(100, Math.max(0, Math.round((totalWaste / loc.maxCapacity) * 100)));
+    const capacityKg = Number(loc.maxCapacity) || 0;
+    const thresholdsKg = getKgThresholds(capacityKg);
+    const utilizationPercent = capacityKg > 0 ? Number(((totalWaste / capacityKg) * 100).toFixed(1)) : 0;
+    const status = getForecastStatus(totalWaste, capacityKg);
 
     return {
       id: loc.id,
@@ -212,27 +165,34 @@ router.get("/", (req, res) => {
       lat: loc.lat,
       lng: loc.lng,
       maxCapacity: loc.maxCapacity,
+      capacityKg,
       totalWaste,
+      predictedWasteKg: totalWaste,
       composition,
-      fillLevel,
-      status: fillLevel >= 80 ? "ALERT" : fillLevel >= 60 ? "WATCH" : "NORMAL",
+      utilizationPercent,
+      fillLevel: utilizationPercent,
+      thresholdsKg,
+      status,
     };
   });
 
-  const avgFill =
-    Math.round(
-      (locations.reduce((s, l) => s + l.fillLevel, 0) / locations.length) * 10
-    ) / 10;
+  const avgWasteKg =
+    locations.reduce((s, l) => s + l.totalWaste, 0) / locations.length;
+  const avgUtilizationPercent =
+    locations.reduce((s, l) => s + (l.utilizationPercent || 0), 0) / locations.length;
 
   res.json({
     date: dateStr,
     isHoliday,
     isWeekend: weekend,
     isLongWeekend,
-    longWeekendDates,
+    longWeekendDays,
+    longWeekendDates: effectiveLongWeekendDates,
     triggerHoliday,
     holidays: matchedHolidays,
-    globalAvgFill: avgFill,
+    globalAvgFill: avgUtilizationPercent,
+    globalAvgUtilizationPercent: avgUtilizationPercent,
+    globalAvgWasteKg: Number(avgWasteKg.toFixed(1)),
     locations,
     geocode_cache: loadGeocodeCache(),
   });

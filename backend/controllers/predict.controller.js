@@ -443,11 +443,16 @@ async function predict(req, res, next) {
       console.error("[predict] littering alert skipped:", alertErr.message);
     }
 
+    let audioTriggerResult = null;
     try {
-      await audioTriggerService.maybeQueueFromPredict({
+      audioTriggerResult = await audioTriggerService.maybeQueueFromPredict({
         device,
         risk,
         sourceType,
+        bin_fill_level,
+        fill_percentage: extras.fill_percentage,
+        animal,
+        littering_action,
       });
     } catch (audioErr) {
       console.error("[predict] audio trigger skipped:", audioErr.message);
@@ -461,6 +466,16 @@ async function predict(req, res, next) {
       bin_fill,
       bin_fill_level,
       littering_action: litteringActionForResponse(littering_action),
+      audio_trigger: audioTriggerResult?.resolved
+        ? {
+            scenario: audioTriggerResult.resolved.scenario_key,
+            label: audioTriggerResult.resolved.label,
+            track: audioTriggerResult.resolved.track,
+            reason: audioTriggerResult.resolved.reason,
+            command_id: audioTriggerResult.command?.command_id ?? null,
+            queued: Boolean(audioTriggerResult.command),
+          }
+        : null,
       warnings: warnings.length ? warnings : undefined,
       weather: { ...weather, location_source: locationSource, lat, lon },
       risk,

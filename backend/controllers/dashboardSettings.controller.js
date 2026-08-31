@@ -1,4 +1,5 @@
 const dashboardSettings = require("../services/dashboardSettingsService");
+const audioSettingsService = require("../services/audioSettingsService");
 const { getPublicBaseUrl } = require("../utils/publicUrl");
 
 function filePublicUrl(req, filename, updatedAt) {
@@ -93,10 +94,41 @@ function deletePromo(req, res) {
   return res.json({ ok: true, promo_image_url: null, default_promo: true });
 }
 
+function getAudioSettings(_req, res) {
+  const settings = audioSettingsService.getSettings();
+  return res.json({
+    ...settings,
+    builtin_labels: audioSettingsService.BUILTIN_LABELS,
+    test_tracks: audioSettingsService.allTestTracks(settings),
+  });
+}
+
+function putAudioSettings(req, res) {
+  try {
+    const result = audioSettingsService.saveSettings(req.body);
+    if (!result.ok) {
+      return res.status(400).json({ error: result.error });
+    }
+    return res.json({
+      ok: true,
+      ...result.settings,
+      builtin_labels: audioSettingsService.BUILTIN_LABELS,
+      test_tracks: audioSettingsService.allTestTracks(result.settings),
+    });
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return res.status(500).json({ error: e.message || "Could not save audio settings." });
+  }
+}
+
 module.exports = {
   getSettings,
   uploadHero,
   deleteHero,
   uploadPromo,
   deletePromo,
+  getAudioSettings,
+  putAudioSettings,
 };

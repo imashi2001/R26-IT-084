@@ -45,7 +45,7 @@ router.get("/", (_req, res) => {
     littering_action:
       "POST /littering-action (multipart: image) — requires MODEL_LITTERING_ACTION_URL (littering-event microservice)",
     dashboard:
-      "GET /dashboard/settings, POST /dashboard/settings/hero (admin), DELETE /dashboard/settings/hero (admin), POST /dashboard/settings/promo (admin), DELETE /dashboard/settings/promo (admin)",
+      "GET /dashboard/settings, GET /dashboard/settings/audio, PUT /dashboard/settings/audio (admin), POST /dashboard/settings/hero (admin), DELETE /dashboard/settings/hero (admin), POST /dashboard/settings/promo (admin), DELETE /dashboard/settings/promo (admin)",
     collection: "POST /collection/plan — ordered Half+Overflow stops for route planning",
   });
 });

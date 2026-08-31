@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { RefreshCw, Volume2 } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
@@ -8,33 +8,37 @@ import Card from "../components/dashboard/Card";
 import ListRow from "../components/dashboard/ListRow";
 import EmptyState from "../components/dashboard/EmptyState";
 import PageSkeleton from "../components/dashboard/PageSkeleton";
-import StatusBanner from "../components/dashboard/StatusBanner";
+import AudioTrackAssignmentCard from "../components/dashboard/AudioTrackAssignmentCard";
+import AudioTrackTestPanel from "../components/dashboard/AudioTrackTestPanel";
 import useDevicesOverview from "../hooks/useDevicesOverview";
+import useAudioSettings from "../hooks/useAudioSettings";
 import { useAuth } from "../context/AuthContext";
 import {
-  btnPrimary,
   btnSecondary,
   btnGhost,
   statusBadgeClass,
   bannerTone,
 } from "../components/dashboard/dashboardUi";
-import {
-  formatLastSeen,
-  isCameraOnline,
-  runRemoteAudioStop,
-  runRemoteAudioTest,
-} from "../utils/audioTest";
+import { formatLastSeen, isCameraOnline } from "../utils/audioTest";
 
 export default function SpeakerCheckPage() {
   const { user, authFetch } = useAuth();
   const { devices, loading, error, refresh } = useDevicesOverview(60_000);
+  const {
+    settings: audioSettings,
+    testTracks,
+    loading: audioLoading,
+    error: audioError,
+    refresh: refreshAudio,
+    setSettings: setAudioSettings,
+  } = useAudioSettings();
   const [msgs, setMsgs] = useState({});
-  const [audioMsgs, setAudioMsgs] = useState({});
   const [busyId, setBusyId] = useState(null);
-  const [audioBusyKey, setAudioBusyKey] = useState(null);
-  const [stopBusyId, setStopBusyId] = useState(null);
 
-  const loadDevices = useCallback(() => refresh(), [refresh]);
+  const loadDevices = useCallback(() => {
+    refresh();
+    refreshAudio();
+  }, [refresh, refreshAudio]);
 
   const onTestSpeaker = async (deviceId) => {
     setBusyId(deviceId);
@@ -62,51 +66,6 @@ export default function SpeakerCheckPage() {
     }
   };
 
-  const onTestAudio = async (d, track = 1) => {
-    if (!d?.esp32_id) return;
-    const busyKey = `${d.id}:${track}`;
-    setAudioBusyKey(busyKey);
-    setAudioMsgs((m) => ({ ...m, [d.id]: null }));
-    try {
-      await runRemoteAudioTest({
-        authFetch,
-        deviceId: d.id,
-        track,
-        onStatus: (msg) => setAudioMsgs((m) => ({ ...m, [d.id]: msg })),
-      });
-      loadDevices();
-    } catch (e) {
-      setAudioMsgs((m) => ({
-        ...m,
-        [d.id]: e.message || "Audio test failed.",
-      }));
-    } finally {
-      setAudioBusyKey(null);
-    }
-  };
-
-  const onStopAudio = async (d) => {
-    if (!d?.esp32_id) return;
-    setStopBusyId(d.id);
-    setAudioMsgs((m) => ({ ...m, [d.id]: null }));
-    try {
-      await runRemoteAudioStop({
-        authFetch,
-        deviceId: d.id,
-        onStatus: (msg) => setAudioMsgs((m) => ({ ...m, [d.id]: msg })),
-      });
-      loadDevices();
-    } catch (e) {
-      setAudioMsgs((m) => ({
-        ...m,
-        [d.id]: e.message || "Stop failed.",
-      }));
-    } finally {
-      setStopBusyId(null);
-      setAudioBusyKey(null);
-    }
-  };
-
   const isAdmin = user?.role === "admin";
 
   return (
@@ -128,7 +87,7 @@ export default function SpeakerCheckPage() {
         >
           <PageHeader
             title="Speaker Check"
-            subtitle="Test the laptop-bridge speaker relay or remote ESP32 DFPlayer audio queue."
+            subtitle="Assign MP3 track numbers per scenario, then test on each bin."
             actions={
               <button
                 type="button"
@@ -142,21 +101,35 @@ export default function SpeakerCheckPage() {
             }
           />
 
+          <AudioTrackAssignmentCard
+            settings={audioSettings}
+            loading={audioLoading}
+            error={audioError}
+            authFetch={authFetch}
+            isAdmin={isAdmin}
+            onSaved={(saved) => setAudioSettings(saved)}
+          />
+
           <Card>
             <Card.Header icon={Volume2} title="How it works" accent="text-brand-400" />
             <Card.Body className="space-y-2 text-sm text-slate-400">
               <ol className="list-decimal space-y-1 pl-5">
                 <li>
-                  <strong className="text-slate-300">Test speaker</strong> — bridge polls{" "}
-                  <code className="text-brand-400">/bridge/speaker-pending</code>
+                  <strong className="text-slate-300">Save track mapping</strong> — maps
+                  scenarios to DFPlayer files{" "}
+                  <code className="text-brand-400">/MP3/000N.mp3</code>
                 </li>
                 <li>
-                  <strong className="text-slate-300">Test Audio 0001 / 0002</strong> — queues{" "}
-                  <code className="text-brand-400">PLAY_AUDIO</code> on DFPlayer
+                  <strong className="text-slate-300">Test tracks</strong> — queues{" "}
+                  <code className="text-brand-400">PLAY_AUDIO</code> per bin
                 </li>
                 <li>
-                  <strong className="text-slate-300">Stop</strong> — queues{" "}
-                  <code className="text-brand-400">STOP_AUDIO</code>
+                  <strong className="text-slate-300">After /predict</strong> — ESP32
+                  uploads pick the highest-priority scenario and play one track
+                </li>
+                <li>
+                  <strong className="text-slate-300">Test speaker (bridge)</strong> — LAN
+                  buzzer via laptop bridge (separate from DFPlayer)
                 </li>
               </ol>
             </Card.Body>
@@ -214,57 +187,31 @@ export default function SpeakerCheckPage() {
                               Last seen: {formatLastSeen(d.last_seen_at)}
                             </p>
                           ) : null}
+                          <Link
+                            to={`/bins/${d.id}`}
+                            className={`${btnGhost} mt-1 inline-flex text-xs`}
+                          >
+                            Open bin detail →
+                          </Link>
                           {msgs[d.id] ? (
                             <p className={`rounded-lg border px-2 py-1 text-xs ${bannerTone("brand")}`}>
                               {msgs[d.id]}
                             </p>
                           ) : null}
-                          {audioMsgs[d.id] ? (
-                            <p className={`rounded-lg border px-2 py-1 text-xs ${bannerTone("info")}`}>
-                              {audioMsgs[d.id]}
-                            </p>
-                          ) : null}
                         </div>
-                        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-                          <button
-                            type="button"
-                            disabled={
-                              !isAdmin ||
-                              !hasEsp32 ||
-                              audioBusyKey != null ||
-                              stopBusyId === d.id
-                            }
-                            onClick={() => onTestAudio(d, 1)}
-                            className={btnPrimary}
-                          >
-                            {audioBusyKey === `${d.id}:1` ? "Testing…" : "Test Audio 0001"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={
-                              !isAdmin ||
-                              !hasEsp32 ||
-                              audioBusyKey != null ||
-                              stopBusyId === d.id
-                            }
-                            onClick={() => onTestAudio(d, 2)}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
-                          >
-                            {audioBusyKey === `${d.id}:2` ? "Testing…" : "Test Audio 0002"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!isAdmin || !hasEsp32 || stopBusyId === d.id}
-                            onClick={() => onStopAudio(d)}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-50"
-                          >
-                            {stopBusyId === d.id ? "Stopping…" : "Stop"}
-                          </button>
+                        <div className="min-w-[220px] shrink-0 space-y-2">
+                          <AudioTrackTestPanel
+                            device={d}
+                            tracks={testTracks}
+                            authFetch={authFetch}
+                            isAdmin={isAdmin}
+                            compact
+                          />
                           <button
                             type="button"
                             disabled={!isAdmin || busyId === d.id}
                             onClick={() => onTestSpeaker(d.id)}
-                            className={btnSecondary}
+                            className={btnSecondary + " w-full"}
                           >
                             {busyId === d.id ? "Queuing…" : "Test speaker (bridge)"}
                           </button>
@@ -273,7 +220,7 @@ export default function SpeakerCheckPage() {
                               href={directTest}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-xs text-slate-500 underline hover:text-brand-400"
+                              className="block text-center text-xs text-slate-500 underline hover:text-brand-400"
                             >
                               Same Wi‑Fi direct test
                             </a>

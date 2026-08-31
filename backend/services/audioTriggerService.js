@@ -1,12 +1,8 @@
 /**
- * Queue PLAY_AUDIO on ESP32 after /predict when risk warrants it.
+ * Queue PLAY_AUDIO on ESP32 after /predict using configurable scenario tracks.
  *
- * Track mapping (DFPlayer /MP3/000N.mp3):
- *   HIGH     → track 2
- *   CRITICAL → track 3
- *   LOW/MEDIUM → no auto-play
- *
- * Manual admin Test Audio still uses track 1 via POST /devices/:id/audio-test.
+ * Track numbers map to DFPlayer /MP3/000N.mp3 and are configured in
+ * Speaker Check → Audio track assignment (audio_settings.json).
  */
 
 const {
@@ -14,43 +10,72 @@ const {
   AUDIO_TRIGGER_COOLDOWN_MS,
 } = require("../config/env");
 const deviceCommandService = require("./deviceCommandService");
+const audioSettingsService = require("./audioSettingsService");
+const audioPriorityService = require("./audioPriorityService");
 
+/** @deprecated Use audioPriorityService.resolveAudioScenario */
 function trackForRisk(risk) {
-  const level = String(risk?.level || "").trim().toUpperCase();
-  if (level === "CRITICAL") return 3;
-  if (level === "HIGH") return 2;
-  return null;
+  const resolved = audioPriorityService.resolveAudioScenario({ risk });
+  return resolved?.track ?? null;
 }
 
 /**
- * @param {{ device: object|null, risk: object, sourceType: string }} input
- * @returns {Promise<object|null>} created command API shape, or null if skipped
+ * @param {{
+ *   device: object|null,
+ *   risk: object,
+ *   sourceType: string,
+ *   bin_fill_level?: string|null,
+ *   fill_percentage?: number|null,
+ *   animal?: object|null,
+ *   littering_action?: object|null,
+ * }} input
+ * @returns {Promise<{ command: object|null, resolved: object|null }>}
  */
-async function maybeQueueFromPredict({ device, risk, sourceType }) {
-  if (!AUTO_AUDIO_ON_PREDICT) return null;
-  if (!device?.id || !device?.esp32_id) return null;
+async function maybeQueueFromPredict(input) {
+  if (!AUTO_AUDIO_ON_PREDICT) {
+    return { command: null, resolved: null };
+  }
+  const device = input?.device;
+  if (!device?.id || !device?.esp32_id) {
+    return { command: null, resolved: null };
+  }
 
-  const src = String(sourceType || "").trim().toLowerCase();
-  if (src !== "esp32") return null;
+  const src = String(input?.sourceType || "").trim().toLowerCase();
+  if (src !== "esp32") {
+    return { command: null, resolved: null };
+  }
 
-  const track = trackForRisk(risk);
-  if (!track) return null;
+  const settings = audioSettingsService.getSettings();
+  const resolved = audioPriorityService.resolveAudioScenario({
+    risk: input.risk,
+    bin_fill_level: input.bin_fill_level,
+    fill_percentage: input.fill_percentage,
+    animal: input.animal,
+    littering_action: input.littering_action,
+    settings,
+  });
+
+  if (!resolved?.track) {
+    return { command: null, resolved: null };
+  }
 
   const esp32Id = String(device.esp32_id).trim();
   const skip = await deviceCommandService.shouldSkipAutoPlay(esp32Id);
-  if (skip) return null;
+  if (skip) {
+    return { command: null, resolved };
+  }
 
   try {
     const cmd = await deviceCommandService.createPlayAudioCommand(device, {
-      track,
+      track: resolved.track,
     });
     console.log(
-      `[audioTrigger] queued PLAY_AUDIO track ${track} for ${esp32Id} (risk ${risk?.level}) command_id=${cmd?.command_id}`
+      `[audioTrigger] scenario=${resolved.scenario_key} track=${resolved.track} for ${esp32Id} command_id=${cmd?.command_id}`
     );
-    return cmd;
+    return { command: cmd, resolved };
   } catch (e) {
     console.error("[audioTrigger] failed to queue PLAY_AUDIO:", e.message);
-    return null;
+    return { command: null, resolved };
   }
 }
 

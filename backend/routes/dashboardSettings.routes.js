@@ -7,6 +7,15 @@ const router = Router();
 
 router.get("/settings", dashboardSettings.getSettings);
 
+router.get("/settings/audio", dashboardSettings.getAudioSettings);
+
+router.put(
+  "/settings/audio",
+  requireAuth,
+  requireRole("admin"),
+  dashboardSettings.putAudioSettings
+);
+
 router.post(
   "/settings/hero",
   requireAuth,

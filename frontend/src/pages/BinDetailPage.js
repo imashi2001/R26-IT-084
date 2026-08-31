@@ -5,6 +5,7 @@ import {
   ChevronRight,
   MapPin,
   RefreshCw,
+  Volume2,
 } from "lucide-react";
 import ImageCanvas from "../components/ImageCanvas";
 import PredictionList from "../components/PredictionList";
@@ -14,6 +15,9 @@ import PageHeader from "../components/dashboard/PageHeader";
 import Card from "../components/dashboard/Card";
 import EmptyState from "../components/dashboard/EmptyState";
 import PageSkeleton from "../components/dashboard/PageSkeleton";
+import AudioTrackTestPanel from "../components/dashboard/AudioTrackTestPanel";
+import useAudioSettings from "../hooks/useAudioSettings";
+import { useAuth } from "../context/AuthContext";
 import StatusBanner from "../components/dashboard/StatusBanner";
 import {
   btnGhost,
@@ -77,6 +81,8 @@ function MetaItem({ label, value }) {
 
 export default function BinDetailPage() {
   const { id } = useParams();
+  const { user, authFetch } = useAuth();
+  const { testTracks } = useAudioSettings();
   const [data, setData] = useState(null);
   const [captures, setCaptures] = useState([]);
   const [error, setError] = useState(null);
@@ -124,6 +130,7 @@ export default function BinDetailPage() {
   const predictions = Array.isArray(latest?.predictions)
     ? latest.predictions
     : [];
+  const isAdmin = user?.role === "admin";
 
   return (
     <DashboardLayout>
@@ -223,6 +230,23 @@ export default function BinDetailPage() {
                       }
                     />
                   </dl>
+                </Card.Body>
+              </Card>
+
+              <Card>
+                <Card.Header
+                  icon={Volume2}
+                  title="Speaker / audio test"
+                  subtitle="Play each assigned MP3 track on this bin's DFPlayer"
+                  accent="text-brand-400"
+                />
+                <Card.Body>
+                  <AudioTrackTestPanel
+                    device={data.device}
+                    tracks={testTracks}
+                    authFetch={authFetch}
+                    isAdmin={isAdmin}
+                  />
                 </Card.Body>
               </Card>
 

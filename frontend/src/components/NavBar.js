@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import BrandLogo from "./BrandLogo";
 
 export default function NavBar() {
   const { user, logout } = useAuth();
@@ -8,7 +9,7 @@ export default function NavBar() {
   return (
     <nav className="top-nav">
       <NavLink className="nav-brand" to="/" end>
-        VisionWaste
+        <BrandLogo variant="nav" theme="dark" />
       </NavLink>
       <div className="nav-links">
         <NavLink className="nav-link" to="/" end>

@@ -34,6 +34,7 @@ import {
   Trees,
   HandHeart,
 } from "lucide-react";
+import BrandLogo from "../components/BrandLogo";
 import { apiUrl } from "../utils/apiBase";
 import {
   BIN_STATUS,
@@ -390,22 +391,8 @@ function PublicNav({ dark, onToggleTheme }) {
       }`}
     >
       <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <a href="#home" className="flex items-center gap-2.5 shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-eco-primary shadow-md shadow-eco-primary/25">
-            <Leaf className="h-5 w-5 text-white" />
-          </div>
-          <div className="leading-tight">
-            <div
-              className={`font-display text-lg font-extrabold tracking-tight ${
-                dark ? "text-white" : "text-ink-900"
-              }`}
-            >
-              VisionWaste
-            </div>
-            <div className="text-[11px] font-medium text-eco-primary">
-              Smart Waste Management
-            </div>
-          </div>
+        <a href="#home" className="flex shrink-0 items-center">
+          <BrandLogo variant="landing" theme={dark ? "dark" : "light"} />
         </a>
 
         <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold">
@@ -909,16 +896,7 @@ function AboutFooter({ dark }) {
     >
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:grid-cols-3 sm:px-6">
         <div>
-          <div className="flex items-center gap-2">
-            <Leaf className="h-5 w-5 text-eco-primary" />
-            <span
-              className={`font-display text-base font-extrabold ${
-                dark ? "text-white" : "text-ink-900"
-              }`}
-            >
-              VisionWaste
-            </span>
-          </div>
+          <BrandLogo variant="footer" theme={dark ? "dark" : "light"} />
           <p className="mt-3 text-sm leading-relaxed">
             Smart waste management for Sri Lankan cities — find nearby bins,
             dispose responsibly, and keep streets clean with real-time

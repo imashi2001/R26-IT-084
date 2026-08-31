@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Leaf, ShieldCheck, BarChart3, MapPin } from "lucide-react";
+import { ShieldCheck, BarChart3, MapPin } from "lucide-react";
+import BrandLogo from "../BrandLogo";
 
 /**
  * Shared layout for /login and /register.
@@ -27,18 +28,8 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           }}
         />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 shadow-lg shadow-brand-500/30">
-              <Leaf className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <div className="text-xl font-bold text-white leading-tight">
-                VisionWaste
-              </div>
-              <div className="text-xs text-ink-300 leading-tight">
-                Smart Waste Monitoring
-              </div>
-            </div>
+          <Link to="/" className="inline-block">
+            <BrandLogo variant="auth" theme="dark" />
           </Link>
 
           <div className="space-y-8">
@@ -83,12 +74,9 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         <div className="w-full max-w-md">
           <Link
             to="/"
-            className="lg:hidden inline-flex items-center gap-2 mb-8 text-ink-500 hover:text-ink-900 transition"
+            className="lg:hidden inline-flex mb-8 text-ink-500 hover:text-ink-900 transition"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500">
-              <Leaf className="h-4 w-4 text-white" />
-            </div>
-            <span className="font-semibold">VisionWaste</span>
+            <BrandLogo variant="compact" theme="light" />
           </Link>
 
           <div>

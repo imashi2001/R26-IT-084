@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  BarChart,
-  Bar,
   LineChart,
   Line,
   PieChart,
@@ -17,55 +15,44 @@ import {
 } from "recharts";
 import { FileDown, TrendingUp, Zap, MapPin } from "lucide-react";
 import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+import { apiUrl } from "../utils/apiBase";
 import "./DashboardInsights.css";
 
-/* ─── Location Data ────────────────────────────────────────────────────── */
+/* ─── Location metadata ────────────────────────────────────────────────── */
 const LOCATIONS = [
-  { id: "moratuwa-mc", name: "Moratuwa M.C.", region: "Moratuwa", baseLevel: 45 },
-  { id: "boralesgamuwa-uc", name: "Boralesgamuwa U.C.", region: "Boralesgamuwa", baseLevel: 25 },
-  { id: "kesbewa-uc", name: "Kesbewa U.C.", region: "Kesbewa", baseLevel: 50 },
-  { id: "dehiwala-mtlavinia", name: "Dehiwala - Mount Lavinia M.C.", region: "Dehiwala", baseLevel: 80 },
-  { id: "kotte-mc", name: "Sri Jayawardenepura Kotte M.C.", region: "Kotte", baseLevel: 20 },
-  { id: "maharagama-uc", name: "Maharagama U.C.", region: "Maharagama", baseLevel: 60 },
-  { id: "homagama-ps", name: "Homagama P.S.", region: "Homagama", baseLevel: 30 },
-  { id: "kdu-campus", name: "Kothalawala Defence University", region: "Kdu", baseLevel: 5 }
+  { id: "moratuwa-mc", name: "Moratuwa M.C.", region: "Moratuwa" },
+  { id: "boralesgamuwa-uc", name: "Boralesgamuwa U.C.", region: "Boralesgamuwa" },
+  { id: "kesbewa-uc", name: "Kesbewa U.C.", region: "Kesbewa" },
+  { id: "dehiwala-mtlavinia", name: "Dehiwala - Mt Lavinia", region: "Dehiwala" },
+  { id: "kotte-mc", name: "Sri J,puraKotte M.C.", region: "Kotte" },
+  { id: "maharagama-uc", name: "Maharagama U.C.", region: "Maharagama" },
+  { id: "homagama-ps", name: "Homagama P.S.", region: "Homagama" },
+  { id: "kdu-campus", name: "Kothalawala Defence University", region: "Kdu" },
 ];
 
-/* ─── Seeded Random for deterministic data ─────────────────────────────── */
-function seededRandom(seed) {
-  let s = seed;
-  return function () {
-    s = (s * 16807 + 0) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
+/* ─── Status color helper ──────────────────────────────────────────────── */
+function getStatusColor(status) {
+  switch (status) {
+    case "VERY_HIGH": return "#ef4444";
+    case "HIGH":      return "#f97316";
+    case "NORMAL":    return "#22c55e";
+    case "LOW":       return "#3b82f6";
+    case "UNAVAILABLE":
+    default:          return "#eab308";
+  }
 }
 
-/* ─── Helper functions ─────────────────────────────────────────────────── */
-function shiftDate(dateStr, days) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+function getStatusIcon(status) {
+  switch (status) {
+    case "VERY_HIGH": return "🔴";
+    case "HIGH":      return "🟠";
+    case "NORMAL":    return "🟢";
+    case "LOW":       return "🔵";
+    default:          return "🟡";
+  }
 }
 
-function getDateLabel(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function isHolidayLike(dateStr) {
-  const dow = new Date(dateStr).getDay();
-  return dow === 0 || dow === 6; // Sunday or Saturday
-}
-
-/* ─── Weekend/Long-weekend detection for high waste ─────────────────────── */
-function isWeekendOrLongWeekend(dateStr) {
-  const d = new Date(dateStr);
-  const dow = d.getDay();
-  // Check if it's Friday (5), Saturday (6), or Sunday (0)
-  return dow === 0 || dow === 5 || dow === 6;
-}
-
+/* ─── Category colors ──────────────────────────────────────────────────── */
 function getCategoryColor(name) {
   const colors = {
     "Unburnable": "#94a3b8",
@@ -75,164 +62,70 @@ function getCategoryColor(name) {
     "Industrial Waste": "#8b5cf6",
     "Slaughter House Waste": "#ec4899",
     "Sanitary Waste": "#e11d48",
-    "C & D": "#06b6d4"
+    "C & D": "#06b6d4",
   };
   return colors[name] || "#64748b";
 }
 
-function generateTrendData(today, locationId) {
-  const data = [];
-  const location = LOCATIONS.find(l => l.id === locationId);
-  const baseBoost = location?.baseLevel || 45; // Use location's base level
-  const dateSeed = parseInt(today.replace(/-/g, "")) + locationId.length * 23;
-  const rand = seededRandom(dateSeed);
-  const isColomboFort = locationId === "colombo-fort";
+/* ─── 1. Waste Category Distribution (Donut) ─────────────────────────── */
+function WasteCategoryChart({ locationId, locationsData }) {
+  const activeLoc = locationsData?.find((l) => l.id === locationId);
+  const composition = activeLoc?.composition;
 
-  // Historical (past 7 days)
-  for (let i = -7; i <= 0; i++) {
-    const date = shiftDate(today, i);
-    const noise = (rand() - 0.5) * 14;
-    const holidayBoost = isHolidayLike(date) ? 15 : 0;
-    // High waste on weekends/long weekends for Colombo Fort
-    const weekendBoost = isColomboFort && isWeekendOrLongWeekend(date) ? 35 : 0;
-    const value = Math.max(20, baseBoost + noise + holidayBoost + weekendBoost);
-
-    data.push({
-      date: getDateLabel(date),
-      fullDate: date,
-      historical: Math.round(value),
-      predicted: null,
-      isToday: i === 0,
-    });
+  if (!composition || Object.keys(composition).length === 0) {
+    return (
+      <div className="di-chart-card">
+        <div className="di-chart-header">
+          <div>
+            <h3 className="di-chart-title">Estimated Waste Category Distribution</h3>
+            <p className="di-chart-subtitle">
+              Based on Historical Category Proportions (2023–2025)
+            </p>
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300, color: "#64748b", fontSize: 13 }}>
+          Category data unavailable for this location.
+        </div>
+      </div>
+    );
   }
 
-  // Predicted (next 7 days)
-  for (let i = 1; i <= 7; i++) {
-    const date = shiftDate(today, i);
-    const noise = (rand() - 0.5) * 14;
-    const holidayBoost = isHolidayLike(date) ? 15 : 0;
-    // High waste on weekends/long weekends for Colombo Fort
-    const weekendBoost = isColomboFort && isWeekendOrLongWeekend(date) ? 35 : 0;
-    const value = Math.max(20, baseBoost + noise + holidayBoost + weekendBoost);
+  const rawEntries = Object.entries(composition);
+  const rawTotalKg = rawEntries.reduce((sum, [, val]) => {
+    const kgVal = typeof val === "object" && val !== null ? val.kg : Number(val);
+    return sum + (Number.isFinite(kgVal) ? kgVal : 0);
+  }, 0);
 
-    data.push({
-      date: getDateLabel(date),
-      fullDate: date,
-      historical: null,
-      predicted: Math.round(value),
-      isToday: false,
-    });
-  }
+  const chartData = rawEntries.map(([name, val]) => {
+    const rawKg = typeof val === "object" && val !== null ? (val.kg ?? 0) : Number(val) || 0;
+    const percent = typeof val === "object" && val !== null && val.percent !== undefined
+      ? val.percent
+      : rawTotalKg > 0 ? Number(((rawKg / rawTotalKg) * 100).toFixed(1)) : 0;
 
-  return data;
-}
-
-function generateSeasonalData() {
-  return [
-    {
-      name: "Regular Days",
-      waste: 45,
-      baseline: 45,
-      event: "Normal Operation",
-    },
-    {
-      name: "Sinhala/Tamil New Year",
-      waste: 78,
-      baseline: 45,
-      event: "Apr 13-14",
-    },
-    {
-      name: "Poya Days",
-      waste: 68,
-      baseline: 45,
-      event: "Monthly",
-    },
-    {
-      name: "School Vacations",
-      waste: 72,
-      baseline: 45,
-      event: "3 months/year",
-    },
-    {
-      name: "Long Weekends",
-      waste: 82,
-      baseline: 45,
-      event: "Holiday Adjacent",
-    },
-    {
-      name: "Temple Festivals",
-      waste: 92,
-      baseline: 45,
-      event: "Variable",
-    },
-  ];
-}
-
-/* ─── 1. Waste Category Distribution (Donut Chart) ──────────────────────── */
-function getCompositionForDate(locationId, dateStr, locationsData, selectedDate) {
-  const isSelectedDate = dateStr === selectedDate || (selectedDate && dateStr === getDateLabel(selectedDate));
-  
-  if (isSelectedDate && locationsData) {
-    const activeLoc = locationsData.find(l => l.id === locationId);
-    if (activeLoc && activeLoc.composition) {
-      return Object.entries(activeLoc.composition).map(([name, value]) => ({
-        name,
-        value,
-        rawKg: value
-      }));
-    }
-  }
-
-  // Fallback to deterministic composition based on dateStr and locationId using seeded random
-  const seed = String(dateStr).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) + String(locationId).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const rand = seededRandom(seed);
-
-  const categories = [
-    "Unburnable", "SOW", "Burnable", "Bulky Waste", "Industrial Waste", "Slaughter House Waste", "Sanitary Waste", "C & D"
-  ];
-
-  let rawProportions = categories.map(() => 5 + rand() * 45);
-  const sum = rawProportions.reduce((a, b) => a + b, 0);
-  
-  const totalWaste = Math.round((20 + rand() * 40) * 10) / 10;
-
-  return categories.map((name, idx) => {
-    const pct = Math.round((rawProportions[idx] / sum) * 100);
-    const rawKg = Math.round(((pct / 100) * totalWaste) * 10) / 10;
     return {
       name,
-      value: pct,
-      rawKg
+      value: percent,
+      rawKg: Math.round(rawKg * 10) / 10,
+      fill: getCategoryColor(name),
     };
   });
-}
 
-function WasteCategoryChart({ locationId, selectedDate, locationsData, hoveredDate }) {
-  const displayDate = hoveredDate || selectedDate;
-  const categoryData = getCompositionForDate(locationId, displayDate, locationsData, selectedDate);
-  const totalRawKg = Math.round(categoryData.reduce((sum, cat) => sum + (cat.rawKg || 0), 0) * 10) / 10;
-
-  const chartData = categoryData.map(cat => ({
-    ...cat,
-    fill: getCategoryColor(cat.name)
-  }));
+  const totalKg = Math.round(rawTotalKg * 10) / 10;
 
   return (
     <div className="di-chart-card">
       <div className="di-chart-header">
         <div>
-          <h3 className="di-chart-title">
-            Waste Category Distribution {hoveredDate ? `(${getDateLabel(hoveredDate)})` : ""}
-          </h3>
+          <h3 className="di-chart-title">Estimated Waste Category Distribution</h3>
           <p className="di-chart-subtitle">
-            {hoveredDate ? "Hovered date composition breakdown" : "Composition breakdown"}
+            Based on Historical Category Proportions (2023–2025)
           </p>
         </div>
         <div className="di-header-icon" style={{ color: "#10b981" }}>
           <TrendingUp size={18} />
         </div>
       </div>
- 
+
       <div className="di-donut-container">
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
@@ -252,7 +145,7 @@ function WasteCategoryChart({ locationId, selectedDate, locationsData, hoveredDa
             <Tooltip
               formatter={(value, name, props) => {
                 const rawKg = props.payload.rawKg;
-                return rawKg !== undefined ? [`${value}% (${rawKg} kg)`, name] : [`${value}%`, name];
+                return [`${value}% (${rawKg} kg)`, name];
               }}
               contentStyle={{
                 background: "rgba(15,23,42,0.9)",
@@ -264,39 +157,77 @@ function WasteCategoryChart({ locationId, selectedDate, locationsData, hoveredDa
           </PieChart>
         </ResponsiveContainer>
         <div className="di-donut-center">
-          <div className="di-total-label">{hoveredDate ? "Hovered Waste" : "Total Forecasted"}</div>
-          <div className="di-total-value">{totalRawKg} kg</div>
+          <div className="di-total-label">Total Forecasted</div>
+          <div className="di-total-value">{Math.round(totalKg * 10) / 10} kg</div>
         </div>
       </div>
- 
+
       <div className="di-legend">
         {chartData.map((cat) => (
           <div key={cat.name} className="di-legend-item">
             <div className="di-legend-color" style={{ background: cat.fill }} />
             <span className="di-legend-name">{cat.name}</span>
             <span className="di-legend-value">
-              {cat.value}% {cat.rawKg !== undefined ? ` (${cat.rawKg} kg)` : ""}
+              {cat.value}% ({cat.rawKg} kg)
             </span>
           </div>
         ))}
+      </div>
+
+      <div style={{ padding: "8px 12px", fontSize: 10, color: "#64748b", borderTop: "1px solid rgba(51,65,85,0.3)" }}>
+        ⓘ Category allocation estimated from historical proportions. XGBoost predicts total waste only.
       </div>
     </div>
   );
 }
 
-/* ─── 2. Predictive Waste Trend (Dual-line Chart) ────────────────────────── */
-function WasteTrendChart({ selectedDate, locationId, onHover, onHoverLeave }) {
-  const trendData = generateTrendData(selectedDate || new Date().toISOString().slice(0, 10), locationId);
+/* ─── 2. Waste Trend Chart (7+7 from API) ─────────────────────────────── */
+function WasteTrendChart({ selectedDate, locationId }) {
+  const [trendData, setTrendData] = useState([]);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [trendError, setTrendError] = useState(null);
+
+  const fetchTrend = useCallback(async () => {
+    if (!selectedDate || !locationId) return;
+    setTrendLoading(true);
+    setTrendError(null);
+    try {
+      const q = new URLSearchParams({ date: selectedDate, location: locationId });
+      const res = await fetch(apiUrl(`/api/waste-trend?${q.toString()}`));
+      if (!res.ok) throw new Error(`Trend API error ${res.status}`);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setTrendData(json.trend || []);
+    } catch (err) {
+      setTrendError(err.message);
+      setTrendData([]);
+    } finally {
+      setTrendLoading(false);
+    }
+  }, [selectedDate, locationId]);
+
+  useEffect(() => { fetchTrend(); }, [fetchTrend]);
+
+  // Transform for recharts
+  const chartData = trendData.map((point) => ({
+    date: point.label,
+    fullDate: point.date,
+    historical: point.type === "historical" ? point.totalWasteKg : null,
+    predicted: point.type === "forecast" ? point.totalWasteKg : null,
+    isAnchor: point.isAnchor,
+    // Bridge: connect the last historical point to the first forecast point
+    ...(point.isAnchor ? { predicted: point.totalWasteKg } : {}),
+  }));
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length > 0) {
       const data = payload[0].payload;
       const value = data.historical || data.predicted;
-      const type = data.historical ? "Historical" : "Forecasted";
+      const type = data.historical ? "Observed Historical" : "XGBoost Forecast";
       return (
         <div className="di-tooltip">
-          <p className="di-tooltip-date">{data.date}</p>
-          <p className="di-tooltip-value">{type}: {value} kg</p>
+          <p className="di-tooltip-date">{data.fullDate}</p>
+          <p className="di-tooltip-value">{type}: {value} KG</p>
         </div>
       );
     }
@@ -308,189 +239,156 @@ function WasteTrendChart({ selectedDate, locationId, onHover, onHoverLeave }) {
       <div className="di-chart-header">
         <div>
           <h3 className="di-chart-title">Waste Trend Analysis</h3>
-          <p className="di-chart-subtitle">Historical vs Forecasted (7+7 days)</p>
+          <p className="di-chart-subtitle">
+            Observed Historical Waste (KG) vs XGBoost Forecasted Waste (KG)
+          </p>
         </div>
         <div className="di-header-icon" style={{ color: "#06b6d4" }}>
           <TrendingUp size={18} />
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart 
-          data={trendData} 
-          margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-          onMouseMove={(e) => {
-            if (e.activePayload && e.activePayload.length > 0) {
-              onHover(e.activePayload[0].payload);
-            }
-          }}
-          onMouseLeave={onHoverLeave}
-        >
-          <defs>
-            <linearGradient id="historicalGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="predictedGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(51,65,85,0.3)" />
-          <XAxis
-            dataKey="date"
-            stroke="#94a3b8"
-            style={{ fontSize: "12px" }}
-          />
-          <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            wrapperStyle={{ fontSize: "12px" }}
-            contentStyle={{
-              background: "rgba(15,23,42,0.8)",
-              border: "1px solid rgba(51,65,85,0.5)",
-              borderRadius: "6px",
-            }}
-          />
-          <ReferenceLine
-            x={trendData.find((d) => d.isToday)?.date}
-            stroke="#ef4444"
-            strokeDasharray="5 5"
-            label={{ value: "Today", position: "top", fill: "#ef4444", fontSize: 12 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="historical"
-            stroke="#10b981"
-            strokeWidth={2.5}
-            dot={false}
-            fill="url(#historicalGradient)"
-            name="Historical"
-            isAnimationActive={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="predicted"
-            stroke="#f59e0b"
-            strokeWidth={2.5}
-            strokeDasharray="5 5"
-            dot={false}
-            fill="url(#predictedGradient)"
-            name="Forecasted"
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {trendLoading && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300, color: "#64748b", fontSize: 13 }}>
+          Loading trend data…
+        </div>
+      )}
+
+      {trendError && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300, color: "#f87171", fontSize: 13 }}>
+          {trendError}
+        </div>
+      )}
+
+      {!trendLoading && !trendError && chartData.length > 0 && (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+            <defs>
+              <linearGradient id="historicalGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="predictedGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(51,65,85,0.3)" />
+            <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: "12px" }} />
+            <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} label={{ value: "KG", angle: -90, position: "insideLeft", fill: "#64748b", fontSize: 11 }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+              wrapperStyle={{ fontSize: "12px" }}
+              contentStyle={{
+                background: "rgba(15,23,42,0.8)",
+                border: "1px solid rgba(51,65,85,0.5)",
+                borderRadius: "6px",
+              }}
+            />
+            <ReferenceLine
+              x={chartData.find((d) => d.isAnchor)?.date}
+              stroke="#a78bfa"
+              strokeDasharray="5 5"
+              label={{ value: "Forecast starts", position: "top", fill: "#a78bfa", fontSize: 11 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="historical"
+              stroke="#10b981"
+              strokeWidth={2.5}
+              dot={false}
+              connectNulls={false}
+              name="Observed Historical Waste (KG)"
+              isAnimationActive={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="predicted"
+              stroke="#f59e0b"
+              strokeWidth={2.5}
+              strokeDasharray="5 5"
+              dot={false}
+              connectNulls={false}
+              name="XGBoost Forecasted Waste (KG)"
+              isAnimationActive={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+
+      <div style={{ padding: "8px 12px", fontSize: 10, color: "#64748b", borderTop: "1px solid rgba(51,65,85,0.3)" }}>
+        ⓘ Both historical reconstruction and forecasts use the trained XGBoost model (2023–2025 data). No live sensor data.
+      </div>
     </div>
   );
 }
 
-
-/* ─── Download Report Function (PDF) ──────────────────────────────────── */
+/* ─── Download Report (PDF) ──────────────────────────────────────────── */
 function downloadReport(locationId, selectedDate, locationsData) {
-  const selectedLocation = LOCATIONS.find(l => l.id === locationId);
-  const activeLoc = locationsData?.find(l => l.id === locationId);
-  
-  let composition;
-  if (activeLoc && activeLoc.composition) {
-    composition = Object.entries(activeLoc.composition).map(([name, value]) => ({
-      name,
-      value: value + " kg"
-    }));
-  } else {
-    composition = [
-      { name: "Unburnable", value: "10 kg" },
-      { name: "SOW", value: "45 kg" },
-      { name: "Burnable", value: "15 kg" },
-      { name: "Bulky Waste", value: "5 kg" },
-      { name: "Industrial Waste", value: "10 kg" },
-      { name: "Slaughter House Waste", value: "5 kg" },
-      { name: "Sanitary Waste", value: "5 kg" },
-      { name: "C & D", value: "5 kg" },
-    ];
-  }
-  const trendData = generateTrendData(selectedDate, locationId);
-  
-  // Create PDF
+  const selectedLocation = LOCATIONS.find((l) => l.id === locationId);
+  const activeLoc = locationsData?.find((l) => l.id === locationId);
+
   const pdf = new jsPDF();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const pageWidth = pdf.internal.pageSize.getWidth();
   let yPosition = 20;
-  
-  // Title
+
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(16);
-  pdf.text("VisionWaste Analytics Report", 20, yPosition);
+  pdf.text("VisionWaste Forecast Report", 20, yPosition);
   yPosition += 10;
-  
-  // Location info
+
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(12);
-  pdf.text(`Location: ${selectedLocation.name}`, 20, yPosition);
+  pdf.text("Location: " + (selectedLocation?.name || locationId), 20, yPosition);
   yPosition += 7;
-  pdf.text(`Region: ${selectedLocation.region}`, 20, yPosition);
+  pdf.text("Region: " + (selectedLocation?.region || "—"), 20, yPosition);
   yPosition += 7;
-  pdf.text(`Report Generated: ${new Date().toLocaleDateString()}`, 20, yPosition);
+  pdf.text("Selected Date: " + (selectedDate || "—"), 20, yPosition);
   yPosition += 7;
-  pdf.text(`Selected Date: ${selectedDate}`, 20, yPosition);
+  pdf.text("Report Generated: " + new Date().toLocaleDateString(), 20, yPosition);
   yPosition += 12;
-  
-  // Waste Composition Section
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
-  pdf.text("Waste Category Distribution", 20, yPosition);
-  yPosition += 8;
-  
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(10);
-  
-  composition.forEach(cat => {
-    pdf.text(`${cat.name}: ${cat.value}`, 25, yPosition);
+
+  if (activeLoc) {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.text("Forecast Summary", 20, yPosition);
+    yPosition += 8;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text("Predicted Waste: " + (activeLoc.predictedWasteKg != null ? activeLoc.predictedWasteKg + " KG" : "Unavailable"), 25, yPosition);
     yPosition += 6;
-  });
-  
-  yPosition += 4;
-  
-  // Trend Data Section
-  if (yPosition > pageHeight - 50) {
-    pdf.addPage();
-    yPosition = 20;
-  }
-  
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
-  pdf.text("Waste Trend (14-day forecast)", 20, yPosition);
-  yPosition += 8;
-  
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
-  
-  trendData.forEach(item => {
-    const histValue = item.historical || "N/A";
-    const predValue = item.predicted || "N/A";
-    const value = item.historical ? `${histValue} kg (Historical)` : `${predValue} kg (Predicted)`;
-    pdf.text(`${item.date}: ${value}`, 25, yPosition);
-    yPosition += 5;
-    
-    if (yPosition > pageHeight - 20) {
-      pdf.addPage();
-      yPosition = 20;
+    pdf.text("Status: " + (activeLoc.statusLabel || activeLoc.status || "—"), 25, yPosition);
+    yPosition += 6;
+
+    if (activeLoc.baseline) {
+      pdf.text("Historical Median: " + activeLoc.baseline.medianKg + " KG", 25, yPosition);
+      yPosition += 6;
+      pdf.text("Historical P90: " + activeLoc.baseline.p90Kg + " KG", 25, yPosition);
+      yPosition += 6;
+      pdf.text("Baseline Period: " + activeLoc.baseline.periodStart + " to " + activeLoc.baseline.periodEnd, 25, yPosition);
+      yPosition += 6;
+      pdf.text("Sample Size: " + activeLoc.baseline.sampleSize + " days", 25, yPosition);
+      yPosition += 10;
     }
-  });
-  
-  // Save PDF
-  const fileName = `waste-analytics-${selectedLocation.name.replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`;
+
+    if (activeLoc.composition) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Waste Category Breakdown (estimated from historical proportions)", 20, yPosition);
+      yPosition += 8;
+      pdf.setFont("helvetica", "normal");
+
+      for (const [cat, data] of Object.entries(activeLoc.composition)) {
+        pdf.text(cat + ": " + (data.kg || 0) + " kg (" + (data.percent || 0) + "%)", 25, yPosition);
+        yPosition += 6;
+      }
+    }
+  }
+
+  const fileName = "waste-forecast-" + (selectedLocation?.name || locationId).replace(/\s+/g, "-") + "-" + selectedDate + ".pdf";
   pdf.save(fileName);
 }
 
-/* ─── Location Status Indicator ────────────────────────────────────────── */
-function getLocationStatus(baseLevel) {
-  if (baseLevel >= 80) return { status: "ALERT", color: "#ef4444", icon: "🔴" };
-  if (baseLevel >= 60) return { status: "WATCH", color: "#f97316", icon: "🟠" };
-  return { status: "NORMAL", color: "#22c55e", icon: "🟢" };
-}
-
-/* ─── Location Selector Component ──────────────────────────────────────── */
+/* ─── Location Selector ──────────────────────────────────────────────── */
 function LocationSelector({ activeLocation, onLocationChange, locationsData }) {
   return (
     <div className="di-location-selector">
@@ -500,14 +398,10 @@ function LocationSelector({ activeLocation, onLocationChange, locationsData }) {
       </div>
       <div className="di-location-list">
         {LOCATIONS.map((loc) => {
-          const activeLoc = locationsData?.find(l => l.id === loc.id);
-          const status = activeLoc ? activeLoc.status : getLocationStatus(loc.baseLevel).status;
-          const statusColorVal = activeLoc 
-            ? (status === "ALERT" ? "#ef4444" : status === "WATCH" ? "#f97316" : "#22c55e")
-            : getLocationStatus(loc.baseLevel).color;
-          const statusIcon = activeLoc
-            ? (status === "ALERT" ? "🔴" : status === "WATCH" ? "🟠" : "🟢")
-            : getLocationStatus(loc.baseLevel).icon;
+          const activeLoc = locationsData?.find((l) => l.id === loc.id);
+          const status = activeLoc?.status || "UNAVAILABLE";
+          const color = getStatusColor(status);
+          const icon = getStatusIcon(status);
           const isActive = activeLocation === loc.id;
           return (
             <button
@@ -515,12 +409,14 @@ function LocationSelector({ activeLocation, onLocationChange, locationsData }) {
               onClick={() => onLocationChange(loc.id)}
               className={`di-location-item ${isActive ? "active" : ""}`}
             >
-              <div className="di-location-indicator" style={{ background: statusColorVal }} />
+              <div className="di-location-indicator" style={{ background: color }} />
               <div className="di-location-content">
                 <div className="di-location-name">{loc.name}</div>
-                <div className="di-location-region">{loc.region}</div>
+                <div className="di-location-region">
+                  {activeLoc?.predictedWasteKg != null ? `${activeLoc.predictedWasteKg} KG` : loc.region}
+                </div>
               </div>
-              <div className="di-location-badge">{statusIcon}</div>
+              <div className="di-location-badge">{icon}</div>
             </button>
           );
         })}
@@ -528,9 +424,10 @@ function LocationSelector({ activeLocation, onLocationChange, locationsData }) {
     </div>
   );
 }
+
+/* ─── Main Component ─────────────────────────────────────────────────── */
 export default function DashboardInsights({ selectedDate, locationsData }) {
   const [activeLocation, setActiveLocation] = useState("moratuwa-mc");
-  const [hoveredChartData, setHoveredChartData] = useState(null);
 
   return (
     <div className="di-root">
@@ -539,8 +436,8 @@ export default function DashboardInsights({ selectedDate, locationsData }) {
           <Zap size={20} style={{ color: "#fbbf24" }} />
           <h2>Advanced Insights</h2>
         </div>
-        <button 
-          className="di-download-btn" 
+        <button
+          className="di-download-btn"
           onClick={() => downloadReport(activeLocation, selectedDate || new Date().toISOString().slice(0, 10), locationsData)}
         >
           <FileDown size={14} />
@@ -558,22 +455,17 @@ export default function DashboardInsights({ selectedDate, locationsData }) {
         <div className="di-charts-section">
           <div className="di-charts-grid">
             <div className="di-chart-wrapper">
-              <WasteCategoryChart 
-                locationId={activeLocation} 
-                selectedDate={selectedDate} 
-                locationsData={locationsData} 
-                hoveredDate={hoveredChartData}
+              <WasteCategoryChart
+                locationId={activeLocation}
+                locationsData={locationsData}
               />
             </div>
             <div className="di-chart-wrapper">
-              <WasteTrendChart 
-                selectedDate={selectedDate} 
-                locationId={activeLocation} 
-                onHover={(data) => setHoveredChartData(data.fullDate)}
-                onHoverLeave={() => setHoveredChartData(null)}
+              <WasteTrendChart
+                selectedDate={selectedDate}
+                locationId={activeLocation}
               />
             </div>
-
           </div>
         </div>
       </div>

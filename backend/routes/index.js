@@ -13,6 +13,7 @@ const weatherRoutes = require("./weather.routes");
 const alertsRoutes = require("./alerts.routes");
 const litterRoutes = require("./litter.routes");
 const bridgeRoutes = require("./bridge.routes");
+const wasteTrendRoutes = require("./wastetrend.routes");
 
 const router = Router();
 
@@ -48,6 +49,7 @@ router.use("/devices", devicesRoutes);
 router.use("/bridge", bridgeRoutes);
 router.use("/geo", geoRoutes);
 router.use("/api/waste-data", wasteDataRoutes);
+router.use("/api/waste-trend", wasteTrendRoutes);
 router.use("/predict", predictRoutes);
 router.use("/captures", captureRoutes);
 router.use("/latest", latestRoutes);

@@ -19,7 +19,7 @@ export {
 export const LAYOUT = {
   page: "mx-auto flex w-full max-w-[1680px] flex-col gap-5",
   kpiGrid:
-    "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5",
+    "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5 xl:gap-5",
   opsGrid:
     "grid grid-cols-1 items-stretch gap-5 xl:grid-cols-12 xl:min-h-[30rem]",
   analyticsGrid:

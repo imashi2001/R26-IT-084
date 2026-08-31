@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSection from "../components/dashboard/DashboardSection";
@@ -15,7 +16,12 @@ import useCaptureHistory from "../hooks/useCaptureHistory";
 import useDevicesOverview from "../hooks/useDevicesOverview";
 import useAlertBadgeCount from "../hooks/useAlertBadgeCount";
 import useDashboardSettings from "../hooks/useDashboardSettings";
-import { binStatusMeta } from "../utils/dashboardBins";
+import { binStatusMeta, formatBinCode } from "../utils/dashboardBins";
+import {
+  ADD_BIN_STREAK,
+  formatLsi,
+  isHighSeverity,
+} from "../utils/litterSeverity";
 
 export default function SystemDashboardPage() {
   const { data: snapshot, loading, error, stale, refresh } = useSystemSnapshot();
@@ -53,6 +59,38 @@ export default function SystemDashboardPage() {
     if (pick?.id != null) setSelectedBinId(pick.id);
   }, [fleet.devices, selectedBinId]);
 
+  const litterBanner = useMemo(() => {
+    const devices = fleet.devices || [];
+    const addBinSite = devices.find(
+      (d) =>
+        Boolean(d.litter_add_bin_recommended) ||
+        (Number(d.litter_high_streak) || 0) >= ADD_BIN_STREAK
+    );
+    if (addBinSite) {
+      const loc =
+        addBinSite.location || addBinSite.address || addBinSite.name || "Site";
+      return {
+        tone: "error",
+        text: `${loc} · ${formatBinCode(addBinSite.id)} — HIGH litter around the bin continues. Add a new bin at this location.`,
+        link: "/bins",
+        linkLabel: "Add Bin",
+      };
+    }
+    const highSite = devices.find((d) =>
+      isHighSeverity(d.latest_litter_severity)
+    );
+    if (highSite) {
+      const loc = highSite.location || highSite.address || highSite.name || "Site";
+      return {
+        tone: "error",
+        text: `${loc} · ${formatBinCode(highSite.id)} — High litter severity (LSI ${formatLsi(highSite.latest_litter_lsi)}). Review outside-bin litter.`,
+        link: "/litter-severity",
+        linkLabel: "View LSI",
+      };
+    }
+    return null;
+  }, [fleet.devices]);
+
   const banner = useMemo(() => {
     if (loading && !snapshot) return null;
     if (error) {
@@ -73,8 +111,9 @@ export default function SystemDashboardPage() {
         text: "Latest snapshot is stale — waiting for a fresh field capture.",
       };
     }
+    if (litterBanner) return litterBanner;
     return null;
-  }, [loading, error, snapshot, stale, fleet.devices]);
+  }, [loading, error, snapshot, stale, fleet.devices, litterBanner]);
 
   const onRefreshAll = () => {
     refresh();
@@ -99,13 +138,23 @@ export default function SystemDashboardPage() {
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{banner.text}</span>
             </div>
-            <button
-              type="button"
-              onClick={onRefreshAll}
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
-            >
-              <RefreshCw className="h-3 w-3" /> Refresh
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              {banner.link ? (
+                <Link
+                  to={banner.link}
+                  className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-500"
+                >
+                  {banner.linkLabel || "View"}
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                onClick={onRefreshAll}
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
+              >
+                <RefreshCw className="h-3 w-3" /> Refresh
+              </button>
+            </div>
           </div>
         ) : null}
 

@@ -129,4 +129,9 @@ module.exports = {
       30,
       Number(process.env.LITTERING_ALERT_COOLDOWN_SECONDS || 300) || 300
     ) * 1000,
+  LITTER_ADD_BIN_COOLDOWN_MS:
+    Math.max(
+      60,
+      Number(process.env.LITTER_ADD_BIN_COOLDOWN_SECONDS || 3600) || 3600
+    ) * 1000,
 };

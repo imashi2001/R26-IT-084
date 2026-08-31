@@ -3,6 +3,11 @@ const { Op } = require("sequelize");
 
 const db = require("../config/db");
 const modelsRegistry = require("../models");
+const {
+  isHighSeverity,
+  qualifiesForAddBinAlert,
+  ADD_BIN_STREAK,
+} = require("./litterSeverityUtils");
 
 const STATUSES = new Set([
   "open",
@@ -65,6 +70,27 @@ function classifyCaptureForAlert(c) {
       summary: `Fill level ${fillTxt}. Waste: ${waste}.`,
     };
   }
+
+  const litterSev = String(c.litter_severity || "").toUpperCase();
+  const litterLsi = Number(c.litter_lsi);
+  const litterCount = Number(c.litter_detection_count) || 0;
+  if (c._add_bin_streak === true || (c._recent_captures && qualifiesForAddBinAlert(c._recent_captures))) {
+    return {
+      alert_type: "litter_add_bin",
+      severity: "warning",
+      title: "Add a new bin at this location",
+      summary: `HIGH litter around the bin on ${ADD_BIN_STREAK}+ captures in a row · LSI ${Number.isFinite(litterLsi) ? litterLsi.toFixed(1) : "—"} · ${litterCount} object(s).`,
+    };
+  }
+  if (isHighSeverity(litterSev)) {
+    return {
+      alert_type: "litter_severity_high",
+      severity: "warning",
+      title: "High litter severity",
+      summary: `LSI ${Number.isFinite(litterLsi) ? litterLsi.toFixed(1) : "—"} · ${litterCount} litter object(s) around the bin.`,
+    };
+  }
+
   const litteringDetected = Boolean(c.littering_event_detected);
   const litteringConf = Number(c.littering_max_confidence) || 0;
   if (litteringDetected && litteringConf >= LITTERING_ALERT_CONFIDENCE) {
@@ -115,6 +141,9 @@ async function syncAlertsFromCaptures({ lookbackDays = 30, scanLimit = 400 } = {
       "littering_event_detected",
       "littering_event_count",
       "littering_max_confidence",
+      "litter_severity",
+      "litter_lsi",
+      "litter_detection_count",
     ],
   });
 

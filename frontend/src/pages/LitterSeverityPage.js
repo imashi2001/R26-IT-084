@@ -35,6 +35,15 @@ function trailingElevatedStreak(severities) {
   return n;
 }
 
+function trailingHighStreak(severities) {
+  let n = 0;
+  for (let i = severities.length - 1; i >= 0; i -= 1) {
+    if ((severities[i] || "").toString().toUpperCase() === "HIGH") n += 1;
+    else break;
+  }
+  return n;
+}
+
 export default function LitterSeverityPage() {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -74,9 +83,14 @@ export default function LitterSeverityPage() {
 
   const elevatedStreak =
     result && !result.error ? trailingElevatedStreak(severityHistory) : 0;
+  const highStreak =
+    result && !result.error ? trailingHighStreak(severityHistory) : 0;
   const showConsistentSignageCallout =
     elevatedStreak >= ELEVATED_STREAK_FOR_SIGNAGE &&
     isElevatedSeverity(result?.severity);
+  const showAddBinCallout =
+    highStreak >= ELEVATED_STREAK_FOR_SIGNAGE &&
+    (result?.severity || "").toString().toUpperCase() === "HIGH";
 
   return (
     <DashboardLayout>
@@ -126,6 +140,27 @@ export default function LitterSeverityPage() {
 
         {result && !result.error ? (
           <div className="mt-6 space-y-4">
+            {showAddBinCallout ? (
+              <div
+                className={`rounded-xl border p-4 ${bannerTone("error")}`}
+                role="alert"
+              >
+                <p className="text-sm font-semibold">
+                  Add a new bin at this location
+                </p>
+                <p className="mt-2 text-sm leading-relaxed opacity-90">
+                  The last {highStreak} LSI analyses in a row were HIGH. Outside-bin
+                  litter pressure is continuous — register another bin nearby.
+                </p>
+                <Link
+                  to="/bins"
+                  className="mt-3 inline-block text-sm font-semibold text-brand-300 hover:underline"
+                >
+                  Register new bin →
+                </Link>
+              </div>
+            ) : null}
+
             {showConsistentSignageCallout ? (
               <div
                 className={`rounded-xl border p-4 ${bannerTone("warn")}`}

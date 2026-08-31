@@ -14,6 +14,11 @@ import { MAP_TILE_DARK, MAP_ATTRIBUTION } from "../dashboardTheme";
 import { apiUrl } from "../../../utils/apiBase";
 import { markerFillFromBin, fillLabel } from "../../../utils/fillTier";
 import { isVirtualBin } from "../../../utils/collectionRoute";
+import {
+  ADD_BIN_STREAK,
+  formatLsi,
+  litterSeverityMeta,
+} from "../../../utils/litterSeverity";
 
 const SRI_LANKA_CENTER = [7.8731, 80.7718];
 
@@ -138,6 +143,7 @@ export default function LiveBinMapCard() {
                 }
                 const color = markerFillFromBin(b);
                 const virtual = isVirtualBin(b);
+                const litter = litterSeverityMeta(b);
                 const fillPctText =
                   b.latest_fill_percentage != null
                     ? `${Math.round(b.latest_fill_percentage)}%`
@@ -179,9 +185,25 @@ export default function LiveBinMapCard() {
                           <span className="font-semibold">
                             {b.latest_risk_level || "—"}
                           </span>
+                          <span className="text-slate-500">Litter</span>
+                          <span className="font-semibold">
+                            {litter.label}
+                            {b.latest_litter_lsi != null
+                              ? ` · LSI ${formatLsi(b.latest_litter_lsi)}`
+                              : ""}
+                          </span>
                           <span className="text-slate-500">Updated</span>
                           <span>{formatTs(b.latest_captured_at)}</span>
                         </div>
+                        {(b.litter_add_bin_recommended ||
+                          (b.litter_high_streak || 0) >= ADD_BIN_STREAK) && (
+                          <Link
+                            to="/bins"
+                            className="mt-2 inline-block text-xs font-semibold text-red-600 underline"
+                          >
+                            Add a new bin here
+                          </Link>
+                        )}
                         <Link
                           to={`/bins/${b.id}`}
                           className="mt-2 inline-block text-brand-600 underline"

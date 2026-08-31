@@ -4,7 +4,7 @@ import DashboardLayout from "../components/dashboard/DashboardLayout";
 import PageShell from "../components/dashboard/PageShell";
 import PageHeader from "../components/dashboard/PageHeader";
 import LitteringBBoxCanvas from "../components/LitteringBBoxCanvas";
-import { btnPrimary, labelClass } from "../components/dashboard/dashboardUi";
+import { btnPrimary, labelClass, bannerTone } from "../components/dashboard/dashboardUi";
 import { analyzeLitteringAction } from "../utils/apiBase";
 import { summarizeLitteringAction } from "../utils/litteringAction";
 
@@ -120,6 +120,27 @@ export default function LitteringEventPage() {
                 </span>
               </div>
             </div>
+
+            {summary.eventDetected ? (
+              <div
+                className={`rounded-xl border p-4 ${bannerTone("warn")}`}
+                role="status"
+              >
+                <p className="text-sm font-semibold">
+                  Repeated littering at a site may need extra bin capacity
+                </p>
+                <p className="mt-2 text-sm leading-relaxed opacity-90">
+                  A littering event was detected on this capture. If this location
+                  sees frequent events, consider registering another bin nearby.
+                </p>
+                <Link
+                  to="/bins"
+                  className="mt-3 inline-block text-sm font-semibold text-brand-300 hover:underline"
+                >
+                  Register new bin →
+                </Link>
+              </div>
+            ) : null}
 
             {file && summary.detections.length > 0 ? (
               <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950">

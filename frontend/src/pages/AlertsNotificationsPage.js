@@ -68,7 +68,8 @@ const TYPE_LABELS = {
   buzzer: "Deterrence / buzzer",
   overflow: "Bin overflow",
   littering_detected: "Littering event",
-  animal: "Animal activity",
+  litter_severity_high: "High litter severity",
+  litter_add_bin: "Add a new bin",
 };
 
 function severityTone(sev) {

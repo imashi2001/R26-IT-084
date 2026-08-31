@@ -169,17 +169,19 @@ Stop: `{ "command_id", "command": "STOP_AUDIO", "track": null }`.
 
 Track numbers are **not hardcoded**. Configure them in the dashboard (**Speaker Check → Audio track assignment**) or via **`GET/PUT /dashboard/settings/audio`**.
 
-| Priority | Scenario | When it wins |
-|----------|----------|--------------|
-| 1 | `illegal_dumping` | Littering event detected (confidence ≥ `LITTERING_ALERT_CONFIDENCE`) |
-| 2 | `waste_full` | Fill `Overflow` or fill % ≥ 72 |
-| 3 | `animal_detected` | One or more animal detections |
-| 3b | Custom rules | Optional auto conditions (`risk_high`, `risk_critical`, `risk_medium`) |
-| 4 | `correct_dumping` | No littering, overflow, or animals (clean capture) |
+When an **ESP32** uploads a photo (`source_type=esp32`), the gateway runs **every configured model** (waste, animal, fill, littering). Auto-audio picks the scenario with the **highest confidence %** among active results and plays its mapped track.
+
+| Scenario | Typical source | Maps to track |
+|----------|----------------|---------------|
+| `illegal_dumping` | Littering model confidence | `tracks.illegal_dumping` |
+| `waste_full` | Fill overflow/half confidence | `tracks.waste_full` |
+| `animal_detected` | Best animal detection confidence | `tracks.animal_detected` |
+| Custom rules | Risk tier (HIGH/MEDIUM/CRITICAL) | custom `track` |
+| `correct_dumping` | Empty bin / clean capture confidence | `tracks.correct_dumping` |
 
 Default tracks if unset: 1 / 2 / 3 / 4 → `/MP3/0001.mp3` … `/MP3/0004.mp3`.
 
-`/predict` response may include **`audio_trigger`**: `{ scenario, label, track, reason, command_id, queued }`.
+`/predict` response includes **`audio_trigger`**: `{ scenario, label, track, confidence_pct, candidates, command_id, queued }`.
 
 Cooldown: `AUDIO_TRIGGER_COOLDOWN_SECONDS` (default 60) per `esp32_id`. Manual tests use **`POST /devices/:id/audio-test`** with any configured track.
 

@@ -124,8 +124,10 @@ export default function SpeakerCheckPage() {
                   <code className="text-brand-400">PLAY_AUDIO</code> per bin
                 </li>
                 <li>
-                  <strong className="text-slate-300">After /predict</strong> — ESP32
-                  uploads pick the highest-priority scenario and play one track
+                  <strong className="text-slate-300">After ESP32 /predict</strong> — all
+                  models run; the result with the{" "}
+                  <strong className="text-slate-300">highest confidence %</strong>{" "}
+                  picks which track plays
                 </li>
                 <li>
                   <strong className="text-slate-300">Test speaker (bridge)</strong> — LAN

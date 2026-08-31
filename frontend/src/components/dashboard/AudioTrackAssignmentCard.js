@@ -98,7 +98,7 @@ export default function AudioTrackAssignmentCard({
     <Card>
       <Card.Header
         title="Audio track assignment"
-        subtitle="Enter track numbers only (e.g. 1 → /MP3/0001.mp3). After /predict, the highest-priority scenario wins."
+        subtitle="Enter track numbers only (e.g. 1 → /MP3/0001.mp3). After ESP32 /predict, every model runs and the highest-confidence result picks the audio."
       />
       <Card.Body className="space-y-5">
         {error ? (

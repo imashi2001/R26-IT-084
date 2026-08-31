@@ -28,6 +28,9 @@ function trackForRisk(risk) {
  *   fill_percentage?: number|null,
  *   animal?: object|null,
  *   littering_action?: object|null,
+ *   litter?: object|null,
+ *   bin_fill?: object|null,
+ *   waste?: object|null,
  * }} input
  * @returns {Promise<{ command: object|null, resolved: object|null }>}
  */
@@ -52,6 +55,9 @@ async function maybeQueueFromPredict(input) {
     fill_percentage: input.fill_percentage,
     animal: input.animal,
     littering_action: input.littering_action,
+    litter: input.litter,
+    bin_fill: input.bin_fill,
+    waste: input.waste,
     settings,
   });
 
@@ -70,7 +76,7 @@ async function maybeQueueFromPredict(input) {
       track: resolved.track,
     });
     console.log(
-      `[audioTrigger] scenario=${resolved.scenario_key} track=${resolved.track} for ${esp32Id} command_id=${cmd?.command_id}`
+      `[audioTrigger] scenario=${resolved.scenario_key} track=${resolved.track} conf=${(resolved.confidence * 100).toFixed(0)}% for ${esp32Id} command_id=${cmd?.command_id}`
     );
     return { command: cmd, resolved };
   } catch (e) {

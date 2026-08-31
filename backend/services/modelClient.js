@@ -372,12 +372,16 @@ async function pingLitteringActionHealth() {
  */
 async function inferAll({ fileBuffer, filename, mimetype }) {
   const hasFill = Boolean(getModelUrl("fill"));
+  const hasLitter = Boolean(getModelUrl("litter"));
   const hasLitteringAction = isLitteringActionConfigured();
   const settled = await Promise.allSettled([
     inferWaste({ fileBuffer, filename, mimetype }),
     inferAnimal({ fileBuffer, filename, mimetype }),
     hasFill
       ? inferBinFill({ fileBuffer, filename, mimetype })
+      : Promise.resolve(null),
+    hasLitter
+      ? inferLitter({ fileBuffer, filename, mimetype })
       : Promise.resolve(null),
     hasLitteringAction
       ? inferLitteringAction({ fileBuffer, filename, mimetype })
@@ -401,15 +405,23 @@ async function inferAll({ fileBuffer, filename, mimetype }) {
         : { error: settled[2].reason?.message || "bin-fill service failed" };
   }
 
+  let litter = null;
+  if (hasLitter) {
+    litter =
+      settled[3].status === "fulfilled"
+        ? settled[3].value
+        : { error: settled[3].reason?.message || "litter-severity failed" };
+  }
+
   let littering_action = null;
   if (hasLitteringAction) {
     littering_action =
-      settled[3].status === "fulfilled"
-        ? settled[3].value
-        : { error: settled[3].reason?.message || "littering-action failed" };
+      settled[4].status === "fulfilled"
+        ? settled[4].value
+        : { error: settled[4].reason?.message || "littering-action failed" };
   }
 
-  return { waste, animal, bin_fill, littering_action };
+  return { waste, animal, bin_fill, litter, littering_action };
 }
 
 /**

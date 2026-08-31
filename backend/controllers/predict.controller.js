@@ -214,15 +214,70 @@ function predictionsFromBinFill(binFillPayload) {
   }));
 }
 
+function predictionsFromLitter(litterPayload) {
+  if (!litterPayload || litterPayload.error) return [];
+  const detections = Array.isArray(litterPayload.detections)
+    ? litterPayload.detections
+    : [];
+  return detections.map((d) => ({
+    label: d.label || "litter",
+    confidence: Number(d.confidence) || 0,
+    box: Array.isArray(d.box) ? d.box.map(Number) : [0, 0, 0, 0],
+    model_type: "litter",
+  }));
+}
+
+function litterForResponse(litterPayload) {
+  if (!litterPayload) return null;
+  if (litterPayload.error) return null;
+  return {
+    lsi: Number(litterPayload.lsi) || 0,
+    severity: litterPayload.severity || null,
+    detection_count: Number(litterPayload.detection_count) || 0,
+    detections: Array.isArray(litterPayload.detections)
+      ? litterPayload.detections.map((d) => ({
+          label: d.label,
+          confidence: Number(d.confidence) || 0,
+          box: d.box,
+        }))
+      : [],
+    metrics: litterPayload.metrics || null,
+  };
+}
+
+function litterExtras(litterPayload) {
+  if (!litterPayload || litterPayload.error) {
+    return {
+      litter_lsi: null,
+      litter_severity: null,
+      litter_detection_count: null,
+      litter_summary: null,
+    };
+  }
+  return {
+    litter_lsi: Number(litterPayload.lsi) || 0,
+    litter_severity: litterPayload.severity || null,
+    litter_detection_count: Number(litterPayload.detection_count) || 0,
+    litter_summary: {
+      lsi: Number(litterPayload.lsi) || 0,
+      severity: litterPayload.severity || null,
+      detection_count: Number(litterPayload.detection_count) || 0,
+      metrics: litterPayload.metrics || null,
+    },
+  };
+}
+
 const YOLO_FILL_TIER_TO_PCT = { Empty: 25, Half: 50, Overflow: 85 };
 
-function persistModelLabel(bodyModel, hasFillRegistry) {
+function persistModelLabel(bodyModel, registryFlags = {}) {
   const rm = (bodyModel || "").toString().trim().toLowerCase();
   if (rm === "waste") return "waste";
   if (rm === "animal") return "animal";
   if (rm === "yolo" || rm === "fill" || rm === "bin_fill") return "bin_fill_yolo";
   const parts = ["waste", "animal"];
-  if (hasFillRegistry) parts.push("bin_fill");
+  if (registryFlags.hasFill) parts.push("bin_fill");
+  if (registryFlags.hasLitter) parts.push("litter");
+  if (registryFlags.hasLitteringAction) parts.push("littering_action");
   return parts.join("+");
 }
 
@@ -256,31 +311,43 @@ async function predict(req, res, next) {
     const captureLat = Number.isFinite(reportLat) ? reportLat : null;
     const captureLon = Number.isFinite(reportLon) ? reportLon : null;
 
-    // Allow back-compat: model=waste|animal|yolo calls one service; omit / all => inferAll (waste + animal + optional bin-fill YOLO).
+    // Allow back-compat: model=waste|animal|fill calls one service; omit / all => inferAll.
+    // ESP32 captures always run every model so audio can pick the highest-confidence result.
     const requestedModel = (body.model || "").toString().trim().toLowerCase();
     const callBoth = !requestedModel || requestedModel === "all";
+    const isEsp32Source = sourceType === "esp32";
+    const runAllModels = callBoth || isEsp32Source;
     const binFillOnly =
       requestedModel === "yolo" ||
       requestedModel === "fill" ||
       requestedModel === "bin_fill";
     const hasFillRegistry = Boolean(modelClient.getModelUrl("fill"));
+    const hasLitterRegistry = Boolean(modelClient.getModelUrl("litter"));
+    const hasLitteringActionRegistry = modelClient.isLitteringActionConfigured();
 
     let waste = null;
     let animal = null;
     let bin_fill = null;
+    let litter = null;
     let littering_action = null;
     const warnings = [];
 
-    if (callBoth) {
-      const triple = await modelClient.inferAll({
+    if (runAllModels) {
+      const all = await modelClient.inferAll({
         fileBuffer: req.file.buffer,
         filename: req.file.originalname,
         mimetype: req.file.mimetype,
       });
-      waste = triple.waste;
-      animal = triple.animal;
-      bin_fill = triple.bin_fill;
-      littering_action = triple.littering_action;
+      waste = all.waste;
+      animal = all.animal;
+      bin_fill = all.bin_fill;
+      litter = all.litter;
+      littering_action = all.littering_action;
+      if (litter?.error) {
+        warnings.push(`litter: ${litter.error}`);
+        console.warn("[predict] litter:", litter.error);
+        litter = null;
+      }
       if (littering_action?.error) {
         warnings.push(`littering_action: ${littering_action.error}`);
         console.warn("[predict] littering_action:", littering_action.error);
@@ -359,7 +426,11 @@ async function predict(req, res, next) {
     });
 
     const timestamp = new Date().toISOString();
-    const persistLabel = persistModelLabel(body.model, hasFillRegistry);
+    const persistLabel = persistModelLabel(body.model, {
+      hasFill: hasFillRegistry,
+      hasLitter: hasLitterRegistry,
+      hasLitteringAction: hasLitteringActionRegistry,
+    });
 
     const extras = {
       waste_label: waste?.label || null,
@@ -392,11 +463,13 @@ async function predict(req, res, next) {
         );
       })(),
       ...litteringExtras(littering_action),
+      ...litterExtras(litter),
     };
 
     const predictionsToStore = [
       ...predictionsToPersist(animal),
       ...predictionsFromBinFill(bin_fill),
+      ...predictionsFromLitter(litter),
       ...predictionsFromLitteringAction(littering_action),
     ];
 
@@ -453,6 +526,9 @@ async function predict(req, res, next) {
         fill_percentage: extras.fill_percentage,
         animal,
         littering_action,
+        litter,
+        bin_fill,
+        waste,
       });
     } catch (audioErr) {
       console.error("[predict] audio trigger skipped:", audioErr.message);
@@ -466,12 +542,19 @@ async function predict(req, res, next) {
       bin_fill,
       bin_fill_level,
       littering_action: litteringActionForResponse(littering_action),
+      litter: litterForResponse(litter),
       audio_trigger: audioTriggerResult?.resolved
         ? {
             scenario: audioTriggerResult.resolved.scenario_key,
             label: audioTriggerResult.resolved.label,
             track: audioTriggerResult.resolved.track,
+            confidence: audioTriggerResult.resolved.confidence,
+            confidence_pct: Math.round(
+              (audioTriggerResult.resolved.confidence || 0) * 100
+            ),
             reason: audioTriggerResult.resolved.reason,
+            source: audioTriggerResult.resolved.source,
+            candidates: audioTriggerResult.resolved.candidates,
             command_id: audioTriggerResult.command?.command_id ?? null,
             queued: Boolean(audioTriggerResult.command),
           }

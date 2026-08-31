@@ -3,6 +3,14 @@ const audioSettingsService = require("./audioSettingsService");
 
 const { BUILTIN_LABELS } = audioSettingsService;
 
+/** Tie-break when two scenarios share the same confidence (lower = wins). */
+const SCENARIO_RANK = {
+  illegal_dumping: 1,
+  waste_full: 2,
+  animal_detected: 3,
+  correct_dumping: 5,
+};
+
 function animalCount(animal) {
   if (!animal || animal.error) return 0;
   if (Number.isFinite(Number(animal.detection_count))) {
@@ -10,6 +18,46 @@ function animalCount(animal) {
   }
   if (Array.isArray(animal.detections)) return animal.detections.length;
   return 0;
+}
+
+function maxAnimalConfidence(animal) {
+  if (!animal || animal.error) return 0;
+  if (Array.isArray(animal.detections) && animal.detections.length) {
+    return animal.detections.reduce(
+      (m, d) => Math.max(m, Number(d.confidence) || 0),
+      0
+    );
+  }
+  return animalCount(animal) > 0 ? 0.5 : 0;
+}
+
+function litteringConfidence(litteringAction) {
+  if (!litteringAction || litteringAction.error) return 0;
+  if (litteringAction.max_confidence != null) {
+    return Number(litteringAction.max_confidence) || 0;
+  }
+  if (Array.isArray(litteringAction.detections) && litteringAction.detections.length) {
+    return litteringAction.detections.reduce(
+      (m, d) => Math.max(m, Number(d.confidence) || 0),
+      0
+    );
+  }
+  return 0;
+}
+
+function litterSeverityConfidence(litter) {
+  if (!litter || litter.error) return 0;
+  const lsi = Number(litter.lsi);
+  if (!Number.isFinite(lsi)) return 0;
+  return Math.min(1, Math.max(0, lsi / 100));
+}
+
+function isSignificantLitter(litter) {
+  if (!litter || litter.error) return false;
+  const severity = String(litter.severity || "").trim().toUpperCase();
+  if (severity === "MEDIUM" || severity === "HIGH") return true;
+  const lsi = Number(litter.lsi);
+  return Number.isFinite(lsi) && lsi > 30;
 }
 
 function isLitteringEvent(litteringAction) {
@@ -22,27 +70,57 @@ function isLitteringEvent(litteringAction) {
             litteringAction.detections.length > 0)
   );
   if (!detected) return false;
-  const conf =
-    litteringAction.max_confidence != null
-      ? Number(litteringAction.max_confidence)
-      : Array.isArray(litteringAction.detections)
-        ? litteringAction.detections.reduce(
-            (m, d) => Math.max(m, Number(d.confidence) || 0),
-            0
-          )
-        : 0;
-  return conf >= LITTERING_ALERT_CONFIDENCE;
+  return litteringConfidence(litteringAction) >= LITTERING_ALERT_CONFIDENCE;
 }
 
-function isOverflow(binFillLevel, fillPercentage) {
+function bestFillPrediction(binFill) {
+  if (!binFill || binFill.error || !Array.isArray(binFill.predictions)) {
+    return null;
+  }
+  let best = null;
+  for (const p of binFill.predictions) {
+    const label = String(p.label || p.class_name || "").trim().toLowerCase();
+    if (!["empty", "half", "overflow"].includes(label)) continue;
+    const conf = Number(p.confidence);
+    const c = Number.isFinite(conf) ? conf : 0;
+    if (!best || c > best.confidence) {
+      best = { label, confidence: c };
+    }
+  }
+  return best;
+}
+
+function isOverflow(binFillLevel, fillPercentage, binFill) {
   const fill = String(binFillLevel || "").trim().toLowerCase();
   if (fill === "overflow") return true;
   const pct = Number(fillPercentage);
-  return Number.isFinite(pct) && pct >= 72;
+  if (Number.isFinite(pct) && pct >= 72) return true;
+  const best = bestFillPrediction(binFill);
+  return best?.label === "overflow";
+}
+
+function isHalfFill(binFillLevel, binFill) {
+  const fill = String(binFillLevel || "").trim().toLowerCase();
+  if (fill === "half") return true;
+  const best = bestFillPrediction(binFill);
+  return best?.label === "half";
 }
 
 function riskLevel(risk) {
   return String(risk?.level || "").trim().toUpperCase();
+}
+
+function riskConfidence(level) {
+  switch (String(level || "").toUpperCase()) {
+    case "CRITICAL":
+      return 0.98;
+    case "HIGH":
+      return 0.85;
+    case "MEDIUM":
+      return 0.7;
+    default:
+      return 0;
+  }
 }
 
 function matchesCustomCondition(condition, risk) {
@@ -59,90 +137,166 @@ function matchesCustomCondition(condition, risk) {
   }
 }
 
-function noIssues({ litteringAction, binFillLevel, fillPercentage, animal, risk }) {
-  if (isLitteringEvent(litteringAction)) return false;
-  if (isOverflow(binFillLevel, fillPercentage)) return false;
-  if (animalCount(animal) > 0) return false;
-  const level = riskLevel(risk);
+function noIssues(input) {
+  if (isLitteringEvent(input.littering_action)) return false;
+  if (isSignificantLitter(input.litter)) return false;
+  if (isOverflow(input.bin_fill_level, input.fill_percentage, input.bin_fill)) {
+    return false;
+  }
+  if (isHalfFill(input.bin_fill_level, input.bin_fill)) return false;
+  if (animalCount(input.animal) > 0) return false;
+  const level = riskLevel(input.risk);
   if (level === "HIGH" || level === "CRITICAL") return false;
   return true;
 }
 
+function wasteFullConfidence(input) {
+  const best = bestFillPrediction(input.bin_fill);
+  if (best?.label === "overflow") return best.confidence;
+  if (best?.label === "half") return best.confidence;
+  if (isOverflow(input.bin_fill_level, input.fill_percentage, input.bin_fill)) {
+    return Math.max(best?.confidence ?? 0, 0.72);
+  }
+  if (isHalfFill(input.bin_fill_level, input.bin_fill)) {
+    return Math.max(best?.confidence ?? 0, 0.55);
+  }
+  return 0;
+}
+
 /**
- * Resolve a single audio scenario after classification.
- * @returns {null | { scenario_key, label, track, reason }}
+ * Build competing audio scenarios from all model outputs (each with a confidence).
+ * @returns {Array<{ scenario_key, label, track, confidence, reason, source }>}
  */
-function resolveAudioScenario(input = {}) {
+function collectAudioCandidates(input = {}) {
   const settings = input.settings || audioSettingsService.getSettings();
-  const tracks = settings.tracks || audioSettingsService.DEFAULT_TRACKS;
+  const candidates = [];
 
-  const littering = isLitteringEvent(input.littering_action);
-  const overflow = isOverflow(input.bin_fill_level, input.fill_percentage);
-  const animals = animalCount(input.animal);
-
-  if (littering) {
-    return {
+  const litterConf = litteringConfidence(input.littering_action);
+  if (isLitteringEvent(input.littering_action)) {
+    candidates.push({
       scenario_key: "illegal_dumping",
       label: BUILTIN_LABELS.illegal_dumping,
       track: audioSettingsService.trackForBuiltin("illegal_dumping", settings),
-      reason: "Littering event detected above alert confidence.",
-    };
+      confidence: litterConf,
+      reason: `Littering detected (${Math.round(litterConf * 100)}% confidence).`,
+      source: "littering_action",
+    });
   }
 
-  if (overflow) {
-    return {
+  const fillConf = wasteFullConfidence(input);
+  const litterSevConf = litterSeverityConfidence(input.litter);
+  const hasFillIssue =
+    isOverflow(input.bin_fill_level, input.fill_percentage, input.bin_fill) ||
+    isHalfFill(input.bin_fill_level, input.bin_fill);
+  const hasLitterIssue = isSignificantLitter(input.litter);
+  if (hasFillIssue || hasLitterIssue) {
+    const conf = Math.max(fillConf, litterSevConf);
+    const source = litterSevConf > fillConf ? "litter" : "bin_fill";
+    const reason =
+      source === "litter"
+        ? `Litter severity ${String(input.litter?.severity || "HIGH").toUpperCase()} (LSI ${Math.round(Number(input.litter?.lsi) || litterSevConf * 100)}).`
+        : `Bin fill alert (${Math.round(fillConf * 100)}% confidence).`;
+    candidates.push({
       scenario_key: "waste_full",
       label: BUILTIN_LABELS.waste_full,
       track: audioSettingsService.trackForBuiltin("waste_full", settings),
-      reason: "Bin fill at or near overflow.",
-    };
+      confidence: conf,
+      reason,
+      source,
+    });
   }
 
-  if (animals > 0) {
-    return {
+  const animals = animalCount(input.animal);
+  const animalConf = maxAnimalConfidence(input.animal);
+  if (animals > 0 && animalConf > 0) {
+    candidates.push({
       scenario_key: "animal_detected",
       label: BUILTIN_LABELS.animal_detected,
       track: audioSettingsService.trackForBuiltin("animal_detected", settings),
-      reason: `${animals} animal detection(s) on capture.`,
-    };
+      confidence: animalConf,
+      reason: `${animals} animal(s) detected (${Math.round(animalConf * 100)}% confidence).`,
+      source: "animal",
+    });
   }
 
   for (const custom of settings.custom_scenarios || []) {
     if (custom.auto_condition === "manual_only") continue;
     if (matchesCustomCondition(custom.auto_condition, input.risk)) {
-      return {
+      const conf = riskConfidence(riskLevel(input.risk));
+      candidates.push({
         scenario_key: custom.id,
         label: custom.label,
         track: custom.track,
-        reason: `Custom rule matched: ${custom.auto_condition}.`,
-      };
+        confidence: conf,
+        reason: `Custom rule: ${custom.auto_condition} (${Math.round(conf * 100)}%).`,
+        source: "custom",
+      });
     }
   }
 
-  if (
-    noIssues({
-      litteringAction: input.littering_action,
-      binFillLevel: input.bin_fill_level,
-      fillPercentage: input.fill_percentage,
-      animal: input.animal,
-      risk: input.risk,
-    })
-  ) {
-    return {
+  if (noIssues(input)) {
+    const best = bestFillPrediction(input.bin_fill);
+    const emptyConf =
+      best?.label === "empty"
+        ? best.confidence
+        : Math.max(
+            0.51,
+            1 - Math.max(litterConf, fillConf, litterSevConf, animalConf)
+          );
+    candidates.push({
       scenario_key: "correct_dumping",
       label: BUILTIN_LABELS.correct_dumping,
       track: audioSettingsService.trackForBuiltin("correct_dumping", settings),
-      reason: "No littering, overflow, or animals — correct disposal.",
-    };
+      confidence: emptyConf,
+      reason: `Correct disposal (${Math.round(emptyConf * 100)}% confidence).`,
+      source: "bin_fill",
+    });
   }
 
-  return null;
+  return candidates;
+}
+
+function compareCandidates(a, b) {
+  const confDiff = (b.confidence || 0) - (a.confidence || 0);
+  if (Math.abs(confDiff) > 1e-9) return confDiff;
+  const rankA = SCENARIO_RANK[a.scenario_key] ?? 4;
+  const rankB = SCENARIO_RANK[b.scenario_key] ?? 4;
+  return rankA - rankB;
+}
+
+/**
+ * Pick the scenario with the highest model confidence across all services.
+ * @returns {null | { scenario_key, label, track, confidence, reason, source, candidates }}
+ */
+function resolveAudioScenario(input = {}) {
+  const candidates = collectAudioCandidates(input);
+  if (!candidates.length) return null;
+
+  const winner = [...candidates].sort(compareCandidates)[0];
+  return {
+    scenario_key: winner.scenario_key,
+    label: winner.label,
+    track: winner.track,
+    confidence: winner.confidence,
+    reason: winner.reason,
+    source: winner.source,
+    candidates: candidates.map((c) => ({
+      scenario_key: c.scenario_key,
+      label: c.label,
+      confidence: c.confidence,
+      track: c.track,
+    })),
+  };
 }
 
 module.exports = {
   resolveAudioScenario,
+  collectAudioCandidates,
   isLitteringEvent,
+  isSignificantLitter,
+  litterSeverityConfidence,
   isOverflow,
   animalCount,
   noIssues,
+  compareCandidates,
 };

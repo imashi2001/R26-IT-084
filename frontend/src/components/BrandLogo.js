@@ -17,7 +17,7 @@ export const BRAND = {
 const SIZE = {
   sidebar: "h-12 w-auto max-w-[11rem]",
   auth: "h-16 w-auto max-w-[14rem]",
-  landing: "h-11 w-auto max-w-[10rem]",
+  landing: "h-10 w-auto max-w-[10.5rem] sm:h-11 sm:max-w-[11rem]",
   footer: "h-9 w-auto max-w-[9rem]",
   compact: "h-8 w-auto max-w-[8rem]",
   nav: "h-9 w-auto max-w-[9rem]",

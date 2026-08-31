@@ -9,7 +9,7 @@
 export const BRAND = {
   logoDark: "/brand/vision-waste-logo.png",
   logoLight: "/brand/vision-waste-logo-light.png",
-  heroDefault: "/brand/dashboard-hero.png",
+  heroDefault: "/brand/dashboard-hero.jpg",
   name: "Vision Waste",
   tagline: "Smart Vision. Cleaner Tomorrow.",
 };

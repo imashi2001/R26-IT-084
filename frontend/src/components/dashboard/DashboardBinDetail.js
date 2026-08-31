@@ -22,6 +22,11 @@ import {
   relativeFromNow,
   STATUS_PILL,
 } from "../../utils/dashboardBins";
+import {
+  ADD_BIN_STREAK,
+  formatLsi,
+  litterSeverityMeta,
+} from "../../utils/litterSeverity";
 import { buildAlerts } from "./cards/RecentAlertsCard";
 import { alertTone } from "./dashboardTheme";
 
@@ -102,6 +107,10 @@ export default function DashboardBinDetail({ device, history }) {
 
   const pct = fillPercent(device);
   const status = binStatusMeta(device);
+  const litter = litterSeverityMeta(device);
+  const showAddBin =
+    Boolean(device.litter_add_bin_recommended) ||
+    (Number(device.litter_high_streak) || 0) >= ADD_BIN_STREAK;
   const imageUrl = `${apiUrl(`/devices/${device.id}/image/latest`)}?t=${encodeURIComponent(device.latest_captured_at || Date.now())}`;
   const online = device.camera_online;
   const zone = device.location || device.address || "—";
@@ -149,6 +158,41 @@ export default function DashboardBinDetail({ device, history }) {
                   icon={Clock}
                   label="Last Updated"
                   value={relativeFromNow(device.latest_captured_at)}
+                />
+                <MetaRow
+                  icon={Trash2}
+                  label="Litter severity"
+                  value={litter.label}
+                  valueClass={
+                    litter.tone === "danger"
+                      ? "text-red-400"
+                      : litter.tone === "warn"
+                        ? "text-amber-400"
+                        : litter.tone === "ok"
+                          ? "text-brand-400"
+                          : "text-slate-500"
+                  }
+                />
+                <MetaRow
+                  icon={AlertTriangle}
+                  label="LSI"
+                  value={
+                    device.latest_litter_lsi != null
+                      ? `${formatLsi(device.latest_litter_lsi)} · ${device.latest_litter_detection_count ?? 0} obj`
+                      : "—"
+                  }
+                />
+                <MetaRow
+                  icon={Bell}
+                  label="Littering event"
+                  value={
+                    device.latest_littering_event_detected ? "Detected" : "None"
+                  }
+                  valueClass={
+                    device.latest_littering_event_detected
+                      ? "text-amber-400"
+                      : "text-slate-500"
+                  }
                 />
                 <MetaRow
                   icon={Wifi}
@@ -211,6 +255,26 @@ export default function DashboardBinDetail({ device, history }) {
                 className="text-brand-400 hover:underline"
               >
                 View full history
+              </Link>
+            </div>
+          )}
+
+          {(tab === "overview" || tab === "alerts") && showAddBin && (
+            <div
+              className={`rounded-xl border px-3 py-2.5 ${alertTone.high.bg}`}
+            >
+              <div className={`text-xs font-semibold ${alertTone.high.fg}`}>
+                Add a new bin at this location
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500">
+                HIGH litter around this bin continues on recent captures. Register
+                another bin nearby.
+              </p>
+              <Link
+                to="/bins"
+                className="mt-2 inline-block text-xs font-semibold text-brand-400 hover:underline"
+              >
+                Register new bin →
               </Link>
             </div>
           )}

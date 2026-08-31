@@ -10,6 +10,11 @@ import {
   relativeFromNow,
   STATUS_PILL,
 } from "../../utils/dashboardBins";
+import {
+  ADD_BIN_STREAK,
+  formatLsi,
+  litterSeverityMeta,
+} from "../../utils/litterSeverity";
 
 const PAGE_SIZE = 6;
 
@@ -165,6 +170,7 @@ export default function DashboardBinsTable({
               <tr className="border-b border-slate-800/80 text-[11px] uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-2.5 font-semibold">Bin ID</th>
                 <th className="px-4 py-2.5 font-semibold">Location</th>
+                <th className="px-4 py-2.5 font-semibold">Litter</th>
                 <th className="px-4 py-2.5 font-semibold">Fill Level</th>
                 <th className="px-4 py-2.5 font-semibold">Status</th>
                 <th className="px-4 py-2.5 font-semibold">Last Updated</th>
@@ -175,6 +181,7 @@ export default function DashboardBinsTable({
               {pageItems.map((d) => {
                 const pct = fillPercent(d);
                 const status = binStatusMeta(d);
+                const litter = litterSeverityMeta(d);
                 const selected = selectedId === d.id;
                 return (
                   <tr
@@ -192,6 +199,28 @@ export default function DashboardBinsTable({
                     </td>
                     <td className="max-w-[10rem] truncate px-4 py-3 text-slate-400">
                       {d.location || d.address || d.name || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_PILL[litter.tone]}`}
+                        >
+                          {litter.label}
+                        </span>
+                        {d.latest_litter_lsi != null ? (
+                          <span className="text-[10px] tabular-nums text-slate-500">
+                            {formatLsi(d.latest_litter_lsi)}
+                          </span>
+                        ) : null}
+                        {(d.litter_high_streak || 0) >= ADD_BIN_STREAK ||
+                        d.litter_add_bin_recommended ? (
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${STATUS_PILL.danger}`}
+                          >
+                            Add bin
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">

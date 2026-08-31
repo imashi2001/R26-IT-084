@@ -125,6 +125,23 @@ module.exports = (sequelize) =>
         type: DataTypes.JSONB,
         allowNull: true,
       },
+
+      litter_severity: {
+        type: DataTypes.STRING(16),
+        allowNull: true,
+      },
+      litter_lsi: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+      },
+      litter_detection_count: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      litter_severity_summary: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+      },
     },
     {
       tableName: "captures",

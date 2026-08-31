@@ -23,12 +23,14 @@ import "./DashboardInsights.css";
 
 /* ─── Location Data ────────────────────────────────────────────────────── */
 const LOCATIONS = [
-  { id: "colombo-fort", name: "Fort Railway Station", region: "Colombo", baseLevel: 62 },
-  { id: "galle-face", name: "Galle Face ", region: "Colombo", baseLevel: 55 },
-  { id: "kandy-tooth", name: "Temple of the Tooth", region: "Kandy", baseLevel: 48 },
-  { id: "anuradhapura", name: "Ruwanwelisaya", region: "Anuradhapura", baseLevel: 41 },
-  { id: "kataragama", name: "Kataragama Temple", region: "Kataragama", baseLevel: 38 },
-  { id: "sri-pada", name: "Sri Pada", region: "Sri Pada", baseLevel: 33 },
+  { id: "moratuwa-mc", name: "Moratuwa M.C.", region: "Moratuwa", baseLevel: 45 },
+  { id: "boralesgamuwa-uc", name: "Boralesgamuwa U.C.", region: "Boralesgamuwa", baseLevel: 25 },
+  { id: "kesbewa-uc", name: "Kesbewa U.C.", region: "Kesbewa", baseLevel: 50 },
+  { id: "dehiwala-mtlavinia", name: "Dehiwala - Mount Lavinia M.C.", region: "Dehiwala", baseLevel: 80 },
+  { id: "kotte-mc", name: "Sri Jayawardenepura Kotte M.C.", region: "Kotte", baseLevel: 20 },
+  { id: "maharagama-uc", name: "Maharagama U.C.", region: "Maharagama", baseLevel: 60 },
+  { id: "homagama-ps", name: "Homagama P.S.", region: "Homagama", baseLevel: 30 },
+  { id: "kdu-campus", name: "Kothalawala Defence University", region: "Kdu", baseLevel: 5 }
 ];
 
 /* ─── Seeded Random for deterministic data ─────────────────────────────── */
@@ -65,77 +67,18 @@ function isWeekendOrLongWeekend(dateStr) {
   return dow === 0 || dow === 5 || dow === 6;
 }
 
-/* ─── Mock Data Generator: Location-specific Waste Composition ─────────── */
-function generateLocationWasteComposition(locationId, selectedDate = new Date().toISOString().slice(0, 10)) {
-  // Base composition
-  let composition = {
-    organic: 45,
-    plastic: 20,
-    paper: 15,
-    glass: 10,
-    mixed: 10,
+function getCategoryColor(name) {
+  const colors = {
+    "Unburnable": "#94a3b8",
+    "SOW": "#10b981",
+    "Burnable": "#ef4444",
+    "Bulky Waste": "#f59e0b",
+    "Industrial Waste": "#8b5cf6",
+    "Slaughter House Waste": "#ec4899",
+    "Sanitary Waste": "#e11d48",
+    "C & D": "#06b6d4"
   };
-
-  // Location-specific variations
-  if (locationId === "colombo-fort" || locationId === "galle-face") {
-    // Urban commercial areas - more mixed waste
-    composition = {
-      organic: 30,
-      plastic: 35,
-      paper: 20,
-      glass: 8,
-      mixed: 7,
-    };
-  } else if (locationId === "kandy-tooth") {
-    // Temple - more organic (flowers/offerings)
-    composition = {
-      organic: 55,
-      plastic: 15,
-      paper: 12,
-      glass: 10,
-      mixed: 8,
-    };
-    // Boost on Poya days
-    if (isHolidayLike(selectedDate)) {
-      composition.organic = Math.min(70, composition.organic + 10);
-      composition.mixed -= 5;
-    }
-  } else if (locationId === "anuradhapura") {
-    // Historical site - balanced
-    composition = {
-      organic: 48,
-      plastic: 22,
-      paper: 16,
-      glass: 8,
-      mixed: 6,
-    };
-  } else if (locationId === "kataragama") {
-    // Sacred site - more organic
-    composition = {
-      organic: 52,
-      plastic: 18,
-      paper: 14,
-      glass: 10,
-      mixed: 6,
-    };
-  } else if (locationId === "sri-pada") {
-    // Mountain pilgrimage site - lots of plastic bottles
-    composition = {
-      organic: 35,
-      plastic: 45,
-      paper: 10,
-      glass: 5,
-      mixed: 5,
-    };
-  }
-
-  return [
-    { name: "Organic", value: composition.organic, fill: "#10b981" },
-    { name: "Plastic", value: composition.plastic, fill: "#0ea5e9" },
-    { name: "Paper", value: composition.paper, fill: "#f59e0b" },
-    { name: "Glass", value: composition.glass, fill: "#8b5cf6" },
-    { name: "Mixed", value: composition.mixed, fill: "#ec4899" },
-  ];
+  return colors[name] || "#64748b";
 }
 
 function generateTrendData(today, locationId) {
@@ -227,27 +170,75 @@ function generateSeasonalData() {
 }
 
 /* ─── 1. Waste Category Distribution (Donut Chart) ──────────────────────── */
-function WasteCategoryChart({ locationId, selectedDate }) {
-  const categoryData = generateLocationWasteComposition(locationId, selectedDate);
-  const total = categoryData.reduce((sum, cat) => sum + cat.value, 0);
+function getCompositionForDate(locationId, dateStr, locationsData, selectedDate) {
+  const isSelectedDate = dateStr === selectedDate || (selectedDate && dateStr === getDateLabel(selectedDate));
+  
+  if (isSelectedDate && locationsData) {
+    const activeLoc = locationsData.find(l => l.id === locationId);
+    if (activeLoc && activeLoc.composition) {
+      return Object.entries(activeLoc.composition).map(([name, value]) => ({
+        name,
+        value,
+        rawKg: value
+      }));
+    }
+  }
+
+  // Fallback to deterministic composition based on dateStr and locationId using seeded random
+  const seed = String(dateStr).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) + String(locationId).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const rand = seededRandom(seed);
+
+  const categories = [
+    "Unburnable", "SOW", "Burnable", "Bulky Waste", "Industrial Waste", "Slaughter House Waste", "Sanitary Waste", "C & D"
+  ];
+
+  let rawProportions = categories.map(() => 5 + rand() * 45);
+  const sum = rawProportions.reduce((a, b) => a + b, 0);
+  
+  const totalWaste = Math.round((20 + rand() * 40) * 10) / 10;
+
+  return categories.map((name, idx) => {
+    const pct = Math.round((rawProportions[idx] / sum) * 100);
+    const rawKg = Math.round(((pct / 100) * totalWaste) * 10) / 10;
+    return {
+      name,
+      value: pct,
+      rawKg
+    };
+  });
+}
+
+function WasteCategoryChart({ locationId, selectedDate, locationsData, hoveredDate }) {
+  const displayDate = hoveredDate || selectedDate;
+  const categoryData = getCompositionForDate(locationId, displayDate, locationsData, selectedDate);
+  const totalRawKg = Math.round(categoryData.reduce((sum, cat) => sum + (cat.rawKg || 0), 0) * 10) / 10;
+
+  const chartData = categoryData.map(cat => ({
+    ...cat,
+    fill: getCategoryColor(cat.name)
+  }));
 
   return (
     <div className="di-chart-card">
       <div className="di-chart-header">
         <div>
-          <h3 className="di-chart-title">Waste Category Distribution</h3>
-          <p className="di-chart-subtitle">Composition breakdown</p>
+          <h3 className="di-chart-title">
+            Waste Category Distribution {hoveredDate ? `(${getDateLabel(hoveredDate)})` : ""}
+          </h3>
+          <p className="di-chart-subtitle">
+            {hoveredDate ? "Hovered date composition breakdown" : "Composition breakdown"}
+          </p>
         </div>
         <div className="di-header-icon" style={{ color: "#10b981" }}>
           <TrendingUp size={18} />
         </div>
       </div>
-
+ 
       <div className="di-donut-container">
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
             <Pie
-              data={categoryData}
+              data={chartData}
               cx="50%"
               cy="50%"
               innerRadius={70}
@@ -255,11 +246,15 @@ function WasteCategoryChart({ locationId, selectedDate }) {
               paddingAngle={2}
               dataKey="value"
             >
-              {categoryData.map((entry, index) => (
+              {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
             </Pie>
             <Tooltip
+              formatter={(value, name, props) => {
+                const rawKg = props.payload.rawKg;
+                return rawKg !== undefined ? [`${value}% (${rawKg} kg)`, name] : [`${value}%`, name];
+              }}
               contentStyle={{
                 background: "rgba(15,23,42,0.9)",
                 border: "1px solid rgba(51,65,85,0.5)",
@@ -270,17 +265,19 @@ function WasteCategoryChart({ locationId, selectedDate }) {
           </PieChart>
         </ResponsiveContainer>
         <div className="di-donut-center">
-          <div className="di-total-label">Total Waste</div>
-          <div className="di-total-value">{total}%</div>
+          <div className="di-total-label">{hoveredDate ? "Hovered Waste" : "Total Forecasted"}</div>
+          <div className="di-total-value">{totalRawKg} kg</div>
         </div>
       </div>
-
+ 
       <div className="di-legend">
-        {categoryData.map((cat) => (
+        {chartData.map((cat) => (
           <div key={cat.name} className="di-legend-item">
             <div className="di-legend-color" style={{ background: cat.fill }} />
             <span className="di-legend-name">{cat.name}</span>
-            <span className="di-legend-value">{cat.value}%</span>
+            <span className="di-legend-value">
+              {cat.value}% {cat.rawKg !== undefined ? ` (${cat.rawKg} kg)` : ""}
+            </span>
           </div>
         ))}
       </div>
@@ -289,7 +286,7 @@ function WasteCategoryChart({ locationId, selectedDate }) {
 }
 
 /* ─── 2. Predictive Waste Trend (Dual-line Chart) ────────────────────────── */
-function WasteTrendChart({ selectedDate, locationId }) {
+function WasteTrendChart({ selectedDate, locationId, onHover, onHoverLeave }) {
   const trendData = generateTrendData(selectedDate || new Date().toISOString().slice(0, 10), locationId);
 
   const CustomTooltip = ({ active, payload }) => {
@@ -320,7 +317,16 @@ function WasteTrendChart({ selectedDate, locationId }) {
       </div>
 
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={trendData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+        <LineChart 
+          data={trendData} 
+          margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+          onMouseMove={(e) => {
+            if (e.activePayload && e.activePayload.length > 0) {
+              onHover(e.activePayload[0].payload);
+            }
+          }}
+          onMouseLeave={onHoverLeave}
+        >
           <defs>
             <linearGradient id="historicalGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -485,9 +491,28 @@ function SeasonalImpactChart() {
 }
 
 /* ─── Download Report Function (PDF) ──────────────────────────────────── */
-function downloadReport(locationId, selectedDate) {
+function downloadReport(locationId, selectedDate, locationsData) {
   const selectedLocation = LOCATIONS.find(l => l.id === locationId);
-  const composition = generateLocationWasteComposition(locationId, selectedDate);
+  const activeLoc = locationsData?.find(l => l.id === locationId);
+  
+  let composition;
+  if (activeLoc && activeLoc.composition) {
+    composition = Object.entries(activeLoc.composition).map(([name, value]) => ({
+      name,
+      value: value + " kg"
+    }));
+  } else {
+    composition = [
+      { name: "Unburnable", value: "10 kg" },
+      { name: "SOW", value: "45 kg" },
+      { name: "Burnable", value: "15 kg" },
+      { name: "Bulky Waste", value: "5 kg" },
+      { name: "Industrial Waste", value: "10 kg" },
+      { name: "Slaughter House Waste", value: "5 kg" },
+      { name: "Sanitary Waste", value: "5 kg" },
+      { name: "C & D", value: "5 kg" },
+    ];
+  }
   const trendData = generateTrendData(selectedDate, locationId);
   
   // Create PDF
@@ -522,11 +547,9 @@ function downloadReport(locationId, selectedDate) {
   
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
-  const totalWaste = composition.reduce((sum, cat) => sum + cat.value, 0);
   
   composition.forEach(cat => {
-    const percentage = cat.value + "%";
-    pdf.text(`${cat.name}: ${percentage}`, 25, yPosition);
+    pdf.text(`${cat.name}: ${cat.value}`, 25, yPosition);
     yPosition += 6;
   });
   
@@ -572,7 +595,7 @@ function getLocationStatus(baseLevel) {
 }
 
 /* ─── Location Selector Component ──────────────────────────────────────── */
-function LocationSelector({ activeLocation, onLocationChange }) {
+function LocationSelector({ activeLocation, onLocationChange, locationsData }) {
   return (
     <div className="di-location-selector">
       <div className="di-location-header">
@@ -581,7 +604,14 @@ function LocationSelector({ activeLocation, onLocationChange }) {
       </div>
       <div className="di-location-list">
         {LOCATIONS.map((loc) => {
-          const statusInfo = getLocationStatus(loc.baseLevel);
+          const activeLoc = locationsData?.find(l => l.id === loc.id);
+          const status = activeLoc ? activeLoc.status : getLocationStatus(loc.baseLevel).status;
+          const statusColorVal = activeLoc 
+            ? (status === "ALERT" ? "#ef4444" : status === "WATCH" ? "#f97316" : "#22c55e")
+            : getLocationStatus(loc.baseLevel).color;
+          const statusIcon = activeLoc
+            ? (status === "ALERT" ? "🔴" : status === "WATCH" ? "🟠" : "🟢")
+            : getLocationStatus(loc.baseLevel).icon;
           const isActive = activeLocation === loc.id;
           return (
             <button
@@ -589,12 +619,12 @@ function LocationSelector({ activeLocation, onLocationChange }) {
               onClick={() => onLocationChange(loc.id)}
               className={`di-location-item ${isActive ? "active" : ""}`}
             >
-              <div className="di-location-indicator" style={{ background: statusInfo.color }} />
+              <div className="di-location-indicator" style={{ background: statusColorVal }} />
               <div className="di-location-content">
                 <div className="di-location-name">{loc.name}</div>
                 <div className="di-location-region">{loc.region}</div>
               </div>
-              <div className="di-location-badge">{statusInfo.icon}</div>
+              <div className="di-location-badge">{statusIcon}</div>
             </button>
           );
         })}
@@ -602,8 +632,9 @@ function LocationSelector({ activeLocation, onLocationChange }) {
     </div>
   );
 }
-export default function DashboardInsights({ selectedDate }) {
-  const [activeLocation, setActiveLocation] = useState("colombo-fort");
+export default function DashboardInsights({ selectedDate, locationsData }) {
+  const [activeLocation, setActiveLocation] = useState("moratuwa-mc");
+  const [hoveredChartData, setHoveredChartData] = useState(null);
 
   return (
     <div className="di-root">
@@ -614,7 +645,7 @@ export default function DashboardInsights({ selectedDate }) {
         </div>
         <button 
           className="di-download-btn" 
-          onClick={() => downloadReport(activeLocation, selectedDate || new Date().toISOString().slice(0, 10))}
+          onClick={() => downloadReport(activeLocation, selectedDate || new Date().toISOString().slice(0, 10), locationsData)}
         >
           <FileDown size={14} />
           Download Report
@@ -624,17 +655,27 @@ export default function DashboardInsights({ selectedDate }) {
       <div className="di-main-layout">
         {/* Location Selector Sidebar */}
         <div className="di-sidebar">
-          <LocationSelector activeLocation={activeLocation} onLocationChange={setActiveLocation} />
+          <LocationSelector activeLocation={activeLocation} onLocationChange={setActiveLocation} locationsData={locationsData} />
         </div>
 
         {/* Charts Section */}
         <div className="di-charts-section">
           <div className="di-charts-grid">
             <div className="di-chart-wrapper">
-              <WasteCategoryChart locationId={activeLocation} selectedDate={selectedDate} />
+              <WasteCategoryChart 
+                locationId={activeLocation} 
+                selectedDate={selectedDate} 
+                locationsData={locationsData} 
+                hoveredDate={hoveredChartData}
+              />
             </div>
             <div className="di-chart-wrapper">
-              <WasteTrendChart selectedDate={selectedDate} locationId={activeLocation} />
+              <WasteTrendChart 
+                selectedDate={selectedDate} 
+                locationId={activeLocation} 
+                onHover={(data) => setHoveredChartData(data.fullDate)}
+                onHoverLeave={() => setHoveredChartData(null)}
+              />
             </div>
             <div className="di-chart-wrapper di-full-width">
               <SeasonalImpactChart />

@@ -38,7 +38,7 @@ const CATEGORIES = [
 
 function loadHolidayCache() {
   try {
-    const p = path.join(__dirname, "..", "holiday_cache.json");
+    const p = path.join(__dirname, "..", "..", "forecasting dashboard", "holiday_cache.json");
     return JSON.parse(fs.readFileSync(p, "utf8"));
   } catch {
     return {};
@@ -120,30 +120,50 @@ router.get("/", (req, res) => {
   let predictions = [];
   try {
     fs.writeFileSync(inputPath, JSON.stringify(allRows, null, 2));
-    // Use a separate input/output file to avoid race conditions with main forecast
+    // Use XGBoost waste_forecast model and calendar disaggregation
     const script = `
-import json, pickle, pandas as pd, warnings
+import json, sys, os, pandas as pd, warnings, xgboost as xgb
+from pathlib import Path
 warnings.filterwarnings('ignore')
+
+ROOT_DIR = Path(os.getcwd()).parents[0]
+WASTE_FORECAST_DIR = ROOT_DIR / "waste_forecast"
+MODEL_PATH = WASTE_FORECAST_DIR / "models" / "model.json"
+FEATURE_COLUMNS_PATH = WASTE_FORECAST_DIR / "models" / "feature_columns.json"
+
+sys.path.insert(0, str(WASTE_FORECAST_DIR))
+sys.path.insert(0, str(WASTE_FORECAST_DIR / "src"))
+
+try:
+    from daily_forecast import estimate_daily_waste
+except ImportError:
+    from src.daily_forecast import estimate_daily_waste
+
 with open('input_trend.json','r') as f: input_data = json.load(f)
-with open('trained_model.pkl','rb') as f: model = pickle.load(f)
-with open('model_features.pkl','rb') as f: features = pickle.load(f)
-df = pd.DataFrame(input_data)
-for col in features:
-    if col not in df.columns:
-        df[col] = 0
-df = df[features]
-preds = model.predict(df).tolist()
-# Apply same post-prediction adjustments as run_model.py
+
+# Compute predictions using real XGBoost model and daily profile
+num_rows = len(input_data)
+adjusted = []
+
 seasonal_multipliers = {
     'Moratuwa_December': 1.25,
     'Poya_Day_Unburnable': 1.20,
     'Poya_Day_SOW': 1.15,
     'Poya_Day_Burnable': 1.15,
 }
-adjusted = []
-for idx, p in enumerate(preds):
-    val = max(0, float(p))
-    row = input_data[idx] if idx < len(input_data) else {}
+
+for idx, row in enumerate(input_data):
+    # Extract date/month
+    month = row.get('Month', 9)
+    # Estimate base daily tons from waste_forecast model
+    date_str = f"2025-{month:02d}-15"
+    daily_res = estimate_daily_waste(date_str, mode="forecast")
+    base_daily_tons = float(daily_res["estimated_daily_waste"])
+    
+    # 1 metric ton = 1000 kg, distributed per site (1/8) and category (1/8)
+    per_item_kg = (base_daily_tons / 64.0) * 1000.0
+    val = max(0, float(per_item_kg))
+    
     if row.get('Is_Weekend') == 1 or row.get('Is_Long_Weekend') == 1:
         val *= 1.5
     if row.get('Month') == 12 and row.get('Institute_Moratuwa M.C.') == 1:
@@ -156,6 +176,7 @@ for idx, p in enumerate(preds):
         elif row.get('Category_Burnable') == 1:
             val *= seasonal_multipliers['Poya_Day_Burnable']
     adjusted.append(val)
+
 with open('output_trend.json','w') as f: json.dump(adjusted, f)
 `;
     const scriptPath = path.join(modelDir, "_run_trend.py");
@@ -204,6 +225,7 @@ with open('output_trend.json','w') as f: json.dump(adjusted, f)
     locationId,
     trend: trendPoints,
     dataSource: "XGBoost model reconstruction (2023-2025 trained)",
+    note: "Daily estimate derived from monthly forecast disaggregated by assumed day-type weights; not a true daily-trained model.",
   });
 });
 

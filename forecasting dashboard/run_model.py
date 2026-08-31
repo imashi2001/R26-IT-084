@@ -1,11 +1,30 @@
 import json
-import pickle
+import sys
 import warnings
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pandas as pd
+import xgboost as xgb
 
 warnings.filterwarnings('ignore')
+
+# Resolve paths to waste_forecast modules and model files
+ROOT_DIR = Path(__file__).resolve().parents[1]
+WASTE_FORECAST_DIR = ROOT_DIR / "waste_forecast"
+MODEL_PATH = WASTE_FORECAST_DIR / "models" / "model.json"
+FEATURE_COLUMNS_PATH = WASTE_FORECAST_DIR / "models" / "feature_columns.json"
+HOLIDAY_CACHE_PATH = ROOT_DIR / "forecasting dashboard" / "holiday_cache.json"
+
+sys.path.insert(0, str(WASTE_FORECAST_DIR))
+sys.path.insert(0, str(WASTE_FORECAST_DIR / "src"))
+
+try:
+    from calendar_features import build_daily_calendar
+    from daily_forecast import estimate_daily_waste
+except ImportError:
+    from src.calendar_features import build_daily_calendar
+    from src.daily_forecast import estimate_daily_waste
 
 seasonal_multipliers = {
     'Moratuwa_December': 1.25,
@@ -15,73 +34,21 @@ seasonal_multipliers = {
 }
 
 
-def load_holiday_cache():
-    try:
-        with open('holiday_cache.json', 'r') as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def shift_date(date_str, days):
-    dt = datetime.strptime(date_str, '%Y-%m-%d') + timedelta(days=days)
-    return dt.strftime('%Y-%m-%d')
-
-
-def get_holidays_for_date(date_str, cache=None):
-    cache = cache or load_holiday_cache()
-    year = date_str[:4]
-    holidays = cache.get(year, [])
-    return [h for h in holidays if str(h.get('iso_date', '')).startswith(date_str)]
-
-
-def is_weekend(date_str):
-    return datetime.strptime(date_str, '%Y-%m-%d').weekday() in (5, 6)
-
-
-def is_public_holiday(date_str, cache=None):
-    return bool(get_holidays_for_date(date_str, cache))
-
-
-def calculateLongWeekend(date_str, cache=None):
-    """Mirror the JavaScript rule set used by the API: 3/4/5-day long weekends."""
-    cache = cache or load_holiday_cache()
-    dt = datetime.strptime(date_str, '%Y-%m-%d')
-    dow = dt.weekday()
-    is_non_working = lambda candidate: is_weekend(candidate) or is_public_holiday(candidate, cache)
-
-    if dow == 5 and is_non_working(shift_date(date_str, 1)) and is_non_working(shift_date(date_str, 2)):
-        return {'isLongWeekend': True, 'longWeekendDays': 3}
-    if dow == 1 and is_non_working(shift_date(date_str, -1)) and is_non_working(shift_date(date_str, -2)):
-        return {'isLongWeekend': True, 'longWeekendDays': 3}
-    if dow == 4 and (is_weekend(shift_date(date_str, 1)) or is_public_holiday(shift_date(date_str, 1), cache)):
-        return {'isLongWeekend': True, 'longWeekendDays': 4}
-    if dow == 1 and (is_weekend(shift_date(date_str, -1)) or is_public_holiday(shift_date(date_str, -1), cache)):
-        return {'isLongWeekend': True, 'longWeekendDays': 4}
-
-    for start_offset in range(-2, 3):
-        window = [shift_date(date_str, start_offset + index) for index in range(5)]
-        has_holiday = any(is_public_holiday(day, cache) for day in window)
-        all_non_working = all(is_non_working(day) for day in window)
-        if has_holiday and all_non_working:
-            return {'isLongWeekend': True, 'longWeekendDays': 5}
-
-    return {'isLongWeekend': False, 'longWeekendDays': 0}
-
-
 def convert_to_kg(value):
-    """Normalize model output to kilograms. Keep this as 1.0 for kg-based models, or set to 1000.0 if the trained model emits tons."""
-    return float(value) * 1.0
+    """Convert model output from metric tons to kilograms (1 metric ton = 1000.0 kg)."""
+    return float(value) * 1000.0
 
 
 def apply_post_prediction_adjustments(prediction, row):
-    """Apply event-aware adjustments after the model prediction as requested."""
+    """Apply event-aware adjustments after model prediction."""
     adjusted = convert_to_kg(prediction)
 
     if row.get('Is_Weekend') == 1 or row.get('Is_Long_Weekend') == 1:
         adjusted *= 1.5
 
-    if row.get('Month') == 12 and row.get('Institute_Moratuwa M.C.') == 1:
+    # Match institute names (Exact 'Institute_Sri J,puraKotte M.C.', 'Institute_Moratuwa M.C.')
+    # Boralesgamuwa U.C. uses 'Institute_Other' fallback
+    if row.get('Month') == 12 and (row.get('Institute_Moratuwa M.C.') == 1 or row.get('Institute_Moratuwa') == 1):
         adjusted *= seasonal_multipliers['Moratuwa_December']
 
     if row.get('Is_Poya_Day') == 1:
@@ -99,24 +66,30 @@ try:
     with open('input.json', 'r') as f:
         input_data = json.load(f)
 
-    with open('trained_model.pkl', 'rb') as f:
-        model = pickle.load(f)
-    with open('model_features.pkl', 'rb') as f:
-        features = pickle.load(f)
+    with open(FEATURE_COLUMNS_PATH, 'r') as f:
+        feature_columns = json.load(f)
 
-    df = pd.DataFrame(input_data)
+    # Load real XGBoost model from waste_forecast/models/model.json
+    model = xgb.XGBRegressor()
+    model.load_model(str(MODEL_PATH))
 
-    for col in features:
-        if col not in df.columns:
-            df[col] = 0
+    # Extract date/month from input rows
+    month = input_data[0].get('Month', datetime.now().month) if input_data else datetime.now().month
+    year = datetime.now().year
+    date_str = f"{year}-{month:02d}-15"
 
-    df = df[features]
-    predictions = model.predict(df).tolist()
+    # Compute base daily waste estimate in metric tons using model & calendar disaggregation
+    daily_res = estimate_daily_waste(date_str, mode="forecast")
+    base_daily_tons = float(daily_res["estimated_daily_waste"])
+
+    num_rows = len(input_data)
+    per_item_base_tons = base_daily_tons / float(num_rows) if num_rows > 0 else base_daily_tons / 64.0
 
     adjusted_predictions = []
-    for idx, prediction in enumerate(predictions):
-        row = input_data[idx] if idx < len(input_data) else {}
-        adjusted_predictions.append(apply_post_prediction_adjustments(prediction, row))
+    for idx, row in enumerate(input_data):
+        # Boralesgamuwa U.C. maps to Institute_Other fallback
+        adjusted_val = apply_post_prediction_adjustments(per_item_base_tons, row)
+        adjusted_predictions.append(adjusted_val)
 
     with open('output.json', 'w') as f:
         json.dump(adjusted_predictions, f)

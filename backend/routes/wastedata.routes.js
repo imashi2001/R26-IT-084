@@ -7,14 +7,14 @@ const router = Router();
 
 // ---------- static data ----------
 const LOCATIONS = [
-  { id: "moratuwa-mc", name: "Moratuwa M.C.", maxCapacity: 45, region: "Moratuwa" },
-  { id: "boralesgamuwa-uc", name: "Boralesgamuwa U.C.", maxCapacity: 25, region: "Boralesgamuwa" },
-  { id: "kesbewa-uc", name: "Kesbewa U.C.", maxCapacity: 50, region: "Kesbewa" },
-  { id: "dehiwala-mtlavinia", name: "Dehiwala - Mount Lavinia M.C.", maxCapacity: 80, region: "Dehiwala" },
-  { id: "kotte-mc", name: "Sri Jayawardenepura Kotte M.C.", maxCapacity: 20, region: "Kotte" },
-  { id: "maharagama-uc", name: "Maharagama U.C.", maxCapacity: 60, region: "Maharagama" },
-  { id: "homagama-ps", name: "Homagama P.S.", maxCapacity: 30, region: "Homagama" },
-  { id: "kdu-campus", name: "Kothalawala Defence University", maxCapacity: 5, region: "Kdu" }
+  { id: "moratuwa-mc", name: "Moratuwa M.C.", maxCapacity: 45, region: "Moratuwa", lat: 6.7730, lng: 79.8816 },
+  { id: "boralesgamuwa-uc", name: "Boralesgamuwa U.C.", maxCapacity: 25, region: "Boralesgamuwa", lat: 6.8480, lng: 79.9035 },
+  { id: "kesbewa-uc", name: "Kesbewa U.C.", maxCapacity: 50, region: "Kesbewa", lat: 6.8018, lng: 79.9447 },
+  { id: "dehiwala-mtlavinia", name: "Dehiwala - Mt Lavinia ", maxCapacity: 80, region: "Dehiwala", lat: 6.8398, lng: 79.8643 },
+  { id: "kotte-mc", name: "Sri J,puraKotte M.C.", maxCapacity: 20, region: "Kotte", lat: 6.8880, lng: 79.9187 },
+  { id: "maharagama-uc", name: "Maharagama U.C.", maxCapacity: 60, region: "Maharagama", lat: 6.8480, lng: 79.9265 },
+  { id: "homagama-ps", name: "Homagama P.S.", maxCapacity: 30, region: "Homagama", lat: 6.8412, lng: 80.0034 },
+  { id: "kdu-campus", name: "Kothalawala Defence University ", maxCapacity: 5, region: "Kdu", lat: 6.8181, lng: 79.8895 }
 ];
 
 const CATEGORIES = [
@@ -138,8 +138,8 @@ router.get("/", (req, res) => {
         Is_Long_Weekend: isLongWeekend ? 1 : 0,
         Rainfall_mm: 0,
         Max_Temp_C: 30,
-        Waste_Lag_1: 15,
-        Waste_Lag_7: 15,
+        Waste_Lag_1: Math.round(loc.maxCapacity * 0.4),
+        Waste_Lag_7: Math.round(loc.maxCapacity * 0.4),
         Month: month,
       };
 
@@ -181,9 +181,9 @@ router.get("/", (req, res) => {
       throw new Error(predictions.error);
     }
   } catch (err) {
-    console.error("ML model execution failed, falling back to dummy predictions:", err.message);
-    // Plausible fallback values
-    predictions = rows.map(() => 5 + Math.random() * 15);
+    console.error("ML model execution failed, falling back to deterministic predictions:", err.message);
+    // Plausible fallback values (deterministic based on index)
+    predictions = rows.map((_, idx) => 5 + (idx % 10));
   }
 
   // Parse predictions back to locations
@@ -209,6 +209,8 @@ router.get("/", (req, res) => {
       id: loc.id,
       name: loc.name,
       region: loc.region,
+      lat: loc.lat,
+      lng: loc.lng,
       maxCapacity: loc.maxCapacity,
       totalWaste,
       composition,

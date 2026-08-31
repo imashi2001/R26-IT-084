@@ -7,9 +7,18 @@ import {
   Trash2,
   Smartphone,
   Leaf,
+  MapPin,
 } from "lucide-react";
 import Card from "../Card";
 import { alertTone } from "../dashboardTheme";
+import { formatBinCode } from "../../../utils/dashboardBins";
+import {
+  ADD_BIN_STREAK,
+  capturesForDevice,
+  formatLsi,
+  isHighSeverity,
+  qualifiesForAddBinAlert,
+} from "../../../utils/litterSeverity";
 
 function isoTime(iso) {
   if (!iso) return "";
@@ -25,11 +34,58 @@ function isoTime(iso) {
 
 function buildAlerts(captures) {
   const alerts = [];
+  const addBinSeen = new Set();
 
   for (const c of captures) {
     const ts = c.captured_at;
     const binId =
-      c.device_id != null ? `BIN-${String(c.device_id).padStart(2, "0")}` : "BIN—";
+      c.device_id != null ? formatBinCode(c.device_id) : "BIN—";
+    const location =
+      (c.location || c.device_location || c.address || "").trim() || null;
+
+    const deviceHistory = capturesForDevice(captures, c.device_id);
+    const addBinKey = c.device_id != null ? String(c.device_id) : binId;
+    if (
+      c.device_id != null &&
+      qualifiesForAddBinAlert(deviceHistory) &&
+      !addBinSeen.has(addBinKey)
+    ) {
+      addBinSeen.add(addBinKey);
+      alerts.push({
+        ts,
+        binId,
+        title: "Add a new bin at this location",
+        sub: `${binId}${location ? ` · ${location}` : ""} — HIGH litter around the bin on ${ADD_BIN_STREAK} captures in a row`,
+        Icon: MapPin,
+        tone: "high",
+      });
+    }
+
+    if (isHighSeverity(c.litter_severity)) {
+      const lsi = formatLsi(c.litter_lsi);
+      const count = Number(c.litter_detection_count) || 0;
+      alerts.push({
+        ts,
+        binId,
+        title: "High litter severity",
+        sub: `${binId}${location ? ` · ${location}` : ""} · LSI ${lsi} · ${count} object${count === 1 ? "" : "s"}`,
+        Icon: Trash2,
+        tone: "high",
+      });
+    }
+
+    if (Boolean(c.littering_event_detected)) {
+      const count = Number(c.littering_event_count) || 0;
+      const conf = Number(c.littering_max_confidence) || 0;
+      alerts.push({
+        ts,
+        binId,
+        title: "Littering event detected",
+        sub: `${binId}${location ? ` · ${location}` : ""} · ${count} event${count === 1 ? "" : "s"} (${(conf * 100).toFixed(0)}% conf)`,
+        Icon: AlertTriangle,
+        tone: "warn",
+      });
+    }
 
     const lvl = String(c.risk_level || "").toUpperCase();
     if (lvl === "HIGH" || lvl === "CRITICAL") {

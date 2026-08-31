@@ -12,6 +12,11 @@ const {
 } = require("../utils/deviceFill");
 const { haversineMeters } = require("../utils/geo");
 const { getPublicBaseUrl } = require("../utils/publicUrl");
+const {
+  trailingHighLitterStreak,
+  qualifiesForAddBinAlert,
+} = require("../services/litterSeverityUtils");
+const litterSeverityAlertService = require("../services/litterSeverityAlertService");
 
 /** ESP32 considered Online for UI if last poll within this window. */
 const ONLINE_MS = 20_000;
@@ -95,7 +100,18 @@ function resolveLatestFillPercentage({ device, latestCap, mem }) {
   return resolveDeviceFillPercentage(device || {}, { latestCap, mem });
 }
 
-function enrichDeviceLatest(device, latestCap, mem) {
+function enrichDeviceLatest(device, latestCap, mem, recentCaptures = null) {
+  const ex = mem?.extras || {};
+  const litterFields = {
+    latest_litter_severity:
+      latestCap?.litter_severity ?? ex.litter_severity ?? null,
+    latest_litter_lsi: latestCap?.litter_lsi ?? ex.litter_lsi ?? null,
+    latest_litter_detection_count:
+      latestCap?.litter_detection_count ?? ex.litter_detection_count ?? null,
+    latest_littering_event_detected:
+      latestCap?.littering_event_detected ?? ex.littering_event_detected ?? null,
+  };
+  const streakSource = recentCaptures || (latestCap ? [latestCap] : []);
   return {
     latest_fill_level: resolveLatestFillLevel({ device, latestCap, mem }),
     latest_fill_percentage: resolveLatestFillPercentage({
@@ -107,6 +123,9 @@ function enrichDeviceLatest(device, latestCap, mem) {
     latest_source_type:
       latestCap?.source_type || mem?.extras?.source_type || null,
     latest_captured_at: latestCap?.captured_at || mem?.timestamp || null,
+    ...litterFields,
+    litter_high_streak: trailingHighLitterStreak(streakSource),
+    litter_add_bin_recommended: qualifiesForAddBinAlert(streakSource),
   };
 }
 
@@ -137,9 +156,11 @@ async function list(req, res, next) {
       rows.map(async (d) => {
         const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
         const mem = latestState.getLatestForDevice(d.id);
+        const recentCaptures =
+          await litterSeverityAlertService.recentCapturesForDevice(d.id);
         return withPresence({
           ...d,
-          ...enrichDeviceLatest(d, latestCap, mem),
+          ...enrichDeviceLatest(d, latestCap, mem, recentCaptures),
         });
       })
     );
@@ -386,8 +407,10 @@ async function mapPins(req, res, next) {
     for (const d of devices) {
       const latestCap = await deviceService.getLatestCaptureForDevice(d.id);
       const mem = latestState.getLatestForDevice(d.id);
+      const recentCaptures =
+        await litterSeverityAlertService.recentCapturesForDevice(d.id);
 
-      const latest = enrichDeviceLatest(d, latestCap, mem);
+      const latest = enrichDeviceLatest(d, latestCap, mem, recentCaptures);
       const capturedAt = latest.latest_captured_at;
 
       let latest_image_url = null;
@@ -417,6 +440,12 @@ async function mapPins(req, res, next) {
         latest_waste_label: latestCap?.waste_label || null,
         latest_source_type: latest.latest_source_type,
         latest_fill_percentage: latest.latest_fill_percentage,
+        latest_litter_severity: latest.latest_litter_severity,
+        latest_litter_lsi: latest.latest_litter_lsi,
+        latest_litter_detection_count: latest.latest_litter_detection_count,
+        latest_littering_event_detected: latest.latest_littering_event_detected,
+        litter_high_streak: latest.litter_high_streak,
+        litter_add_bin_recommended: latest.litter_add_bin_recommended,
       });
     }
 
@@ -589,6 +618,9 @@ async function latestDetail(req, res, next) {
         littering_event_detected: capture.littering_event_detected,
         littering_event_count: capture.littering_event_count,
         littering_max_confidence: capture.littering_max_confidence,
+        litter_severity: capture.litter_severity,
+        litter_lsi: capture.litter_lsi,
+        litter_detection_count: capture.litter_detection_count,
       };
     }
 

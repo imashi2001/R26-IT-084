@@ -36,6 +36,8 @@ const latestState = require("../services/latestState");
 const deviceService = require("../services/deviceService");
 const audioTriggerService = require("../services/audioTriggerService");
 const litteringAlertService = require("../services/litteringAlertService");
+const litterSeverityAlertService = require("../services/litterSeverityAlertService");
+const { litterSeverityExtras } = require("../services/litterSeverityUtils");
 const weatherService = require("../services/weatherService");
 const { computeRisk } = require("../services/riskEngine");
 const {
@@ -227,46 +229,6 @@ function predictionsFromLitter(litterPayload) {
   }));
 }
 
-function litterForResponse(litterPayload) {
-  if (!litterPayload) return null;
-  if (litterPayload.error) return null;
-  return {
-    lsi: Number(litterPayload.lsi) || 0,
-    severity: litterPayload.severity || null,
-    detection_count: Number(litterPayload.detection_count) || 0,
-    detections: Array.isArray(litterPayload.detections)
-      ? litterPayload.detections.map((d) => ({
-          label: d.label,
-          confidence: Number(d.confidence) || 0,
-          box: d.box,
-        }))
-      : [],
-    metrics: litterPayload.metrics || null,
-  };
-}
-
-function litterExtras(litterPayload) {
-  if (!litterPayload || litterPayload.error) {
-    return {
-      litter_lsi: null,
-      litter_severity: null,
-      litter_detection_count: null,
-      litter_summary: null,
-    };
-  }
-  return {
-    litter_lsi: Number(litterPayload.lsi) || 0,
-    litter_severity: litterPayload.severity || null,
-    litter_detection_count: Number(litterPayload.detection_count) || 0,
-    litter_summary: {
-      lsi: Number(litterPayload.lsi) || 0,
-      severity: litterPayload.severity || null,
-      detection_count: Number(litterPayload.detection_count) || 0,
-      metrics: litterPayload.metrics || null,
-    },
-  };
-}
-
 const YOLO_FILL_TIER_TO_PCT = { Empty: 25, Half: 50, Overflow: 85 };
 
 function persistModelLabel(bodyModel, registryFlags = {}) {
@@ -328,8 +290,8 @@ async function predict(req, res, next) {
     let waste = null;
     let animal = null;
     let bin_fill = null;
-    let litter = null;
     let littering_action = null;
+    let litter_severity = null;
     const warnings = [];
 
     if (runAllModels) {
@@ -341,17 +303,17 @@ async function predict(req, res, next) {
       waste = all.waste;
       animal = all.animal;
       bin_fill = all.bin_fill;
-      litter = all.litter;
       littering_action = all.littering_action;
-      if (litter?.error) {
-        warnings.push(`litter: ${litter.error}`);
-        console.warn("[predict] litter:", litter.error);
-        litter = null;
-      }
+      litter_severity = all.litter_severity;
       if (littering_action?.error) {
         warnings.push(`littering_action: ${littering_action.error}`);
         console.warn("[predict] littering_action:", littering_action.error);
         littering_action = null;
+      }
+      if (litter_severity?.error) {
+        warnings.push(`litter_severity: ${litter_severity.error}`);
+        console.warn("[predict] litter_severity:", litter_severity.error);
+        litter_severity = null;
       }
     } else if (requestedModel === "waste") {
       try {
@@ -463,13 +425,13 @@ async function predict(req, res, next) {
         );
       })(),
       ...litteringExtras(littering_action),
-      ...litterExtras(litter),
+      ...litterSeverityExtras(litter_severity),
     };
 
     const predictionsToStore = [
       ...predictionsToPersist(animal),
       ...predictionsFromBinFill(bin_fill),
-      ...predictionsFromLitter(litter),
+      ...predictionsFromLitter(litter_severity),
       ...predictionsFromLitteringAction(littering_action),
     ];
 
@@ -516,6 +478,18 @@ async function predict(req, res, next) {
       console.error("[predict] littering alert skipped:", alertErr.message);
     }
 
+    try {
+      await litterSeverityAlertService.maybeCreateLitterSeverityAlerts({
+        captureId: savedCapture?.id || null,
+        deviceId,
+        device,
+        litterPayload: litter_severity,
+        litteringAction: littering_action,
+      });
+    } catch (sevAlertErr) {
+      console.error("[predict] litter severity alert skipped:", sevAlertErr.message);
+    }
+
     let audioTriggerResult = null;
     try {
       audioTriggerResult = await audioTriggerService.maybeQueueFromPredict({
@@ -526,7 +500,7 @@ async function predict(req, res, next) {
         fill_percentage: extras.fill_percentage,
         animal,
         littering_action,
-        litter,
+        litter_severity,
         bin_fill,
         waste,
       });
@@ -542,7 +516,15 @@ async function predict(req, res, next) {
       bin_fill,
       bin_fill_level,
       littering_action: litteringActionForResponse(littering_action),
-      litter: litterForResponse(litter),
+      litter_severity:
+        litter_severity && !litter_severity.error
+          ? {
+              severity: litter_severity.severity,
+              lsi: litter_severity.lsi,
+              detection_count: litter_severity.detection_count,
+              metrics: litter_severity.metrics,
+            }
+          : null,
       audio_trigger: audioTriggerResult?.resolved
         ? {
             scenario: audioTriggerResult.resolved.scenario_key,

@@ -405,9 +405,9 @@ async function inferAll({ fileBuffer, filename, mimetype }) {
         : { error: settled[2].reason?.message || "bin-fill service failed" };
   }
 
-  let litter = null;
+  let litter_severity = null;
   if (hasLitter) {
-    litter =
+    litter_severity =
       settled[3].status === "fulfilled"
         ? settled[3].value
         : { error: settled[3].reason?.message || "litter-severity failed" };
@@ -421,7 +421,7 @@ async function inferAll({ fileBuffer, filename, mimetype }) {
         : { error: settled[4].reason?.message || "littering-action failed" };
   }
 
-  return { waste, animal, bin_fill, litter, littering_action };
+  return { waste, animal, bin_fill, littering_action, litter_severity };
 }
 
 /**

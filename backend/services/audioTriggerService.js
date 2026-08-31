@@ -28,7 +28,7 @@ function trackForRisk(risk) {
  *   fill_percentage?: number|null,
  *   animal?: object|null,
  *   littering_action?: object|null,
- *   litter?: object|null,
+ *   litter_severity?: object|null,
  *   bin_fill?: object|null,
  *   waste?: object|null,
  * }} input
@@ -55,7 +55,7 @@ async function maybeQueueFromPredict(input) {
     fill_percentage: input.fill_percentage,
     animal: input.animal,
     littering_action: input.littering_action,
-    litter: input.litter,
+    litter_severity: input.litter_severity,
     bin_fill: input.bin_fill,
     waste: input.waste,
     settings,

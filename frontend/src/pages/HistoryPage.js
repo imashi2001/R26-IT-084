@@ -120,6 +120,8 @@ const ALERT_TYPE_LABEL = {
   buzzer: "Deterrence / buzzer",
   overflow: "Bin overflow",
   littering_detected: "Littering event",
+  litter_severity_high: "High litter severity",
+  litter_add_bin: "Add a new bin",
   animal: "Animal activity",
 };
 

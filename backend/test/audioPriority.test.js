@@ -115,7 +115,7 @@ describe("resolveAudioScenario by highest confidence", () => {
     const out = audioPriorityService.resolveAudioScenario({
       settings: baseSettings,
       littering_action: { event_detected: false },
-      litter: { lsi: 58, severity: "HIGH" },
+      litter_severity: { lsi: 58, severity: "HIGH" },
       bin_fill_level: "Half",
       bin_fill: { predictions: [{ label: "half", confidence: 0.4 }] },
     });

@@ -45,6 +45,10 @@ function litteringConfidence(litteringAction) {
   return 0;
 }
 
+function litterPayload(input) {
+  return input?.litter_severity || input?.litter || null;
+}
+
 function litterSeverityConfidence(litter) {
   if (!litter || litter.error) return 0;
   const lsi = Number(litter.lsi);
@@ -139,7 +143,7 @@ function matchesCustomCondition(condition, risk) {
 
 function noIssues(input) {
   if (isLitteringEvent(input.littering_action)) return false;
-  if (isSignificantLitter(input.litter)) return false;
+  if (isSignificantLitter(litterPayload(input))) return false;
   if (isOverflow(input.bin_fill_level, input.fill_percentage, input.bin_fill)) {
     return false;
   }
@@ -184,17 +188,18 @@ function collectAudioCandidates(input = {}) {
   }
 
   const fillConf = wasteFullConfidence(input);
-  const litterSevConf = litterSeverityConfidence(input.litter);
+  const litterSev = litterPayload(input);
+  const litterSevConf = litterSeverityConfidence(litterSev);
   const hasFillIssue =
     isOverflow(input.bin_fill_level, input.fill_percentage, input.bin_fill) ||
     isHalfFill(input.bin_fill_level, input.bin_fill);
-  const hasLitterIssue = isSignificantLitter(input.litter);
+  const hasLitterIssue = isSignificantLitter(litterSev);
   if (hasFillIssue || hasLitterIssue) {
     const conf = Math.max(fillConf, litterSevConf);
     const source = litterSevConf > fillConf ? "litter" : "bin_fill";
     const reason =
       source === "litter"
-        ? `Litter severity ${String(input.litter?.severity || "HIGH").toUpperCase()} (LSI ${Math.round(Number(input.litter?.lsi) || litterSevConf * 100)}).`
+        ? `Litter severity ${String(litterSev?.severity || "HIGH").toUpperCase()} (LSI ${Math.round(Number(litterSev?.lsi) || litterSevConf * 100)}).`
         : `Bin fill alert (${Math.round(fillConf * 100)}% confidence).`;
     candidates.push({
       scenario_key: "waste_full",

@@ -1,7 +1,8 @@
-import { TrendingUp, AlertTriangle, Flame, Truck } from "lucide-react";
+import { TrendingUp, AlertTriangle, Flame, Truck, Trash2 } from "lucide-react";
 import Card from "./Card";
 import { LAYOUT } from "./dashboardTheme";
 import { computeFleetStats } from "../../utils/dashboardBins";
+import { countHighLitterSites, normalizeSeverity } from "../../utils/litterSeverity";
 
 function MiniSparkline({ points, stroke }) {
   const coords =
@@ -113,8 +114,12 @@ function sparkFromHistory(captures, pick) {
 
 export default function DashboardKpiRow({ devices, history }) {
   const fleet = computeFleetStats(devices);
+  const highLitterSites = countHighLitterSites(devices);
   const fillSpark = sparkFromHistory(history, (c) =>
     Number(c.fill_percentage)
+  );
+  const litterSpark = sparkFromHistory(history, (c) =>
+    normalizeSeverity(c.litter_severity) === "HIGH" ? 1 : 0
   );
   const collectionsToday = (history || []).filter((c) => {
     const t = new Date(c.captured_at);
@@ -164,6 +169,15 @@ export default function DashboardKpiRow({ devices, history }) {
         label="Collections Today"
         sub="Captures logged today"
         spark={[4, 6, 8, collectionsToday, collectionsToday]}
+      />
+      <KpiCard
+        icon={Trash2}
+        value={highLitterSites}
+        max={Math.max(fleet.total, 1)}
+        color="#ef4444"
+        label="High Litter Sites"
+        sub="Need extra bin / cleanup"
+        spark={litterSpark.length ? litterSpark : [0, 0, highLitterSites, highLitterSites]}
       />
     </div>
   );

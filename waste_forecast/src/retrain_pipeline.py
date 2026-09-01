@@ -63,9 +63,10 @@ def save_model_registry(
 def evaluate_model_rmse(model_path: Path, X: pd.DataFrame, y: pd.Series) -> float:
     if not model_path.exists() or len(X) == 0:
         return 999.0
-    model = xgb.XGBRegressor()
-    model.load_model(str(model_path))
-    preds = model.predict(X)
+    booster = xgb.Booster()
+    booster.load_model(str(model_path))
+    dmatrix = xgb.DMatrix(X)
+    preds = booster.predict(dmatrix)
     return float(np.sqrt(np.mean((y - preds) ** 2)))
 
 

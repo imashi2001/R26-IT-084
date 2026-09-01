@@ -70,6 +70,21 @@ def _get_monthly_features_dict(target_year: int, target_month: int) -> dict[str,
     return monthly_features.iloc[0].to_dict()
 
 
+def _load_booster() -> xgb.Booster:
+    """Load XGBoost model via native Booster API (no scikit-learn required)."""
+    booster = xgb.Booster()
+    booster.load_model(str(MODEL_PATH))
+    return booster
+
+
+def _predict_feature_row(
+    booster: xgb.Booster, feature_columns: list[str], feature_map: dict[str, object]
+) -> float:
+    row = pd.DataFrame([feature_map], columns=feature_columns)
+    dmatrix = xgb.DMatrix(row[feature_columns])
+    return float(booster.predict(dmatrix)[0])
+
+
 def _forecast_monthly_total_for_date(target_date: pd.Timestamp) -> float:
     """Walk-forward forecast month-by-month from last historical point (2025-12) to target_date.
 
@@ -88,8 +103,7 @@ def _forecast_monthly_total_for_date(target_date: pd.Timestamp) -> float:
         known_totals[(int(row["year"]), int(row["month"]))] = float(row["waste_tons"])
 
     feature_columns = _load_feature_columns()
-    model = xgb.XGBRegressor()
-    model.load_model(str(MODEL_PATH))
+    booster = _load_booster()
 
     # Walk forward month by month from 2026-01 up to target_date
     start_year, start_month = 2026, 1
@@ -137,8 +151,7 @@ def _forecast_monthly_total_for_date(target_date: pd.Timestamp) -> float:
                 "quarter": int(((curr_month - 1) // 3) + 1),
             }
 
-            row = pd.DataFrame([feature_map], columns=feature_columns)
-            pred = float(model.predict(row)[0])
+            pred = _predict_feature_row(booster, feature_columns, feature_map)
             if pred > 500.0:  # model emits KG, convert to metric tons for consistent lag chaining
                 pred = pred / 1000.0
             known_totals[(curr_year, curr_month)] = pred

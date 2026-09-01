@@ -1,14 +1,29 @@
-# Express API gateway. Railway: Settings → Root Directory = backend
-FROM node:20-alpine
+# Build from repository root:
+#   docker build -f backend/Dockerfile -t visionwaste-backend .
+#
+# Railway: Root Directory = . (repo root), Dockerfile Path = backend/Dockerfile
 
-WORKDIR /app
+FROM node:20-bookworm-slim
 
-COPY package.json package-lock.json ./
+WORKDIR /app/backend
+
+COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY . .
+COPY backend/ ./
+COPY waste_forecast/ /app/waste_forecast/
+COPY ["forecasting dashboard/", "/app/forecasting dashboard/"]
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && pip3 install --no-cache-dir -r /app/waste_forecast/requirements.txt \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
+ENV REPO_ROOT=/app
+ENV WORKSPACE_ROOT=/app
+
 EXPOSE 5000
 
-CMD ["node", "server.js"]
+CMD ["npm", "start"]

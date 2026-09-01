@@ -7,9 +7,43 @@ const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
-const { MODEL_FORECAST_URL, FORECAST_TIMEOUT_MS } = require("../config/env");
+const { MODEL_FORECAST_URL, FORECAST_TIMEOUT_MS, IS_PROD } = require("../config/env");
 
 const RETRAIN_TIMEOUT_MS = Number(process.env.FORECAST_RETRAIN_TIMEOUT_MS) || 120000;
+
+function getRepoRoot() {
+  if (process.env.REPO_ROOT) {
+    return process.env.REPO_ROOT;
+  }
+  const backendRoot = path.join(__dirname, "..", "..");
+  const monoRoot = path.join(backendRoot, "..");
+  if (fs.existsSync(path.join(monoRoot, "waste_forecast"))) {
+    return monoRoot;
+  }
+  if (fs.existsSync(path.join(backendRoot, "waste_forecast"))) {
+    return backendRoot;
+  }
+  return monoRoot;
+}
+
+function assertForecastRuntime(mode) {
+  if (isRemoteEnabled()) return;
+  if (IS_PROD) {
+    throw new Error(
+      "Forecast model unavailable: set MODEL_FORECAST_URL to your forecast-api Railway URL on the backend service."
+    );
+  }
+  const repoRoot = getRepoRoot();
+  const modelDir = path.join(repoRoot, "forecasting dashboard");
+  if (!fs.existsSync(path.join(repoRoot, "waste_forecast", "models", "model.json"))) {
+    throw new Error(
+      `Forecast model files not found under ${repoRoot}/waste_forecast. Deploy forecast-api and set MODEL_FORECAST_URL.`
+    );
+  }
+  if (!fs.existsSync(modelDir)) {
+    throw new Error(`Forecast scripts not found at ${modelDir}.`);
+  }
+}
 
 function isRemoteEnabled() {
   return Boolean(MODEL_FORECAST_URL && String(MODEL_FORECAST_URL).trim());
@@ -38,6 +72,7 @@ async function runForecastPredict(rows, opts = {}) {
     throw new Error(String(detail));
   }
 
+  assertForecastRuntime(mode);
   return runLocalPredict(rows, mode);
 }
 
@@ -57,7 +92,7 @@ async function fetchSeasonalInsights() {
     throw new Error(res.data?.detail || `HTTP ${res.status}`);
   }
 
-  const repoRoot = path.join(__dirname, "..", "..");
+  const repoRoot = getRepoRoot();
   const pyCmd =
     "import sys, json; sys.path.insert(0, 'waste_forecast/src'); from load_data import compute_seasonal_insights; print(json.dumps(compute_seasonal_insights()))";
   const output = execSync(`python -c "${pyCmd}"`, {
@@ -68,7 +103,7 @@ async function fetchSeasonalInsights() {
 }
 
 function runLocalPredict(rows, mode) {
-  const repoRoot = path.join(__dirname, "..", "..");
+  const repoRoot = getRepoRoot();
   const modelDir = path.join(repoRoot, "forecasting dashboard");
   const inputName = mode === "trend" ? "input_trend.json" : "input.json";
   const outputName = mode === "trend" ? "output_trend.json" : "output.json";
@@ -116,7 +151,7 @@ async function runRetrainPipeline(opts = {}) {
     throw new Error(String(detail));
   }
 
-  const repoRoot = path.join(__dirname, "..", "..");
+  const repoRoot = getRepoRoot();
   const args = force ? " --force" : "";
   const output = execSync(`python waste_forecast/src/retrain_pipeline.py${args}`, {
     cwd: repoRoot,
@@ -145,7 +180,7 @@ async function fetchModelRegistry() {
     throw new Error(res.data?.detail || `HTTP ${res.status}`);
   }
 
-  const repoRoot = path.join(__dirname, "..", "..");
+  const repoRoot = getRepoRoot();
   const registryPath = path.join(repoRoot, "waste_forecast", "models", "model_registry.json");
   if (!fs.existsSync(registryPath)) {
     return { currentVersion: "v1.0", latestRun: null, registryHistory: [] };

@@ -1,5 +1,4 @@
 const { Router } = require("express");
-const { execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const WasteEntriesRepository = require("../repositories/wasteEntries.repository");
@@ -17,6 +16,34 @@ function getModelRegistry() {
   } catch (err) {
     return [];
   }
+}
+
+async function runRetrainPipeline({ force = false } = {}) {
+  const unprocessedBefore = await WasteEntriesRepository.getUnprocessed();
+  await WasteEntriesRepository.exportSnapshotForRetrain();
+
+  const { exec } = require("child_process");
+  const args = force ? " --force" : "";
+  const cmd = `python waste_forecast/src/retrain_pipeline.py${args}`;
+
+  return new Promise((resolve, reject) => {
+    exec(cmd, { cwd: REPO_ROOT, timeout: force ? 30000 : 120000 }, async (err, stdout) => {
+      if (err) {
+        console.error("[waste-entries] Retrain error:", err.message);
+        reject(err);
+        return;
+      }
+      try {
+        const marked = await WasteEntriesRepository.markAllUnprocessedAsProcessed();
+        console.log(
+          `[waste-entries] Retrain done; marked ${marked} entries processed (storage=${WasteEntriesRepository.storageMode()}).`
+        );
+      } catch (markErr) {
+        console.error("[waste-entries] markProcessed after retrain:", markErr.message);
+      }
+      resolve(stdout);
+    });
+  });
 }
 
 // POST /api/waste-entries
@@ -60,10 +87,8 @@ router.post("/", async (req, res) => {
     let retrainTriggered = false;
     if (stats.unprocessedEntries >= 30) {
       retrainTriggered = true;
-      const { exec } = require("child_process");
-      exec(`python waste_forecast/src/retrain_pipeline.py`, { cwd: REPO_ROOT }, (err) => {
-        if (err) console.error("[waste-entries] Auto-retrain bg error:", err.message);
-        else console.log("[waste-entries] Auto-retrain completed in background.");
+      runRetrainPipeline().catch((err) => {
+        console.error("[waste-entries] Auto-retrain failed:", err.message);
       });
     }
 
@@ -110,6 +135,7 @@ router.get("/retrain-status", async (_req, res) => {
       totalEntries: stats.totalEntries,
       unprocessedCount: stats.unprocessedEntries,
       threshold: 30,
+      storage: WasteEntriesRepository.storageMode(),
       latestRun,
       registryHistory: registry.slice(-5).reverse(),
     });
@@ -122,12 +148,13 @@ router.get("/retrain-status", async (_req, res) => {
 // POST /api/waste-entries/trigger-retrain
 router.post("/trigger-retrain", async (_req, res) => {
   try {
-    const output = execSync(`python waste_forecast/src/retrain_pipeline.py --force`, { cwd: REPO_ROOT, timeout: 30000 }).toString();
+    const output = await runRetrainPipeline({ force: true });
     const registry = getModelRegistry();
     const latestRun = registry.length > 0 ? registry[registry.length - 1] : null;
     return res.json({
       message: "Retraining pipeline executed.",
       latestRun,
+      storage: WasteEntriesRepository.storageMode(),
       rawOutput: output.trim(),
     });
   } catch (err) {

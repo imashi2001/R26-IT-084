@@ -8,6 +8,7 @@ const {
 } = require("./config/env");
 const db = require("./config/db");
 const models = require("./models");
+const WasteEntriesRepository = require("./repositories/wasteEntries.repository");
 
 async function bootstrap() {
   const connected = await db.connect();
@@ -24,6 +25,15 @@ async function bootstrap() {
       } catch (err) {
         console.error("[db] sync failed:", err.message);
       }
+    }
+
+    try {
+      const imported = await WasteEntriesRepository.importJsonIfEmpty();
+      if (imported > 0) {
+        await WasteEntriesRepository.exportSnapshotForRetrain();
+      }
+    } catch (err) {
+      console.error("[wasteEntries] JSON import skipped:", err.message);
     }
   }
 

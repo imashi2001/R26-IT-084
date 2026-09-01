@@ -1,44 +1,39 @@
-# Database Handoff Documentation — Swapping Temporary Storage to MySQL
+# Database Handoff — Waste Entries (MySQL via Sequelize)
 
-> **For Team Lead / Database Administrator**
-
-This project currently uses a temporary repository pattern (`WasteEntriesRepository`) backed by a structured local database file (`backend/data/waste_entries.json`) that strictly adheres to the production **MySQL `waste_entries` table schema**.
+> Adheeshana's `waste_entries` schema is integrated using **Option B**: Sequelize model + repository (same pattern as `Device`, `Capture`, `Alert`).
 
 ---
 
-## 1. Complete End-to-End Data Flow
+## Current architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ 1. User submits form at /waste-update                       │
-│    Fields: date, vehicle_no, location_id, waste_type, kg   │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ POST /api/waste-entries
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 2. WasteEntriesRepository.create(entryData)                 │
-│    Saves record to waste_entries storage                    │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-            Trigger: Every N = 30 entries (or manual API)
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 3. Retraining Pipeline (retrain_pipeline.py)                 │
-│    - Reads unprocessed entries via WasteEntriesRepository   │
-│    - Aggregates daily KG by (year, month) into metric tons  │
-│    - Trains candidate model (model_candidate.json)          │
-│    - Evaluates Out-of-Fold RMSE against live model.json     │
-│    - Auto-promotes only if Candidate RMSE <= Live * 1.02    │
-│    - Logs outcome to model_registry.json                    │
-└─────────────────────────────────────────────────────────────┘
+/waste-update  →  POST /api/waste-entries
+                         ↓
+              WasteEntriesRepository
+                         ↓
+         ┌───────────────┴────────────────┐
+         │ DATABASE_URL set?              │
+         ▼ yes                            ▼ no (local dev)
+   MySQL waste_entries table        backend/data/waste_entries.json
+         │
+         │ exportSnapshotForRetrain()
+         ▼
+   waste_entries.json snapshot  →  retrain_pipeline.py
 ```
+
+| Component | Path |
+|-----------|------|
+| Sequelize model | `backend/models/WasteEntry.js` |
+| Model registry | `backend/models/index.js` |
+| Repository | `backend/repositories/wasteEntries.repository.js` |
+| API routes | `backend/routes/wasteentries.routes.js` |
+| SQL migration | `backend/migrations/20260901120000-create-waste-entries.js` |
 
 ---
 
-## 2. Target MySQL Database Table Schema
+## MySQL table schema
 
-When setting up your real MySQL database server, create the table using the following DDL:
+Created by migration or `DB_SYNC=true` on first boot:
 
 ```sql
 CREATE TABLE waste_entries (
@@ -50,39 +45,76 @@ CREATE TABLE waste_entries (
   weight_kg DECIMAL(10,2) NOT NULL,
   submitted_at DATETIME NOT NULL,
   processed_for_training TINYINT(1) DEFAULT 0,
-  INDEX idx_entry_date (entry_date),
-  INDEX idx_location (location_id)
+  INDEX idx_waste_entries_entry_date (entry_date),
+  INDEX idx_waste_entries_location (location_id),
+  INDEX idx_waste_entries_processed (processed_for_training)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ---
 
-## 3. Swap Instructions (1-Step Change)
+## Railway / production setup
 
-To connect the live backend to your production MySQL database:
+### 1. MySQL database
 
-1. Open [`backend/repositories/wasteEntries.repository.js`](file:///c:/Reasearch/SLIIT/R26-IT-084/backend/repositories/wasteEntries.repository.js).
-2. Update the repository methods (`create`, `findAll`, `countStats`, `getUnprocessed`, `markProcessed`) to execute SQL queries using your preferred database connection pool (`mysql2` or `sequelize`):
+Add a **MySQL** service on Railway (or external MySQL). Set on the **backend** service:
 
-```javascript
-// Example replacement in wasteEntries.repository.js:
-const dbPool = require('../config/db'); // MySQL connection pool
-
-class WasteEntriesRepository {
-  static async create(data) {
-    const [result] = await dbPool.query(
-      `INSERT INTO waste_entries (entry_date, vehicle_no, location_id, waste_type, weight_kg, submitted_at)
-       VALUES (?, ?, ?, ?, ?, NOW())`,
-      [data.entry_date, data.vehicle_no, data.location_id, data.waste_type, data.weight_kg]
-    );
-    return { id: result.insertId, ...data };
-  }
-
-  static async findAll(options) {
-    const [rows] = await dbPool.query(`SELECT * FROM waste_entries ORDER BY submitted_at DESC LIMIT ? OFFSET ?`, [options.limit, options.offset]);
-    return { items: rows };
-  }
-}
+```env
+DATABASE_URL=mysql://user:pass@host:3306/visionwaste
+DB_SYNC=true
+DB_SYNC_ALTER=false
 ```
 
-> **Note:** Zero lines of code under `backend/routes/`, `frontend/src/`, or `waste_forecast/` need to change. The entire data access boundary is encapsulated inside `WasteEntriesRepository`.
+Deploy once so tables are created (including `waste_entries`). Then set:
+
+```env
+DB_SYNC=false
+```
+
+### 2. Run migrations (alternative to DB_SYNC)
+
+```powershell
+cd backend
+$env:DATABASE_URL = "mysql://..."
+node scripts/migrate.js
+```
+
+### 3. Import existing JSON rows (automatic)
+
+On startup, if `waste_entries` is **empty** but `backend/data/waste_entries.json` has rows, the backend **imports them once** into MySQL and refreshes the JSON snapshot for Python retrain.
+
+Check logs for:
+
+```text
+[wasteEntries.repository] Imported N row(s) from JSON into waste_entries.
+```
+
+### 4. Verify storage mode
+
+```http
+GET /api/waste-entries/retrain-status
+```
+
+Response includes `"storage": "mysql"` when using the database.
+
+---
+
+## Local dev without MySQL
+
+Leave `DATABASE_URL` empty. Repository uses `backend/data/waste_entries.json` (`"storage": "json"`).
+
+---
+
+## Retrain pipeline
+
+Python still reads `backend/data/waste_entries.json`. Before retrain, the repository exports a fresh snapshot from MySQL via `exportSnapshotForRetrain()`.
+
+Requires Python + xgboost on the machine running retrain, or run retrain in CI/local and deploy updated `waste_forecast/models/`.
+
+---
+
+## No changes needed in
+
+- `frontend/src/pages/WasteUpdatePage.js`
+- `backend/routes/wasteentries.routes.js` (uses repository only)
+- `waste_forecast/src/retrain_pipeline.py` (reads JSON snapshot)

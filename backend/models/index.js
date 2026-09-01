@@ -13,6 +13,7 @@ const defineDeviceCommand = require("./DeviceCommand");
 const defineCapture = require("./Capture");
 const definePrediction = require("./Prediction");
 const defineAlert = require("./Alert");
+const defineWasteEntry = require("./WasteEntry");
 
 let models = null;
 
@@ -28,6 +29,7 @@ function init() {
   const Capture = defineCapture(sequelize);
   const Prediction = definePrediction(sequelize);
   const Alert = defineAlert(sequelize);
+  const WasteEntry = defineWasteEntry(sequelize);
 
   User.hasMany(Device, { foreignKey: "user_id", as: "devices" });
   Device.belongsTo(User, { foreignKey: "user_id", as: "user" });
@@ -70,6 +72,7 @@ function init() {
     Capture,
     Prediction,
     Alert,
+    WasteEntry,
   };
   return models;
 }

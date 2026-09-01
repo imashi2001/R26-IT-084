@@ -1,29 +1,21 @@
-# Build from repository root:
-#   docker build -f backend/Dockerfile -t visionwaste-backend .
+# Railway Root Directory: backend
+# Dockerfile Path: Dockerfile
 #
-# Railway: Root Directory = . (repo root), Dockerfile Path = backend/Dockerfile
+# Forecasting runs on forecast-api (MODEL_FORECAST_URL) — no Python/waste_forecast in this image.
+#
+# Local Docker:
+#   cd backend && docker build -t visionwaste-backend .
 
 FROM node:20-bookworm-slim
 
-WORKDIR /app/backend
+WORKDIR /app
 
-COPY backend/package.json backend/package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY backend/ ./
-COPY waste_forecast/ /app/waste_forecast/
-# forecasting dashboard/ is excluded by repo .dockerignore — set MODEL_FORECAST_URL in production
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip \
-    && pip3 install --no-cache-dir -r /app/waste_forecast/requirements.txt \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+COPY . .
 
 ENV NODE_ENV=production
-ENV REPO_ROOT=/app
-ENV WORKSPACE_ROOT=/app
-
 EXPOSE 5000
 
 CMD ["npm", "start"]

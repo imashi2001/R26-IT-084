@@ -1,0 +1,11 @@
+# Fallback if Railway uses Railpack instead of Dockerfile.
+# FastAPI app is in app.py (not main.py) → must set start explicitly.
+
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"

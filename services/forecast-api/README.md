@@ -7,10 +7,17 @@ FastAPI microservice for **municipal waste KG forecasting** used by the Express 
 | Setting | Value |
 |---------|--------|
 | **Root Directory** | `services/forecast-api` |
-| **Dockerfile Path** | `Dockerfile` (leave default / empty) |
+| **Dockerfile Path** | `Dockerfile` |
+| **Builder** | **Dockerfile** (not Railpack — set in Settings → Build if needed) |
 | **Branch** | `test` |
 
-Build context is **`services/forecast-api`** only. Model files must live in `services/forecast-api/waste_forecast/` (synced from repo root `waste_forecast/`).
+This folder includes `railway.toml` (forces Docker) and `nixpacks.toml` (Railpack fallback: `uvicorn app:app`).
+
+If Railpack is used instead of Docker, set **Start Command** manually:
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port $PORT
+```
 
 **Important:** After editing canonical model at repo root `waste_forecast/`, sync before commit:
 

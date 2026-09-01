@@ -1,5 +1,4 @@
-# Build from repo root:
-#   docker build -f services/forecast-api/Dockerfile -t forecast-api .
+# Railway Root Directory: services/forecast-api
 FROM python:3.11-slim
 
 ENV PIP_NO_CACHE_DIR=1 \
@@ -9,10 +8,10 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 WORKDIR /app
 
-COPY services/forecast-api/requirements.txt ./requirements.txt
+COPY requirements.txt ./requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY services/forecast-api/app.py ./app.py
+COPY app.py ./app.py
 COPY waste_forecast/ ./waste_forecast/
 
 ENV PORT=8000

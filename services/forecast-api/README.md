@@ -28,21 +28,20 @@ curl http://127.0.0.1:8006/health
 
 ## Docker (same as Railway)
 
-Build from **repo root**:
+Build from **this folder** (same as waste-api / litter-api):
 
 ```powershell
-docker build -f services/forecast-api/Dockerfile -t forecast-api .
+cd services\forecast-api
+docker build -t forecast-api .
 docker run --rm -p 8006:8000 -e PORT=8000 forecast-api
 ```
 
 ## Deploy on Railway
 
-Because the model files are in `waste_forecast/` at repo root, use **monorepo build**:
-
 | Setting | Value |
 |---------|--------|
-| **Root Directory** | `.` (repo root, not `services/forecast-api`) |
-| **Dockerfile Path** | `services/forecast-api/Dockerfile` |
+| **Root Directory** | `services/forecast-api` |
+| **Dockerfile Path** | leave empty (uses `Dockerfile` in that folder) |
 | **Generate Domain** | e.g. `https://forecast-api-xxx.up.railway.app` |
 
 Do **not** override `PORT` — Railway injects it.

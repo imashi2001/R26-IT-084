@@ -620,7 +620,6 @@ export default function WasteUpdatePage() {
           </div>
         </div>
       )}
-      </div>
       </PageShell>
     </DashboardLayout>
   );

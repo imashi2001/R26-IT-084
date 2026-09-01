@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-def loadHolidayCache() {
+function loadHolidayCache() {
   const candidates = [
     path.join(__dirname, "..", "..", "forecasting dashboard", "holiday_cache.json"),
     path.join(__dirname, "..", "holiday_cache.json"),

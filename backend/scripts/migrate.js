@@ -12,6 +12,7 @@ const path = require("path");
 const { Sequelize } = require("sequelize");
 
 const { DATABASE_URL } = require("../config/env");
+const { resolveDialect } = require("../config/resolveDialect");
 
 async function main() {
   if (!DATABASE_URL) {
@@ -19,15 +20,16 @@ async function main() {
     process.exit(0);
   }
 
+  const dialect = resolveDialect(DATABASE_URL);
   const sequelize = new Sequelize(DATABASE_URL, {
-    dialect: "mysql",
+    dialect,
     logging: console.log,
   });
 
   const migrationsDir = path.join(__dirname, "..", "migrations");
   const files = fs
     .readdirSync(migrationsDir)
-    .filter((f) => f.endsWith(".js"))
+    .filter((f) => f.endsWith(".js") && !f.startsWith("_"))
     .sort();
 
   await sequelize

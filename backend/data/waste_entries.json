@@ -10,33 +10,13 @@
     "processed_for_training": true
   },
   {
-    "id": 2,
+    "id": 5,
     "entry_date": "2026-09-01",
-    "vehicle_no": "251 5678",
-    "location_id": "moratuwa-mc",
+    "vehicle_no": "sd 3333",
+    "location_id": "dehiwala-mtlavinia",
     "waste_type": "Burnable",
-    "weight_kg": 450,
-    "submitted_at": "2026-09-01T02:04:03.120Z",
-    "processed_for_training": true
-  },
-  {
-    "id": 3,
-    "entry_date": "2026-09-01",
-    "vehicle_no": "HW 3628",
-    "location_id": "moratuwa-mc",
-    "waste_type": "Burnable",
-    "weight_kg": 450,
-    "submitted_at": "2026-09-01T02:04:03.136Z",
-    "processed_for_training": true
-  },
-  {
-    "id": 4,
-    "entry_date": "2026-09-01",
-    "vehicle_no": "ACC 2657",
-    "location_id": "moratuwa-mc",
-    "waste_type": "Burnable",
-    "weight_kg": 450,
-    "submitted_at": "2026-09-01T02:04:03.144Z",
+    "weight_kg": 1.4,
+    "submitted_at": "2026-09-01T07:06:51.250Z",
     "processed_for_training": true
   }
 ]

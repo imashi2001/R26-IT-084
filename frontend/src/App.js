@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardRouteFallback from "./components/dashboard/DashboardRouteFallback";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import LandingPage from "./pages/LandingPage";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
 import "./App.css";
 
@@ -45,8 +46,8 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* ---- Public ---- */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* ---- Public (citizen bin finder) ---- */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 

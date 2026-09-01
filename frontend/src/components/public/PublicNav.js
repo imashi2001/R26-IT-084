@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Bell, Menu, Moon, Sun, X } from "lucide-react";
 import BrandLogo from "../BrandLogo";
 
@@ -112,6 +113,20 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
             <Bell className="h-4 w-4" />
           </button>
 
+          <Link
+            to="/login"
+            className={[
+              "hidden rounded-lg px-3 py-1.5 text-xs font-semibold no-underline transition sm:inline-flex",
+              solid
+                ? dark
+                  ? "text-ink-300 hover:bg-white/10 hover:text-white"
+                  : "text-ink-500 hover:bg-eco-light hover:text-eco-primary"
+                : "text-white/80 hover:bg-white/10 hover:text-white",
+            ].join(" ")}
+          >
+            Staff login
+          </Link>
+
           <button
             type="button"
             onClick={onToggleTheme}
@@ -179,6 +194,18 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
             >
               Find nearest bin
             </button>
+            <Link
+              to="/login"
+              onClick={() => setMenuOpen(false)}
+              className={[
+                "mt-1 rounded-xl px-4 py-3 text-sm font-semibold no-underline",
+                dark
+                  ? "text-ink-200 hover:bg-ink-900"
+                  : "text-ink-700 hover:bg-eco-light",
+              ].join(" ")}
+            >
+              Staff login
+            </Link>
           </nav>
         </div>
       ) : null}

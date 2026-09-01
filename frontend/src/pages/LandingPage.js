@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Link } from "react-router-dom";
 import L from "leaflet";
 import {
   MapContainer,
@@ -834,8 +835,12 @@ function AboutFooter({ dark }) {
             Note
           </div>
           <p className="mt-3 text-sm leading-relaxed">
-            This is the public citizen interface. Municipal operators use a
-            separate protected admin link (not shown here).
+            This is the public citizen interface. Municipal operators sign in
+            at{" "}
+            <Link to="/login" className="font-semibold text-eco-primary hover:underline">
+              Staff login
+            </Link>
+            .
           </p>
         </div>
       </div>

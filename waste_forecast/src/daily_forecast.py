@@ -31,7 +31,12 @@ def _load_feature_columns() -> list[str]:
 
 def _load_daily_profile() -> list[dict[str, object]]:
     with open(PROFILE_PATH, "r", encoding="utf-8") as fh:
-        return json.load(fh)
+        payload = json.load(fh)
+    records = []
+    sample_months = payload.get("sample_months", {})
+    for m_records in sample_months.values():
+        records.extend(m_records)
+    return records
 
 
 def _monthly_actual_total_for_date(target_date: pd.Timestamp) -> float | None:
@@ -131,6 +136,8 @@ def _forecast_monthly_total_for_date(target_date: pd.Timestamp) -> float:
 
             row = pd.DataFrame([feature_map], columns=feature_columns)
             pred = float(model.predict(row)[0])
+            if pred > 500.0:  # model emits KG, convert to metric tons for consistent lag chaining
+                pred = pred / 1000.0
             known_totals[(curr_year, curr_month)] = pred
 
         if curr_month == 12:

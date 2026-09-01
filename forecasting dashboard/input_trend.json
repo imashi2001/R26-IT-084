@@ -1,117 +1,6 @@
 [
   {
     "Is_Weekend": 0,
-    "Is_Holiday": 0,
-    "Is_Long_Weekend": 0,
-    "Is_Poya_Day": 0,
-    "Month": 8,
-    "Month_December": 0,
-    "Rainfall_mm": 0,
-    "Max_Temp_C": 30,
-    "Waste_Lag_1": 15,
-    "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
-    "Category_Unburnable": 1
-  },
-  {
-    "Is_Weekend": 0,
-    "Is_Holiday": 0,
-    "Is_Long_Weekend": 0,
-    "Is_Poya_Day": 0,
-    "Month": 8,
-    "Month_December": 0,
-    "Rainfall_mm": 0,
-    "Max_Temp_C": 30,
-    "Waste_Lag_1": 15,
-    "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
-    "Category_SOW": 1
-  },
-  {
-    "Is_Weekend": 0,
-    "Is_Holiday": 0,
-    "Is_Long_Weekend": 0,
-    "Is_Poya_Day": 0,
-    "Month": 8,
-    "Month_December": 0,
-    "Rainfall_mm": 0,
-    "Max_Temp_C": 30,
-    "Waste_Lag_1": 15,
-    "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
-    "Category_Burnable": 1
-  },
-  {
-    "Is_Weekend": 0,
-    "Is_Holiday": 0,
-    "Is_Long_Weekend": 0,
-    "Is_Poya_Day": 0,
-    "Month": 8,
-    "Month_December": 0,
-    "Rainfall_mm": 0,
-    "Max_Temp_C": 30,
-    "Waste_Lag_1": 15,
-    "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
-  },
-  {
-    "Is_Weekend": 0,
-    "Is_Holiday": 0,
-    "Is_Long_Weekend": 0,
-    "Is_Poya_Day": 0,
-    "Month": 8,
-    "Month_December": 0,
-    "Rainfall_mm": 0,
-    "Max_Temp_C": 30,
-    "Waste_Lag_1": 15,
-    "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
-    "Category_Industrial Waste": 1
-  },
-  {
-    "Is_Weekend": 0,
-    "Is_Holiday": 0,
-    "Is_Long_Weekend": 0,
-    "Is_Poya_Day": 0,
-    "Month": 8,
-    "Month_December": 0,
-    "Rainfall_mm": 0,
-    "Max_Temp_C": 30,
-    "Waste_Lag_1": 15,
-    "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
-    "Category_Slaughter House Waste": 1
-  },
-  {
-    "Is_Weekend": 0,
-    "Is_Holiday": 0,
-    "Is_Long_Weekend": 0,
-    "Is_Poya_Day": 0,
-    "Month": 8,
-    "Month_December": 0,
-    "Rainfall_mm": 0,
-    "Max_Temp_C": 30,
-    "Waste_Lag_1": 15,
-    "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
-    "Category_Sanitary Waste": 1
-  },
-  {
-    "Is_Weekend": 0,
-    "Is_Holiday": 0,
-    "Is_Long_Weekend": 0,
-    "Is_Poya_Day": 0,
-    "Month": 8,
-    "Month_December": 0,
-    "Rainfall_mm": 0,
-    "Max_Temp_C": 30,
-    "Waste_Lag_1": 15,
-    "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
-    "Category_C & D": 1
-  },
-  {
-    "Is_Weekend": 0,
     "Is_Holiday": 1,
     "Is_Long_Weekend": 0,
     "Is_Poya_Day": 0,
@@ -121,7 +10,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -135,7 +24,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -149,7 +38,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -163,7 +52,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -176,7 +65,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -190,7 +79,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -204,7 +93,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -218,7 +107,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -232,7 +121,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -246,7 +135,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -260,7 +149,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -274,7 +163,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -287,7 +176,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -301,7 +190,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -315,7 +204,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -329,7 +218,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -343,7 +232,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -357,7 +246,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -371,7 +260,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -385,7 +274,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -398,7 +287,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -412,7 +301,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -426,7 +315,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -440,7 +329,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -454,7 +343,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -468,7 +357,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -482,7 +371,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -496,7 +385,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 1,
@@ -509,7 +398,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -523,7 +412,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -537,7 +426,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -551,7 +440,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -565,7 +454,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -579,7 +468,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -593,7 +482,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -607,7 +496,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 1,
@@ -620,7 +509,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -634,7 +523,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -648,7 +537,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -662,7 +551,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -676,7 +565,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -690,7 +579,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -704,7 +593,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -718,7 +607,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -731,7 +620,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -745,7 +634,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -759,7 +648,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -773,7 +662,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -787,7 +676,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -801,7 +690,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -815,7 +704,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -829,7 +718,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -842,7 +731,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -856,7 +745,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -870,7 +759,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -884,7 +773,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -898,7 +787,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -912,7 +801,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -926,7 +815,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -940,7 +829,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -953,7 +842,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -967,7 +856,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -981,7 +870,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -995,7 +884,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -1009,7 +898,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -1023,7 +912,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -1037,7 +926,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -1051,7 +940,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -1064,7 +953,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -1078,7 +967,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -1092,7 +981,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -1106,7 +995,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -1120,7 +1009,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -1134,7 +1023,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -1148,7 +1037,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -1162,7 +1051,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -1175,7 +1064,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -1189,7 +1078,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -1203,7 +1092,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -1217,7 +1106,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -1231,7 +1120,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -1245,7 +1134,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -1259,7 +1148,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -1273,7 +1162,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 1,
@@ -1286,7 +1175,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -1300,7 +1189,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -1314,7 +1203,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -1328,7 +1217,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -1342,7 +1231,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -1356,7 +1245,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -1370,7 +1259,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -1384,7 +1273,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 1,
@@ -1397,7 +1286,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -1411,7 +1300,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -1425,7 +1314,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -1439,7 +1328,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -1453,7 +1342,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -1467,7 +1356,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -1481,7 +1370,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -1495,7 +1384,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -1508,7 +1397,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -1522,7 +1411,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -1536,7 +1425,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -1550,7 +1439,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   },
   {
@@ -1564,7 +1453,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Unburnable": 1
   },
   {
@@ -1578,7 +1467,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_SOW": 1
   },
   {
@@ -1592,7 +1481,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Burnable": 1
   },
   {
@@ -1606,7 +1495,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1
+    "Institute_Moratuwa M.C.": 1
   },
   {
     "Is_Weekend": 0,
@@ -1619,7 +1508,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Industrial Waste": 1
   },
   {
@@ -1633,7 +1522,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Slaughter House Waste": 1
   },
   {
@@ -1647,7 +1536,7 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
     "Category_Sanitary Waste": 1
   },
   {
@@ -1661,7 +1550,118 @@
     "Max_Temp_C": 30,
     "Waste_Lag_1": 15,
     "Waste_Lag_7": 15,
-    "Institute_Dehiwala - Mt Lavinia": 1,
+    "Institute_Moratuwa M.C.": 1,
+    "Category_C & D": 1
+  },
+  {
+    "Is_Weekend": 0,
+    "Is_Holiday": 0,
+    "Is_Long_Weekend": 0,
+    "Is_Poya_Day": 0,
+    "Month": 9,
+    "Month_December": 0,
+    "Rainfall_mm": 0,
+    "Max_Temp_C": 30,
+    "Waste_Lag_1": 15,
+    "Waste_Lag_7": 15,
+    "Institute_Moratuwa M.C.": 1,
+    "Category_Unburnable": 1
+  },
+  {
+    "Is_Weekend": 0,
+    "Is_Holiday": 0,
+    "Is_Long_Weekend": 0,
+    "Is_Poya_Day": 0,
+    "Month": 9,
+    "Month_December": 0,
+    "Rainfall_mm": 0,
+    "Max_Temp_C": 30,
+    "Waste_Lag_1": 15,
+    "Waste_Lag_7": 15,
+    "Institute_Moratuwa M.C.": 1,
+    "Category_SOW": 1
+  },
+  {
+    "Is_Weekend": 0,
+    "Is_Holiday": 0,
+    "Is_Long_Weekend": 0,
+    "Is_Poya_Day": 0,
+    "Month": 9,
+    "Month_December": 0,
+    "Rainfall_mm": 0,
+    "Max_Temp_C": 30,
+    "Waste_Lag_1": 15,
+    "Waste_Lag_7": 15,
+    "Institute_Moratuwa M.C.": 1,
+    "Category_Burnable": 1
+  },
+  {
+    "Is_Weekend": 0,
+    "Is_Holiday": 0,
+    "Is_Long_Weekend": 0,
+    "Is_Poya_Day": 0,
+    "Month": 9,
+    "Month_December": 0,
+    "Rainfall_mm": 0,
+    "Max_Temp_C": 30,
+    "Waste_Lag_1": 15,
+    "Waste_Lag_7": 15,
+    "Institute_Moratuwa M.C.": 1
+  },
+  {
+    "Is_Weekend": 0,
+    "Is_Holiday": 0,
+    "Is_Long_Weekend": 0,
+    "Is_Poya_Day": 0,
+    "Month": 9,
+    "Month_December": 0,
+    "Rainfall_mm": 0,
+    "Max_Temp_C": 30,
+    "Waste_Lag_1": 15,
+    "Waste_Lag_7": 15,
+    "Institute_Moratuwa M.C.": 1,
+    "Category_Industrial Waste": 1
+  },
+  {
+    "Is_Weekend": 0,
+    "Is_Holiday": 0,
+    "Is_Long_Weekend": 0,
+    "Is_Poya_Day": 0,
+    "Month": 9,
+    "Month_December": 0,
+    "Rainfall_mm": 0,
+    "Max_Temp_C": 30,
+    "Waste_Lag_1": 15,
+    "Waste_Lag_7": 15,
+    "Institute_Moratuwa M.C.": 1,
+    "Category_Slaughter House Waste": 1
+  },
+  {
+    "Is_Weekend": 0,
+    "Is_Holiday": 0,
+    "Is_Long_Weekend": 0,
+    "Is_Poya_Day": 0,
+    "Month": 9,
+    "Month_December": 0,
+    "Rainfall_mm": 0,
+    "Max_Temp_C": 30,
+    "Waste_Lag_1": 15,
+    "Waste_Lag_7": 15,
+    "Institute_Moratuwa M.C.": 1,
+    "Category_Sanitary Waste": 1
+  },
+  {
+    "Is_Weekend": 0,
+    "Is_Holiday": 0,
+    "Is_Long_Weekend": 0,
+    "Is_Poya_Day": 0,
+    "Month": 9,
+    "Month_December": 0,
+    "Rainfall_mm": 0,
+    "Max_Temp_C": 30,
+    "Waste_Lag_1": 15,
+    "Waste_Lag_7": 15,
+    "Institute_Moratuwa M.C.": 1,
     "Category_C & D": 1
   }
 ]

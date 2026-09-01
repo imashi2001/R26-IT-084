@@ -141,14 +141,23 @@ router.get("/", (req, res) => {
 
   let predictions = [];
   let modelError = null;
+  let reliability = "reliable";
+  let reliabilityNote = null;
 
   try {
     fs.writeFileSync(inputPath, JSON.stringify(rows, null, 2));
     execSync("python run_model.py", { cwd: modelDir, timeout: 30000 });
-    const rawOutput = fs.readFileSync(outputPath, "utf8");
-    predictions = JSON.parse(rawOutput);
-    if (predictions.error) {
-      throw new Error(predictions.error);
+    const rawText = fs.readFileSync(outputPath, "utf8");
+    const parsedOutput = JSON.parse(rawText);
+    if (parsedOutput.error) {
+      throw new Error(parsedOutput.error);
+    }
+    if (Array.isArray(parsedOutput)) {
+      predictions = parsedOutput;
+    } else if (parsedOutput.predictions) {
+      predictions = parsedOutput.predictions;
+      reliability = parsedOutput.reliability || "reliable";
+      reliabilityNote = parsedOutput.reliabilityNote || null;
     }
   } catch (err) {
     console.error("[waste-data] ML model execution failed:", err.message);
@@ -273,6 +282,8 @@ router.get("/", (req, res) => {
 
   res.json({
     selectedDate: dateStr,
+    reliability,
+    reliabilityNote,
     dayType,
     isHoliday,
     isWeekend: weekend,

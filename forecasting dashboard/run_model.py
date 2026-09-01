@@ -132,8 +132,13 @@ try:
         adjusted_val = apply_post_prediction_adjustments(item_base_tons, row)
         adjusted_predictions.append(adjusted_val)
 
+    output_payload = {
+        "predictions": adjusted_predictions,
+        "reliability": daily_res.get("reliability", "reliable"),
+        "reliabilityNote": daily_res.get("reliability_note", "")
+    }
     with open('output.json', 'w') as f:
-        json.dump(adjusted_predictions, f)
+        json.dump(output_payload, f)
 
 except Exception as e:
     with open('output.json', 'w') as f:

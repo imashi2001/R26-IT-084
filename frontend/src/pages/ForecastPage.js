@@ -59,6 +59,12 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function tomorrow() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 /* ─── StatCard ─────────────────────────────────────────────────────────── */
 function StatCard({ icon: Icon, label, value, sub, accent }) {
   return (
@@ -141,7 +147,7 @@ function InsightCard({ loc }) {
 
 /* ─── ForecastPage ─────────────────────────────────────────────────────── */
 export default function ForecastPage() {
-  const [selectedDate, setSelectedDate] = useState(today());
+  const [selectedDate, setSelectedDate] = useState(tomorrow());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -209,6 +215,14 @@ export default function ForecastPage() {
           </div>
         </div>
       </header>
+
+      {/* ── RELIABILITY HORIZON BANNER ── */}
+      {data?.reliability === "out_of_range" && (
+        <div style={{ background: "rgba(234,179,8,0.15)", border: "1px solid #eab308", color: "#fef08a", padding: "12px 16px", borderRadius: 8, margin: "16px 24px", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+          <AlertTriangle size={16} style={{ color: "#eab308", flexShrink: 0 }} />
+          <span><strong>Forecast Horizon Notice:</strong> {data?.reliabilityNote || "The selected date exceeds the 12-month reliable forecast horizon (2023-01 to 2026-12). Showing nearest reliable forecast."}</span>
+        </div>
+      )}
 
       {/* ── SUMMARY BAR ── */}
       <div className="fp-summary-bar">

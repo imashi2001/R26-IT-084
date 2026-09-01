@@ -18,5 +18,15 @@
     "weight_kg": 1.4,
     "submitted_at": "2026-09-01T07:06:51.250Z",
     "processed_for_training": true
+  },
+  {
+    "id": 6,
+    "entry_date": "2026-09-01",
+    "vehicle_no": "jk 1245",
+    "location_id": "dehiwala-mtlavinia",
+    "waste_type": "Burnable",
+    "weight_kg": 1,
+    "submitted_at": "2026-09-01T07:26:29.947Z",
+    "processed_for_training": false
   }
 ]

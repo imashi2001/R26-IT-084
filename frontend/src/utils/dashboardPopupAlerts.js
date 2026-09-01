@@ -74,14 +74,21 @@ export function getPopupSeenIds() {
 }
 
 export function markPopupSeen(id) {
-  const seen = getPopupSeenIds();
-  seen.add(id);
-  const trimmed = [...seen].slice(-300);
-  sessionStorage.setItem(SEEN_KEY, JSON.stringify(trimmed));
+  try {
+    const seen = getPopupSeenIds();
+    seen.add(id);
+    sessionStorage.setItem(SEEN_KEY, JSON.stringify([...seen].slice(-300)));
+  } catch {
+    /* private browsing / storage blocked */
+  }
 }
 
 export function markAllPopupSeen(ids) {
-  const seen = getPopupSeenIds();
-  ids.forEach((id) => seen.add(id));
-  sessionStorage.setItem(SEEN_KEY, JSON.stringify([...seen].slice(-300)));
+  try {
+    const seen = getPopupSeenIds();
+    ids.forEach((id) => seen.add(id));
+    sessionStorage.setItem(SEEN_KEY, JSON.stringify([...seen].slice(-300)));
+  } catch {
+    /* private browsing / storage blocked */
+  }
 }

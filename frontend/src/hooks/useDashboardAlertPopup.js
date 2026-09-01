@@ -15,26 +15,30 @@ export default function useDashboardAlertPopup(pollMs = 30_000) {
   const bootstrapped = useRef(false);
 
   useEffect(() => {
-    const popupAlerts = buildDashboardPopupAlerts(captures);
-    if (!bootstrapped.current) {
-      markAllPopupSeen(popupAlerts.map((a) => a.id));
-      bootstrapped.current = true;
-      return;
-    }
-    if (dbDisabled || !popupAlerts.length) return;
-
-    const seen = getPopupSeenIds();
-    const fresh = popupAlerts.filter((a) => !seen.has(a.id));
-    if (!fresh.length) return;
-
-    setQueue((prev) => {
-      const existing = new Set(prev.map((a) => a.id));
-      const merged = [...prev];
-      for (const alert of fresh) {
-        if (!existing.has(alert.id)) merged.push(alert);
+    try {
+      const popupAlerts = buildDashboardPopupAlerts(captures);
+      if (!bootstrapped.current) {
+        markAllPopupSeen(popupAlerts.map((a) => a.id));
+        bootstrapped.current = true;
+        return;
       }
-      return merged;
-    });
+      if (dbDisabled || !popupAlerts.length) return;
+
+      const seen = getPopupSeenIds();
+      const fresh = popupAlerts.filter((a) => !seen.has(a.id));
+      if (!fresh.length) return;
+
+      setQueue((prev) => {
+        const existing = new Set(prev.map((a) => a.id));
+        const merged = [...prev];
+        for (const alert of fresh) {
+          if (!existing.has(alert.id)) merged.push(alert);
+        }
+        return merged;
+      });
+    } catch (e) {
+      console.warn("[useDashboardAlertPopup]", e);
+    }
   }, [captures, dbDisabled]);
 
   useEffect(() => {

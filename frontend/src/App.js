@@ -1,38 +1,42 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardRouteFallback from "./components/dashboard/DashboardRouteFallback";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import { lazyWithRetry } from "./utils/lazyWithRetry";
 import "./App.css";
 
-const SystemDashboardPage = lazy(() => import("./pages/SystemDashboardPage"));
-const LiveMonitoringPage = lazy(() => import("./pages/LiveMonitoringPage"));
-const HomePage = lazy(() => import("./pages/HomePage"));
-const HygienicRiskDashboardPage = lazy(
+const SystemDashboardPage = lazyWithRetry(() => import("./pages/SystemDashboardPage"));
+const LiveMonitoringPage = lazyWithRetry(() => import("./pages/LiveMonitoringPage"));
+const HomePage = lazyWithRetry(() => import("./pages/HomePage"));
+const HygienicRiskDashboardPage = lazyWithRetry(
   () => import("./pages/HygienicRiskDashboardPage")
 );
-const MobileReportPage = lazy(() => import("./pages/MobileReportPage"));
-const MapPage = lazy(() => import("./pages/MapPage"));
-const BinDetailPage = lazy(() => import("./pages/BinDetailPage"));
-const DashboardSettingsPage = lazy(() => import("./pages/DashboardSettingsPage"));
-const ForecastPage = lazy(() => import("./pages/ForecastPage"));
-const BinStatusPage = lazy(() => import("./pages/BinStatusPage"));
-const AnimalDetectionPage = lazy(() => import("./pages/AnimalDetectionPage"));
-const AlertsNotificationsPage = lazy(
+const MobileReportPage = lazyWithRetry(() => import("./pages/MobileReportPage"));
+const MapPage = lazyWithRetry(() => import("./pages/MapPage"));
+const BinDetailPage = lazyWithRetry(() => import("./pages/BinDetailPage"));
+const DashboardSettingsPage = lazyWithRetry(() => import("./pages/DashboardSettingsPage"));
+const ForecastPage = lazyWithRetry(() => import("./pages/ForecastPage"));
+const BinStatusPage = lazyWithRetry(() => import("./pages/BinStatusPage"));
+const AnimalDetectionPage = lazyWithRetry(() => import("./pages/AnimalDetectionPage"));
+const AlertsNotificationsPage = lazyWithRetry(
   () => import("./pages/AlertsNotificationsPage")
 );
-const ReportsPage = lazy(() => import("./pages/ReportsPage"));
-const HistoryPage = lazy(() => import("./pages/HistoryPage"));
-const LitterSeverityPage = lazy(() => import("./pages/LitterSeverityPage"));
-const LitteringEventPage = lazy(() => import("./pages/LitteringEventPage"));
-const SpeakerCheckPage = lazy(() => import("./pages/SpeakerCheckPage"));
+const ReportsPage = lazyWithRetry(() => import("./pages/ReportsPage"));
+const HistoryPage = lazyWithRetry(() => import("./pages/HistoryPage"));
+const LitterSeverityPage = lazyWithRetry(() => import("./pages/LitterSeverityPage"));
+const LitteringEventPage = lazyWithRetry(() => import("./pages/LitteringEventPage"));
+const SpeakerCheckPage = lazyWithRetry(() => import("./pages/SpeakerCheckPage"));
 
 const protectedShell = (el) => (
   <ProtectedRoute>
-    <Suspense fallback={<DashboardRouteFallback />}>{el}</Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<DashboardRouteFallback />}>{el}</Suspense>
+    </ErrorBoundary>
   </ProtectedRoute>
 );
 

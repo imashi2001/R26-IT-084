@@ -1,6 +1,6 @@
-# Express API gateway (backend/). Same image as backend/Dockerfile.
-# Railway: Root Directory = . , Dockerfile Path = Dockerfile  (or backend/Dockerfile).
-FROM node:20-alpine
+# Repo-root backend image (only when Railway Root Directory is unset / ".").
+# Prefer Root Directory = backend and backend/Dockerfile instead.
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
@@ -12,4 +12,4 @@ COPY backend/ ./
 ENV NODE_ENV=production
 EXPOSE 5000
 
-CMD ["node", "server.js"]
+CMD ["npm", "start"]

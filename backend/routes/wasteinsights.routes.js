@@ -12,15 +12,9 @@ router.get("/", (_req, res) => {
       return res.json(cachedInsights);
     }
 
-    const pythonScript = `
-import sys, json
-sys.path.insert(0, 'waste_forecast/src')
-from load_data import compute_seasonal_insights
-print(json.dumps(compute_seasonal_insights()))
-`;
-
     const repoRoot = path.join(__dirname, "..", "..");
-    const output = execSync(`python -c "${pythonScript.replace(/\n/g, ' ')}"`, { cwd: repoRoot, timeout: 10000 }).toString();
+    const pyCmd = "import sys, json; sys.path.insert(0, 'waste_forecast/src'); from load_data import compute_seasonal_insights; print(json.dumps(compute_seasonal_insights()))";
+    const output = execSync(`python -c "${pyCmd}"`, { cwd: repoRoot, timeout: 10000 }).toString();
     cachedInsights = JSON.parse(output.trim());
     return res.json(cachedInsights);
   } catch (err) {

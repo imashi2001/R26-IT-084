@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MapContainer,
   TileLayer,
@@ -19,6 +20,7 @@ import {
   BarChart3,
   ChevronDown,
   ChevronUp,
+  PlusCircle,
 } from "lucide-react";
 import DashboardInsights from "../components/DashboardInsights";
 import "./ForecastPage.css";
@@ -147,6 +149,7 @@ function InsightCard({ loc }) {
 
 /* ─── ForecastPage ─────────────────────────────────────────────────────── */
 export default function ForecastPage() {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(tomorrow());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -195,6 +198,14 @@ export default function ForecastPage() {
             <p className="fp-subtitle">Historical-data-driven XGBoost predictions · Sri Lanka</p>
           </div>
           <div className="fp-header-controls">
+            <button
+              className="fp-waste-update-btn"
+              onClick={() => navigate("/waste-update")}
+              title="Waste Entry & Retraining Pipeline"
+            >
+              <PlusCircle size={16} />
+              <span>Waste Update</span>
+            </button>
             <label className="fp-date-picker">
               <Calendar size={14} style={{ color: "#67e8f9" }} />
               <input

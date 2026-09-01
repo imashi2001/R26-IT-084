@@ -15,6 +15,7 @@ const litterRoutes = require("./litter.routes");
 const bridgeRoutes = require("./bridge.routes");
 const wasteTrendRoutes = require("./wastetrend.routes");
 const wasteInsightsRoutes = require("./wasteinsights.routes");
+const wasteEntriesRoutes = require("./wasteentries.routes");
 
 const router = Router();
 
@@ -52,6 +53,7 @@ router.use("/geo", geoRoutes);
 router.use("/api/waste-data", wasteDataRoutes);
 router.use("/api/waste-trend", wasteTrendRoutes);
 router.use("/api/waste-insights", wasteInsightsRoutes);
+router.use("/api/waste-entries", wasteEntriesRoutes);
 router.use("/predict", predictRoutes);
 router.use("/captures", captureRoutes);
 router.use("/latest", latestRoutes);

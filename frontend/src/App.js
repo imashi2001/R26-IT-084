@@ -22,6 +22,7 @@ import ReportsPage from "./pages/ReportsPage";
 import HistoryPage from "./pages/HistoryPage";
 import LitterSeverityPage from "./pages/LitterSeverityPage";
 import SpeakerCheckPage from "./pages/SpeakerCheckPage";
+import WasteUpdatePage from "./pages/WasteUpdatePage";
 import "./App.css";
 
 /*
@@ -134,6 +135,7 @@ export default function App() {
           <Route path="/animals" element={<AnimalDetectionPage />} />
           <Route path="/litter-severity" element={<LitterSeverityPage />} />
           <Route path="/forecast" element={<ForecastPage />} />
+          <Route path="/waste-update" element={<WasteUpdatePage />} />
           <Route path="/alerts" element={<AlertsNotificationsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/history" element={<HistoryPage />} />

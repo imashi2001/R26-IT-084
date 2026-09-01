@@ -28,6 +28,10 @@ backend/.env
 *.log
 npm-debug.log*
 
+# Frontend build output and large hero source video
+frontend/dist/
+frontend/public/videos/hero-bg.mov
+
 # Allow the two deployable copies under services/ even though *.h5 / *.pt
 # are otherwise globally ignored. Keep a single weight per service folder.
 !services/waste-api/model/waste_classification_model.h5

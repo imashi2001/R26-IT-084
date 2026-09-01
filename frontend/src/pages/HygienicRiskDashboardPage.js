@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import WasteClassificationCard from "../components/dashboard/cards/WasteClassificationCard";
+import RottingPredictionCard from "../components/dashboard/cards/RottingPredictionCard";
+import { card, subtle } from "../components/dashboard/dashboardStyles";
 import {
   analyzeCapture,
   fetchAnalyzeHistory,
@@ -13,16 +16,6 @@ const RISK_THEMES = {
   HIGH: { bg: "#ffedd5", fg: "#9a3412", border: "#fdba74", label: "HIGH" },
   CRITICAL: { bg: "#fee2e2", fg: "#991b1b", border: "#fca5a5", label: "CRITICAL" },
 };
-
-const card = {
-  border: "1px solid #1f2937",
-  background: "#0f172a",
-  color: "#e2e8f0",
-  borderRadius: 14,
-  padding: 16,
-};
-
-const subtle = { color: "#94a3b8" };
 
 function formatDateTime(iso) {
   if (!iso) return "";
@@ -316,22 +309,7 @@ export default function HygienicRiskDashboardPage() {
           marginBottom: 16,
         }}
       >
-        <div style={card}>
-          <div style={{ ...subtle, fontSize: 12 }}>Waste detection</div>
-          {waste ? (
-            <>
-              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
-                {waste.label === "organic" ? "Organic waste" : "Non-organic waste"}
-              </div>
-              <div style={{ ...subtle, fontSize: 13, marginTop: 4 }}>
-                Confidence {waste.confidence_percent}% (organic prob{" "}
-                {Number(waste.organic_probability).toFixed(2)})
-              </div>
-            </>
-          ) : (
-            <div style={{ ...subtle, marginTop: 4 }}>—</div>
-          )}
-        </div>
+        <WasteClassificationCard waste={waste} />
 
         <div style={card}>
           <div style={{ ...subtle, fontSize: 12 }}>Animal detection</div>
@@ -400,18 +378,7 @@ export default function HygienicRiskDashboardPage() {
           )}
         </div>
 
-        <div style={card}>
-          <div style={{ ...subtle, fontSize: 12 }}>Rotting prediction</div>
-          <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
-            {risk?.rotting_summary || "—"}
-          </div>
-          {risk?.thresholds ? (
-            <div style={{ ...subtle, fontSize: 12, marginTop: 6 }}>
-              MEDIUM thresholds: {risk.thresholds.HIGH_TEMP_C}°C,{" "}
-              {risk.thresholds.HIGH_HUMIDITY_PCT}% RH
-            </div>
-          ) : null}
-        </div>
+        <RottingPredictionCard waste={waste} risk={risk} />
       </section>
 
       <section style={{ ...card, marginBottom: 16 }}>

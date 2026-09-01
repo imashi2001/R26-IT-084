@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Bell, Menu, Moon, Sun, X } from "lucide-react";
 import BrandLogo from "../BrandLogo";
 
-const NAV_LINKS = [
+export const NAV_LINKS = [
   { href: "#home", label: "Home" },
   { href: "#find", label: "Find Bin" },
   { href: "#map", label: "Live Map" },

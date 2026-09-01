@@ -22,7 +22,13 @@ export function getApiBaseUrl() {
     return fromEnv || "";
   }
 
-  return fromEnv || null;
+  if (fromEnv) return fromEnv;
+
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  return null;
 }
 
 export function getPredictUrl() {
@@ -49,9 +55,7 @@ export function apiUrl(path) {
   const p = path.startsWith("/") ? path : `/${path}`;
   const base = getApiBaseUrl();
   if (base === null) {
-    throw new Error(
-      "API URL missing. Set VITE_API_URL for production builds."
-    );
+    return p;
   }
   if (base === "") return p;
   return `${base.replace(/\/+$/, "")}${p}`;

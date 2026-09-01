@@ -21,6 +21,7 @@ export default function PublicHero({
   const { suggestions, loading: suggestLoading, clear } = useGeoAutocomplete(query);
   const [openSuggest, setOpenSuggest] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [videoOk, setVideoOk] = useState(true);
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -64,17 +65,26 @@ export default function PublicHero({
 
   return (
     <section id="home" className="relative isolate min-h-[92vh] overflow-hidden">
-      <video
-        className="absolute inset-0 h-full w-full object-cover"
-        autoPlay
-        muted
-        loop
-        playsInline
-        poster={HERO_POSTER}
-      >
-        <source src={HERO_VIDEO} type="video/quicktime" />
-        <source src={HERO_VIDEO} type="video/mp4" />
-      </video>
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${HERO_POSTER})` }}
+        aria-hidden
+      />
+
+      {videoOk ? (
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster={HERO_POSTER}
+          onError={() => setVideoOk(false)}
+        >
+          <source src={HERO_VIDEO} type="video/quicktime" />
+          <source src={HERO_VIDEO} type="video/mp4" />
+        </video>
+      ) : null}
 
       <div
         className="absolute inset-0"

@@ -28,7 +28,7 @@ import {
   Trees,
   HandHeart,
 } from "lucide-react";
-import PublicNav from "../components/public/PublicNav";
+import PublicNav, { NAV_LINKS } from "../components/public/PublicNav";
 import PublicHero from "../components/public/PublicHero";
 import BrandLogo from "../components/BrandLogo";
 import { apiUrl } from "../utils/apiBase";
@@ -214,8 +214,26 @@ export default function LandingPage() {
     setBusy(true);
     setError("");
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        loadNearest(pos.coords.latitude, pos.coords.longitude, "My location");
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        let label = "My location";
+        try {
+          const res = await fetch(
+            apiUrl(
+              `/geo/reverse?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(
+                longitude
+              )}`
+            )
+          );
+          const body = await res.json().catch(() => ({}));
+          if (res.ok && body.label) {
+            label = body.label;
+            setQuery(label);
+          }
+        } catch {
+          /* keep "My location" */
+        }
+        loadNearest(latitude, longitude, label);
       },
       () => {
         setBusy(false);
@@ -223,7 +241,27 @@ export default function LandingPage() {
       },
       { enableHighAccuracy: true, timeout: 12000 }
     );
-  }, [loadNearest]);
+  }, [loadNearest, setQuery]);
+
+  const handleBinSelect = useCallback(
+    (bin) => {
+      const st = binAvailability(bin);
+      if (st.key !== "full" && st.key !== "overflow") return;
+
+      const alternative = ranked.find((b) => {
+        if (b.id === bin.id) return false;
+        const s = binAvailability(b);
+        return s.key === "available" || s.key === "near_full";
+      });
+
+      const message = alternative
+        ? `${bin.name} is ${st.label.toLowerCase()}. Please choose another bin.\n\nSuggested: ${alternative.name} (${formatDistance(alternative.distance_meters)} away).`
+        : `${bin.name} is ${st.label.toLowerCase()}. Please choose another bin nearby.`;
+
+      window.alert(message);
+    },
+    [ranked]
+  );
 
   const shell = dark
     ? "bg-ink-950 text-ink-200"
@@ -328,6 +366,18 @@ export default function LandingPage() {
                           {st.label} · {fillPercent(b) ?? "—"}%
                           <br />
                           {formatDistance(b.distance_meters)}
+                          {(st.key === "full" || st.key === "overflow") && (
+                            <>
+                              <br />
+                              <button
+                                type="button"
+                                onClick={() => handleBinSelect(b)}
+                                className="mt-2 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white"
+                              >
+                                Bin full — choose another
+                              </button>
+                            </>
+                          )}
                         </Popup>
                       </CircleMarker>
                     );
@@ -357,7 +407,13 @@ export default function LandingPage() {
                 </div>
               ) : (
                 visible.map((b, i) => (
-                  <BinCard key={b.id} bin={b} dark={dark} rank={i + 1} />
+                  <BinCard
+                    key={b.id}
+                    bin={b}
+                    dark={dark}
+                    rank={i + 1}
+                    onSelect={handleBinSelect}
+                  />
                 ))
               )}
               {ranked.length > listLimit && (
@@ -475,21 +531,42 @@ function Legend({ dark }) {
   );
 }
 
-function BinCard({ bin, dark, rank }) {
+function BinCard({ bin, dark, rank, onSelect }) {
   const st = binAvailability(bin);
   const pct = fillPercent(bin);
+  const isUnavailable = st.key === "full" || st.key === "overflow";
   const mapsUrl =
     Number.isFinite(Number(bin.latitude)) && Number.isFinite(Number(bin.longitude))
       ? `https://www.google.com/maps/dir/?api=1&destination=${bin.latitude},${bin.longitude}`
       : null;
 
+  function handleSelect() {
+    if (isUnavailable) onSelect?.(bin);
+  }
+
+  function handleDirections(e) {
+    if (isUnavailable) {
+      e.preventDefault();
+      onSelect?.(bin);
+    }
+  }
+
   return (
     <article
-      className={`flex items-center gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md ${
+      role="button"
+      tabIndex={0}
+      onClick={handleSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleSelect();
+        }
+      }}
+      className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md ${
         dark
           ? "border-ink-700 bg-ink-950"
           : "border-slate-200 bg-white"
-      }`}
+      } ${isUnavailable ? "ring-1 ring-red-400/40" : ""}`}
     >
       <div
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white"
@@ -536,6 +613,7 @@ function BinCard({ bin, dark, rank }) {
           target="_blank"
           rel="noreferrer"
           aria-label="Get directions"
+          onClick={handleDirections}
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-eco-light text-eco-primary transition hover:bg-eco-primary hover:text-white"
         >
           <Navigation className="h-4 w-4" />

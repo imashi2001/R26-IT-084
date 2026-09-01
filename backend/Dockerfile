@@ -1,19 +1,20 @@
-# Railway Root Directory: backend
-# Dockerfile Path: Dockerfile
+# Build from repository root (Railway default when Root Directory is unset):
+#   docker build -f backend/Dockerfile -t visionwaste-backend .
 #
-# Forecasting runs on forecast-api (MODEL_FORECAST_URL) — no Python/waste_forecast in this image.
+# Railway backend service:
+#   Root Directory = .  (repo root — required for the COPY backend/ paths below)
+#   Dockerfile Path  = backend/Dockerfile
 #
-# Local Docker:
-#   cd backend && docker build -t visionwaste-backend .
+# Forecasting runs on forecast-api — set MODEL_FORECAST_URL on this service (no Python here).
 
 FROM node:20-bookworm-slim
 
-WORKDIR /app
+WORKDIR /app/backend
 
-COPY package.json package-lock.json ./
+COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY . .
+COPY backend/ ./
 
 ENV NODE_ENV=production
 EXPOSE 5000

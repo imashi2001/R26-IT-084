@@ -1,4 +1,9 @@
-# Railway config — Root Directory must be: backend
+# Railway backend service — Dashboard → Settings → Build must match backend/Dockerfile:
+#   Root Directory  = .  (repo root)
+#   Dockerfile Path = backend/Dockerfile
+#
+# If Root Directory is set to "backend" instead, change Dockerfile COPY lines to
+# package.json / . (see git history 32c5110) — do not use COPY backend/ paths.
 
 [build]
 builder = "DOCKERFILE"

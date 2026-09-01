@@ -1,6 +1,5 @@
-# Express API gateway (backend/). Used when this Railway service has no
-# Root Directory set — the GitHub-connected service is named after the repo.
-# Prefer Settings → Root Directory = backend (then backend/Dockerfile is used).
+# Express API gateway (backend/). Same image as backend/Dockerfile.
+# Railway: Root Directory = . , Dockerfile Path = Dockerfile  (or backend/Dockerfile).
 FROM node:20-alpine
 
 WORKDIR /app

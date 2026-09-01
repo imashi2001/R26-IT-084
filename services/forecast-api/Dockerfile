@@ -1,7 +1,12 @@
-# Build context: services/forecast-api (Railway Root Directory)
-#   docker build -t forecast-api .
+# Railway builds with REPO ROOT as Docker context when Dockerfile path is
+# services/forecast-api/Dockerfile — use paths relative to repo root.
 #
-# Canonical model source: repo root waste_forecast/ — run scripts/sync-forecast-api.sh before deploy if you edit root copy.
+# Local test from repo root:
+#   docker build -f services/forecast-api/Dockerfile -t forecast-api .
+#
+# Railway:
+#   Root Directory = .  (repo root)  OR  services/forecast-api
+#   Dockerfile Path  = services/forecast-api/Dockerfile  OR  Dockerfile
 
 FROM python:3.11-slim
 
@@ -12,11 +17,12 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 WORKDIR /app
 
-COPY requirements.txt ./requirements.txt
+# Repo-root context (Railway default when Dockerfile path includes services/forecast-api/)
+COPY services/forecast-api/requirements.txt ./requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY app.py ./app.py
-COPY waste_forecast/ ./waste_forecast/
+COPY services/forecast-api/app.py ./app.py
+COPY services/forecast-api/waste_forecast/ ./waste_forecast/
 
 ENV PORT=8000
 EXPOSE 8000

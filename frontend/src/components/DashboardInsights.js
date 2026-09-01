@@ -13,7 +13,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { FileDown, TrendingUp, Zap, MapPin } from "lucide-react";
+import { FileDown, TrendingUp, Zap, MapPin, Sparkles, Calendar, PieChart as PieIcon, Award, Flame } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { apiUrl } from "../utils/apiBase";
 import "./DashboardInsights.css";
@@ -425,6 +425,92 @@ function LocationSelector({ activeLocation, onLocationChange, locationsData }) {
   );
 }
 
+/* ─── Seasonal Insights Card ─────────────────────────────────────────── */
+function SeasonalInsightsCard() {
+  const [insights, setInsights] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(apiUrl("/api/waste-insights"))
+      .then((res) => res.json())
+      .then((data) => {
+        setInsights(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load waste insights:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="di-card di-seasonal-card">
+        <div className="di-card-header">
+          <Sparkles size={16} style={{ color: "#fbbf24" }} />
+          <h3 className="di-card-title">Seasonal Insights</h3>
+        </div>
+        <div className="di-loading">Loading historical insights...</div>
+      </div>
+    );
+  }
+
+  const peak = insights?.peakMonth;
+  const dom = insights?.dominantCategories;
+  const low = insights?.lowestVolumeSite;
+  const dec = insights?.decemberStandout;
+
+  return (
+    <div className="di-card di-seasonal-card">
+      <div className="di-card-header">
+        <Sparkles size={16} style={{ color: "#fbbf24" }} />
+        <h3 className="di-card-title">Seasonal Insights</h3>
+      </div>
+      <div className="di-seasonal-grid">
+        {/* Peak Month */}
+        <div className="di-insight-tile" style={{ borderColor: "rgba(251, 191, 36, 0.3)", background: "rgba(251, 191, 36, 0.05)" }}>
+          <div className="di-tile-header" style={{ color: "#fbbf24" }}>
+            <Calendar size={14} />
+            <span className="di-tile-label">Peak Collection Month</span>
+          </div>
+          <div className="di-tile-headline">{peak?.headline || "December is the Peak Month"}</div>
+          <div className="di-tile-detail">{peak?.detail}</div>
+        </div>
+
+        {/* Dominant Categories */}
+        <div className="di-insight-tile" style={{ borderColor: "rgba(103, 232, 249, 0.3)", background: "rgba(103, 232, 249, 0.05)" }}>
+          <div className="di-tile-header" style={{ color: "#67e8f9" }}>
+            <PieIcon size={14} />
+            <span className="di-tile-label">Dominant Waste Categories</span>
+          </div>
+          <div className="di-tile-headline">{dom?.headline}</div>
+          <div className="di-tile-detail">{dom?.detail}</div>
+        </div>
+
+        {/* Lowest Volume Site */}
+        <div className="di-insight-tile" style={{ borderColor: "rgba(52, 211, 153, 0.3)", background: "rgba(52, 211, 153, 0.05)" }}>
+          <div className="di-tile-header" style={{ color: "#34d399" }}>
+            <Award size={14} />
+            <span className="di-tile-label">Lowest-Volume Facility</span>
+          </div>
+          <div className="di-tile-headline">{low?.headline}</div>
+          <div className="di-tile-detail">{low?.detail}</div>
+        </div>
+
+        {/* December Standout */}
+        <div className="di-insight-tile" style={{ borderColor: "rgba(244, 63, 94, 0.3)", background: "rgba(244, 63, 94, 0.05)" }}>
+          <div className="di-tile-header" style={{ color: "#f43f5e" }}>
+            <Flame size={14} />
+            <span className="di-tile-label">December Standout Site</span>
+          </div>
+          <div className="di-tile-headline">{dec?.headline}</div>
+          <div className="di-tile-detail">{dec?.detail}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Component ─────────────────────────────────────────────────── */
 export default function DashboardInsights({ selectedDate, locationsData }) {
   const [activeLocation, setActiveLocation] = useState("moratuwa-mc");
@@ -466,6 +552,10 @@ export default function DashboardInsights({ selectedDate, locationsData }) {
                 locationId={activeLocation}
               />
             </div>
+          </div>
+
+          <div style={{ marginTop: "1.5rem" }}>
+            <SeasonalInsightsCard />
           </div>
         </div>
       </div>

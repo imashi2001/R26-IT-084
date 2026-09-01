@@ -37,7 +37,7 @@ def classify_day_type(day_row: pd.Series) -> str:
     return "weekday"
 
 
-def build_daily_share_profile(start_date: str = "2023-01-01", end_date: str = "2025-12-31") -> pd.DataFrame:
+def build_daily_share_profile(start_date: str = "2023-01-01", end_date: str = "2026-12-31") -> pd.DataFrame:
     daily = build_daily_calendar(start_date=start_date, end_date=end_date).copy()
     daily["day_type"] = daily.apply(classify_day_type, axis=1)
     daily["day_weight"] = daily["day_type"].map(DAY_TYPE_WEIGHTS)

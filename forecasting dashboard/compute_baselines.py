@@ -25,8 +25,10 @@ sys.path.insert(0, str(WASTE_FORECAST_DIR / "src"))
 
 try:
     from daily_forecast import estimate_daily_waste
+    from load_data import INSTITUTE_SHARES
 except ImportError:
     from src.daily_forecast import estimate_daily_waste
+    from src.load_data import INSTITUTE_SHARES
 
 LOCATIONS = [
     {'id': 'moratuwa-mc', 'name': 'Moratuwa M.C.'},
@@ -55,11 +57,12 @@ def main():
         daily_res = estimate_daily_waste(ds, mode="forecast")
         total_daily_tons = float(daily_res["estimated_daily_waste"])
 
-        # Convert total tons to KG (x 1000) and distribute across locations
+        # Convert total tons to KG (x 1000) and scale per institute by historical scale share
         total_daily_kg = total_daily_tons * 1000.0
-        per_location_kg = total_daily_kg / len(LOCATIONS)
 
         for loc in LOCATIONS:
+            inst_share = INSTITUTE_SHARES.get(loc['id'], 0.090)
+            per_location_kg = total_daily_kg * inst_share
             baseline_data[loc['id']].append(per_location_kg)
 
         day_count += 1

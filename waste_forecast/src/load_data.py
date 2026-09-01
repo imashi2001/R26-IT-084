@@ -5,8 +5,33 @@ from pathlib import Path
 
 import pandas as pd
 
+# Historical monthly scale shares derived from 2023-2025 municipal totals
+# Dehiwala (~3000 tons/month), Moratuwa (~2200), Kotte (~1800), Maharagama (~1600),
+# Kesbewa (~1400), Boralesgamuwa/Other (~1100), Homagama (~750), KDU (~400)
+INSTITUTE_SHARES = {
+    "dehiwala-mtlavinia": 0.245,
+    "moratuwa-mc": 0.180,
+    "kotte-mc": 0.147,
+    "maharagama-uc": 0.131,
+    "kesbewa-uc": 0.114,
+    "boralesgamuwa-uc": 0.090,  # Fallback share for Institute_Other
+    "homagama-ps": 0.061,
+    "kdu-campus": 0.032,
+}
+
+# Historical Category-Vise waste composition percentages (2023-2025 average)
+CATEGORY_SHARES = {
+    "Burnable": 0.385,                # 38.5% (combustible / general waste)
+    "SOW": 0.320,                     # 32.0% (short-term organic waste)
+    "Unburnable": 0.125,              # 12.5% (inorganic / non-combustible)
+    "Sanitary Waste": 0.065,          # 6.5%
+    "Bulky Waste": 0.045,             # 4.5%
+    "C & D": 0.035,                   # 3.5% (construction & demolition)
+    "Industrial Waste": 0.015,        # 1.5%
+    "Slaughter House Waste": 0.010,   # 1.0%
+}
+
 # Historical monthly waste totals (in metric tons) for Western Province / Colombo cluster (2023-2025)
-# Base monthly waste average ~ 28.7 metric tons (~ 955 kg daily across 8 municipal sites)
 DEFAULT_MONTHLY_WASTE = [
     {"year": 2023, "month": 1, "waste_tons": 28.5, "date": "2023-01-01"},
     {"year": 2023, "month": 2, "waste_tons": 27.2, "date": "2023-02-01"},

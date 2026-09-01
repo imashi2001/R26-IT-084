@@ -98,6 +98,7 @@ router.get("/", (req, res) => {
   for (const loc of LOCATIONS) {
     for (const cat of CATEGORIES) {
       const row = {
+        dateStr: dateStr,
         Is_Weekend: weekend ? 1 : 0,
         Is_Holiday: isHoliday ? 1 : 0,
         Is_Long_Weekend: isLongWeekend ? 1 : 0,

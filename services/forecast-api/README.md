@@ -6,15 +6,11 @@ FastAPI microservice for **municipal waste KG forecasting** used by the Express 
 
 | Setting | Value |
 |---------|--------|
-| **Root Directory** | `.` (repository root) |
-| **Dockerfile Path** | `services/forecast-api/Dockerfile` |
-| **Branch** | `test` (or your branch with `services/forecast-api/waste_forecast/` committed) |
+| **Root Directory** | `services/forecast-api` |
+| **Dockerfile Path** | `Dockerfile` (leave default / empty) |
+| **Branch** | `test` |
 
-Railway uses the **repo root** as the Docker build context. The Dockerfile copies:
-
-- `services/forecast-api/requirements.txt`
-- `services/forecast-api/app.py`
-- `services/forecast-api/waste_forecast/` → `/app/waste_forecast/`
+Build context is **`services/forecast-api`** only. Model files must live in `services/forecast-api/waste_forecast/` (synced from repo root `waste_forecast/`).
 
 **Important:** After editing canonical model at repo root `waste_forecast/`, sync before commit:
 
@@ -34,10 +30,11 @@ MODEL_FORECAST_URL=https://forecast-api-xxx.up.railway.app
 FORECAST_TIMEOUT_MS=45000
 ```
 
-## Local Docker test (from repo root)
+## Local Docker test
 
 ```powershell
-docker build -f services/forecast-api/Dockerfile -t forecast-api .
+cd services\forecast-api
+docker build -t forecast-api .
 docker run --rm -p 8006:8000 -e PORT=8000 forecast-api
 curl http://127.0.0.1:8006/health
 ```

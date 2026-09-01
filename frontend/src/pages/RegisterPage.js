@@ -13,6 +13,7 @@ import axios from "axios";
 import { apiUrl } from "../utils/apiBase";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/auth/AuthShell";
+import { STAFF_HOME } from "../utils/authRoutes";
 
 /**
  * Admin registration. The backend creates every account with role=admin.
@@ -40,7 +41,7 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false);
 
   if (token) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={STAFF_HOME} replace />;
   }
 
   function update(key) {
@@ -71,7 +72,7 @@ export default function RegisterPage() {
       };
       const { data } = await axios.post(apiUrl("/auth/register"), payload);
       login(data.token, data.user);
-      navigate("/dashboard", { replace: true });
+      navigate(STAFF_HOME, { replace: true });
     } catch (err) {
       const status = err?.response?.status;
       const msg =

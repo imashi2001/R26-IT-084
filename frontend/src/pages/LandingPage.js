@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import L from "leaflet";
 import {
   MapContainer,
@@ -42,6 +42,7 @@ import {
   formatDistance,
   rankBinsForPublic,
 } from "../utils/publicBinStatus";
+import { STAFF_HOME } from "../utils/authRoutes";
 
 /**
  * Public VisionWaste landing (/) — citizen bin finder.
@@ -66,6 +67,7 @@ function FitBounds({ points }) {
 }
 
 export default function LandingPage() {
+  const location = useLocation();
   const [dark, setDark] = useState(() => {
     try {
       return localStorage.getItem("vw-public-theme") === "dark";
@@ -90,6 +92,12 @@ export default function LandingPage() {
       /* ignore */
     }
   }, [dark]);
+
+  useEffect(() => {
+    if (location.pathname === "/find" || location.hash === "#find") {
+      scrollToFind();
+    }
+  }, [location.pathname, location.hash]);
 
   const ranked = useMemo(() => rankBinsForPublic(bins), [bins]);
   const visible = ranked.slice(0, listLimit);
@@ -837,7 +845,11 @@ function AboutFooter({ dark }) {
           <p className="mt-3 text-sm leading-relaxed">
             This is the public citizen interface. Municipal operators sign in
             at{" "}
-            <Link to="/login" className="font-semibold text-eco-primary hover:underline">
+            <Link
+              to="/login"
+              state={{ from: STAFF_HOME }}
+              className="font-semibold text-eco-primary hover:underline"
+            >
               Staff login
             </Link>
             .

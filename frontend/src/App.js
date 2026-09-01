@@ -46,12 +46,13 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* ---- Public (citizen bin finder) ---- */}
+          {/* ---- Public citizen home (find nearest bin) ---- */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/find" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* ---- Dashboard (authenticated) ---- */}
+          {/* ---- Staff dashboard (sign-in required) ---- */}
           <Route
             path="/dashboard"
             element={protectedShell(<SystemDashboardPage />)}

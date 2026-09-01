@@ -5,6 +5,7 @@ import axios from "axios";
 import { apiUrl } from "../utils/apiBase";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/auth/AuthShell";
+import { resolveStaffHomePath, STAFF_HOME } from "../utils/authRoutes";
 
 /**
  * POST /auth/login -> { token, user }.
@@ -17,8 +18,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const fromPath =
-    (location.state && location.state.from) || "/dashboard";
+  const fromPath = resolveStaffHomePath(location.state?.from);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

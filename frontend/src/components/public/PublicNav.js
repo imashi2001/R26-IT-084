@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bell, Menu, Moon, Sun, X } from "lucide-react";
+import { Bell, LayoutDashboard, Menu, Moon, Sun, X } from "lucide-react";
 import BrandLogo from "../BrandLogo";
+import { useAuth } from "../../context/AuthContext";
+import { STAFF_HOME } from "../../utils/authRoutes";
 
 export const NAV_LINKS = [
   { href: "#home", label: "Home" },
@@ -12,6 +14,7 @@ export const NAV_LINKS = [
 ];
 
 export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
+  const { token } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -113,19 +116,34 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
             <Bell className="h-4 w-4" />
           </button>
 
-          <Link
-            to="/login"
-            className={[
-              "hidden rounded-lg px-3 py-1.5 text-xs font-semibold no-underline transition sm:inline-flex",
-              solid
-                ? dark
-                  ? "text-ink-300 hover:bg-white/10 hover:text-white"
-                  : "text-ink-500 hover:bg-eco-light hover:text-eco-primary"
-                : "text-white/80 hover:bg-white/10 hover:text-white",
-            ].join(" ")}
-          >
-            Staff login
-          </Link>
+          {token ? (
+            <Link
+              to={STAFF_HOME}
+              className={[
+                "hidden rounded-lg px-3 py-1.5 text-xs font-semibold no-underline transition sm:inline-flex",
+                solid
+                  ? "bg-eco-primary text-white hover:bg-eco-dark"
+                  : "bg-white/95 text-eco-primary hover:bg-white",
+              ].join(" ")}
+            >
+              Staff dashboard
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              state={{ from: STAFF_HOME }}
+              className={[
+                "hidden rounded-lg px-3 py-1.5 text-xs font-semibold no-underline transition sm:inline-flex",
+                solid
+                  ? dark
+                    ? "text-ink-300 hover:bg-white/10 hover:text-white"
+                    : "text-ink-500 hover:bg-eco-light hover:text-eco-primary"
+                  : "text-white/80 hover:bg-white/10 hover:text-white",
+              ].join(" ")}
+            >
+              Staff login
+            </Link>
+          )}
 
           <button
             type="button"
@@ -194,18 +212,29 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
             >
               Find nearest bin
             </button>
-            <Link
-              to="/login"
-              onClick={() => setMenuOpen(false)}
-              className={[
-                "mt-1 rounded-xl px-4 py-3 text-sm font-semibold no-underline",
-                dark
-                  ? "text-ink-200 hover:bg-ink-900"
-                  : "text-ink-700 hover:bg-eco-light",
-              ].join(" ")}
-            >
-              Staff login
-            </Link>
+            {token ? (
+              <Link
+                to={STAFF_HOME}
+                onClick={() => setMenuOpen(false)}
+                className="mt-1 rounded-xl bg-eco-primary px-4 py-3 text-sm font-bold text-white no-underline"
+              >
+                Staff dashboard
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                state={{ from: STAFF_HOME }}
+                onClick={() => setMenuOpen(false)}
+                className={[
+                  "mt-1 rounded-xl px-4 py-3 text-sm font-semibold no-underline",
+                  dark
+                    ? "text-ink-200 hover:bg-ink-900"
+                    : "text-ink-700 hover:bg-eco-light",
+                ].join(" ")}
+              >
+                Staff login
+              </Link>
+            )}
           </nav>
         </div>
       ) : null}

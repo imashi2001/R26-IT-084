@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { isPublicPath } from "../../utils/authRoutes";
 
 /**
  * Gate any route behind a valid JWT token in AuthContext. When the user is
@@ -17,7 +18,12 @@ export default function ProtectedRoute({ children }) {
   const location = useLocation();
 
   if (!token) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    const from = isPublicPath(location.pathname)
+      ? undefined
+      : `${location.pathname}${location.search || ""}`;
+    return (
+      <Navigate to="/login" replace state={from ? { from } : { from: "/dashboard" }} />
+    );
   }
 
   return children;

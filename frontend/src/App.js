@@ -4,6 +4,8 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardRouteFallback from "./components/dashboard/DashboardRouteFallback";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
 import "./App.css";
 
@@ -45,8 +47,8 @@ export default function App() {
         <Routes>
           {/* ---- Public ---- */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/register" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* ---- Dashboard (authenticated) ---- */}
           <Route

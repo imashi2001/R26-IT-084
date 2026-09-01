@@ -1,12 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import DashboardAlertPopup from "./DashboardAlertPopup";
 import useDashboardAlertPopup from "../../hooks/useDashboardAlertPopup";
+import {
+  unlockAlertAudio,
+  requestDashboardNotificationPermission,
+} from "../../utils/alertSound";
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { alert, pendingCount, dismiss, dismissAll } = useDashboardAlertPopup();
+
+  useEffect(() => {
+    const unlock = () => {
+      unlockAlertAudio();
+      requestDashboardNotificationPermission();
+    };
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-[#0b131e] font-sans text-slate-200">

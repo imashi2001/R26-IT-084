@@ -6,6 +6,10 @@ import {
   markAllPopupSeen,
   markPopupSeen,
 } from "../utils/dashboardPopupAlerts";
+import {
+  playDashboardAlertSound,
+  showDashboardBrowserNotification,
+} from "../utils/alertSound";
 
 /** Poll captures and surface new illegal-dumping / animal alerts as a popup queue. */
 export default function useDashboardAlertPopup(pollMs = 30_000) {
@@ -46,6 +50,15 @@ export default function useDashboardAlertPopup(pollMs = 30_000) {
       setCurrent(queue[0]);
     }
   }, [queue, current]);
+
+  const lastPlayedRef = useRef(null);
+
+  useEffect(() => {
+    if (!current?.id || lastPlayedRef.current === current.id) return;
+    lastPlayedRef.current = current.id;
+    playDashboardAlertSound(current.kind);
+    showDashboardBrowserNotification(current);
+  }, [current]);
 
   const dismiss = useCallback(() => {
     if (!current) return;

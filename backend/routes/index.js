@@ -16,6 +16,9 @@ const litteringActionRoutes = require("./litteringAction.routes");
 const bridgeRoutes = require("./bridge.routes");
 const dashboardSettingsRoutes = require("./dashboardSettings.routes");
 const collectionRoutes = require("./collection.routes");
+const wasteTrendRoutes = require("./wastetrend.routes");
+const wasteInsightsRoutes = require("./wasteinsights.routes");
+const wasteEntriesRoutes = require("./wasteentries.routes");
 
 const router = Router();
 
@@ -40,6 +43,9 @@ router.get("/", (_req, res) => {
     latest: "GET /latest (JSON) and GET /latest/image (jpeg)",
     waste_data:
       "GET /api/waste-data?date=YYYY-MM-DD — tourism demo fills (holiday_cache.json + geocode_cache.json)",
+    waste_trend: "GET /api/waste-trend — historical waste trend analytics",
+    waste_insights: "GET /api/waste-insights — composition and forecasting insights",
+    waste_entries: "GET/POST /api/waste-entries — municipal waste entry CRUD",
     litter_severity:
       "POST /litter-severity (multipart: image) — requires MODEL_LITTER_URL (litter microservice)",
     littering_action:
@@ -59,6 +65,9 @@ router.use("/devices", devicesRoutes);
 router.use("/bridge", bridgeRoutes);
 router.use("/geo", geoRoutes);
 router.use("/api/waste-data", wasteDataRoutes);
+router.use("/api/waste-trend", wasteTrendRoutes);
+router.use("/api/waste-insights", wasteInsightsRoutes);
+router.use("/api/waste-entries", wasteEntriesRoutes);
 router.use("/predict", predictRoutes);
 router.use("/captures", captureRoutes);
 router.use("/latest", latestRoutes);

@@ -637,11 +637,12 @@ export default function DashboardInsights({ selectedDate }) {
             <div className="di-chart-wrapper">
               <WasteTrendChart selectedDate={selectedDate} locationId={activeLocation} />
             </div>
-            <div className="di-chart-wrapper di-full-width">
-              <SeasonalImpactChart />
-            </div>
           </div>
         </div>
+      </div>
+
+      <div className="di-seasonal-full-width">
+        <SeasonalImpactChart />
       </div>
     </div>
   );

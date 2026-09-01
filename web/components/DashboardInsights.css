@@ -235,6 +235,10 @@
   grid-column: 1 / -1;
 }
 
+.di-seasonal-full-width {
+  width: 100%;
+}
+
 @media (max-width: 1200px) {
   .di-charts-grid {
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));

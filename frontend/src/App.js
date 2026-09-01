@@ -4,9 +4,6 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardRouteFallback from "./components/dashboard/DashboardRouteFallback";
-import LandingPage from "./pages/LandingPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
 import "./App.css";
 
@@ -21,6 +18,7 @@ const MapPage = lazyWithRetry(() => import("./pages/MapPage"));
 const BinDetailPage = lazyWithRetry(() => import("./pages/BinDetailPage"));
 const DashboardSettingsPage = lazyWithRetry(() => import("./pages/DashboardSettingsPage"));
 const ForecastPage = lazyWithRetry(() => import("./pages/ForecastPage"));
+const WasteUpdatePage = lazyWithRetry(() => import("./pages/WasteUpdatePage"));
 const BinStatusPage = lazyWithRetry(() => import("./pages/BinStatusPage"));
 const AnimalDetectionPage = lazyWithRetry(() => import("./pages/AnimalDetectionPage"));
 const AlertsNotificationsPage = lazyWithRetry(
@@ -46,9 +44,9 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* ---- Public ---- */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/register" element={<Navigate to="/dashboard" replace />} />
 
           {/* ---- Dashboard (authenticated) ---- */}
           <Route
@@ -107,6 +105,10 @@ export default function App() {
           <Route
             path="/forecast"
             element={protectedShell(<ForecastPage />)}
+          />
+          <Route
+            path="/waste-update"
+            element={protectedShell(<WasteUpdatePage />)}
           />
           <Route
             path="/alerts"

@@ -211,13 +211,21 @@ export default function ForecastPage() {
         />
         <StatCard
           icon={TrendingUp}
-          label="Filling Avg "
-          value={data ? `${data.globalAvgFill}%` : "—"}
-          sub={data?.globalAvgFill >= 70 ? "⚠ High load" : data?.globalAvgFill >= 50 ? "Moderate load" : data ? "Normal load" : ""}
+          label="Avg Waste"
+          value={data ? `${Number(data.globalAvgWasteKg ?? 0).toFixed(1)} kg` : "—"}
+          sub={
+            data?.globalAvgUtilizationPercent >= 85
+              ? "⚠ Above alert threshold"
+              : data?.globalAvgUtilizationPercent >= 60
+                ? "Moderate load"
+                : data
+                  ? "Normal daily load"
+                  : ""
+          }
           accent={
-            data?.globalAvgFill >= 70
+            data?.globalAvgUtilizationPercent >= 85
               ? { border: "rgba(239,68,68,0.5)", bg: "rgba(127,29,29,0.25)", iconColor: "#f87171" }
-              : data?.globalAvgFill >= 50
+              : data?.globalAvgUtilizationPercent >= 60
                 ? { border: "rgba(249,115,22,0.5)", bg: "rgba(124,45,18,0.25)", iconColor: "#fb923c" }
                 : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
           }

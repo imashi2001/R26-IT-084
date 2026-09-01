@@ -9,9 +9,9 @@ def get_holiday_cache_path() -> Path:
     file_dir = Path(__file__).resolve().parent
     workspace = file_dir.parents[2] if len(file_dir.parents) > 2 else Path.cwd()
     for candidate in [
+        file_dir.parents[1] / "data" / "holiday_cache.json",
         workspace / "backend" / "holiday_cache.json",
         workspace / "forecasting dashboard" / "holiday_cache.json",
-        file_dir.parents[1] / "data" / "holiday_cache.json",
         file_dir.parents[1] / "forecasting dashboard" / "holiday_cache.json",
         file_dir.parents[2] / "forecasting dashboard" / "holiday_cache.json",
         Path.cwd() / "holiday_cache.json",
@@ -19,7 +19,7 @@ def get_holiday_cache_path() -> Path:
     ]:
         if candidate.exists():
             return candidate
-    return workspace / "forecasting dashboard" / "holiday_cache.json"
+    return file_dir.parents[1] / "data" / "holiday_cache.json"
 
 HOLIDAY_CACHE_PATH = get_holiday_cache_path()
 QUALIFYING_HOLIDAY_TYPES = {"National holiday"}

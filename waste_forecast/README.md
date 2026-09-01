@@ -6,6 +6,8 @@ XGBoost model and Python pipeline for **location × category waste KG forecasts*
 
 ```
 waste_forecast/
+├── data/
+│   └── holiday_cache.json      # Sri Lanka holidays (bundled for Docker/Railway)
 ├── models/
 │   ├── model.json              # Live XGBoost weights
 │   ├── model_candidate.json    # Candidate during retrain

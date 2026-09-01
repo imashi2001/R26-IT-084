@@ -1,5 +1,6 @@
 const { Router } = require("express");
 const WasteEntriesRepository = require("../repositories/wasteEntries.repository");
+const { formatDbError } = require("../utils/formatDbError");
 const {
   runRetrainPipeline: runForecastRetrain,
   fetchModelRegistry,
@@ -80,10 +81,10 @@ router.post("/", async (req, res) => {
       retrainTriggered,
     });
   } catch (err) {
-    console.error("[waste-entries] Create error:", err.message);
-    const detail = err.message || "Unknown error";
+    console.error("[waste-entries] Create error:", err);
+    const detail = formatDbError(err);
     let hint;
-    if (/doesn't exist|no such table|unknown table/i.test(detail)) {
+    if (/doesn't exist|no such table|unknown table|relation .* does not exist/i.test(detail)) {
       hint =
         "The waste_entries table is missing. Redeploy the backend (migrations run on start) or run: node scripts/migrate.js";
     }

@@ -1,13 +1,12 @@
 "use strict";
 
+const { hasTable, addIndexIfNotExists } = require("./_helpers");
+
 /** @type {import('sequelize').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
     const tables = await queryInterface.showAllTables();
-    const names = tables.map((t) =>
-      typeof t === "string" ? t : t.tableName || t.name
-    );
-    if (names.includes("waste_entries")) {
+    if (hasTable(tables, "waste_entries")) {
       return;
     }
 
@@ -50,15 +49,20 @@ module.exports = {
       },
     });
 
-    await queryInterface.addIndex("waste_entries", ["entry_date"], {
+    await addIndexIfNotExists(queryInterface, "waste_entries", ["entry_date"], {
       name: "idx_waste_entries_entry_date",
     });
-    await queryInterface.addIndex("waste_entries", ["location_id"], {
+    await addIndexIfNotExists(queryInterface, "waste_entries", ["location_id"], {
       name: "idx_waste_entries_location",
     });
-    await queryInterface.addIndex("waste_entries", ["processed_for_training"], {
-      name: "idx_waste_entries_processed",
-    });
+    await addIndexIfNotExists(
+      queryInterface,
+      "waste_entries",
+      ["processed_for_training"],
+      {
+        name: "idx_waste_entries_processed",
+      }
+    );
   },
 
   async down(queryInterface) {

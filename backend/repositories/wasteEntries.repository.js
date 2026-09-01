@@ -4,6 +4,8 @@ const { Op } = require("sequelize");
 
 const db = require("../config/db");
 const modelsRegistry = require("../models");
+const { resolveDialect } = require("../config/resolveDialect");
+const { DATABASE_URL } = require("../config/env");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const DB_FILE = path.join(DATA_DIR, "waste_entries.json");
@@ -302,7 +304,9 @@ class WasteEntriesRepository {
   }
 
   static storageMode() {
-    return useDatabase() ? "mysql" : "json";
+    if (!useDatabase()) return "json";
+    const WasteEntry = getWasteEntryModel();
+    return WasteEntry?.sequelize?.getDialect() || "database";
   }
 
   /**
@@ -333,7 +337,7 @@ class WasteEntriesRepository {
     await WasteEntry.bulkCreate(rows);
 
     const maxId = Math.max(...rows.map((r) => Number(r.id) || 0));
-    if (maxId > 0) {
+    if (maxId > 0 && resolveDialect(DATABASE_URL) === "mysql") {
       const sequelize = WasteEntry.sequelize;
       await sequelize.query(
         "ALTER TABLE waste_entries AUTO_INCREMENT = :next",

@@ -52,7 +52,14 @@ const CATEGORIES = [
 const VEHICLE_REGEX = /^[A-Za-z0-9]{2,3} \d{4}$/;
 
 function getTodayString() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+}
+
+function parseApiError(data, status) {
+  if (!data || typeof data !== "object") {
+    return `Submission failed (HTTP ${status})`;
+  }
+  return [data.detail, data.hint, data.error].filter(Boolean).join(" — ");
 }
 
 export default function WasteUpdatePage() {
@@ -171,11 +178,14 @@ export default function WasteUpdatePage() {
         }),
       });
 
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
       if (!res.ok) {
-        throw new Error(
-          data.detail || data.hint || data.error || "Submission failed"
-        );
+        throw new Error(parseApiError(data, res.status));
       }
 
       setSubmitSuccess(`Entry #${data.record.id} saved successfully! (${data.record.vehicle_no} · ${data.record.weight_kg} kg)`);

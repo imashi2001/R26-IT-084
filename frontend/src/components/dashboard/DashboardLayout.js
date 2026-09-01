@@ -1,9 +1,12 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
+import DashboardAlertPopup from "./DashboardAlertPopup";
+import useDashboardAlertPopup from "../../hooks/useDashboardAlertPopup";
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { alert, pendingCount, dismiss, dismissAll } = useDashboardAlertPopup();
 
   return (
     <div className="flex min-h-screen bg-[#0b131e] font-sans text-slate-200">
@@ -22,6 +25,13 @@ export default function DashboardLayout({ children }) {
           <span className="text-slate-600">v1.0.0</span>
         </footer>
       </div>
+
+      <DashboardAlertPopup
+        alert={alert}
+        pendingCount={pendingCount}
+        onDismiss={dismiss}
+        onDismissAll={dismissAll}
+      />
     </div>
   );
 }

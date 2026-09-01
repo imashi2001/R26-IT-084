@@ -80,7 +80,7 @@ function buildAlerts(captures) {
       alerts.push({
         ts,
         binId,
-        title: "Littering event detected",
+        title: "Illegal dumping detected",
         sub: `${binId}${location ? ` · ${location}` : ""} · ${count} event${count === 1 ? "" : "s"} (${(conf * 100).toFixed(0)}% conf)`,
         Icon: AlertTriangle,
         tone: "warn",

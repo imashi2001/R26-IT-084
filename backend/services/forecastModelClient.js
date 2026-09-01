@@ -11,6 +11,8 @@ const { MODEL_FORECAST_URL, FORECAST_TIMEOUT_MS, IS_PROD } = require("../config/
 
 const RETRAIN_TIMEOUT_MS = Number(process.env.FORECAST_RETRAIN_TIMEOUT_MS) || 120000;
 
+let cachedPythonBin = null;
+
 function getRepoRoot() {
   if (process.env.REPO_ROOT) {
     return process.env.REPO_ROOT;
@@ -24,6 +26,52 @@ function getRepoRoot() {
     return backendRoot;
   }
   return monoRoot;
+}
+
+/**
+ * Resolve the Python executable used for local forecast subprocesses.
+ * Prefers FORECAST_PYTHON, then repo .venv, then any interpreter with xgboost.
+ */
+function resolvePythonExecutable() {
+  if (cachedPythonBin) return cachedPythonBin;
+  if (process.env.FORECAST_PYTHON) {
+    cachedPythonBin = process.env.FORECAST_PYTHON;
+    return cachedPythonBin;
+  }
+
+  const repoRoot = getRepoRoot();
+  const candidates = [
+    path.join(repoRoot, ".venv", "Scripts", "python.exe"),
+    path.join(repoRoot, ".venv", "bin", "python"),
+    path.join(repoRoot, "waste_forecast", ".venv", "Scripts", "python.exe"),
+    path.join(repoRoot, "waste_forecast", ".venv", "bin", "python"),
+    "python3",
+    "python",
+  ];
+
+  for (const bin of candidates) {
+    const isPath = bin.includes(path.sep) || bin.includes("/");
+    if (isPath && !fs.existsSync(bin)) continue;
+    try {
+      execSync(`"${bin}" -c "import xgboost; import pandas"`, {
+        stdio: "pipe",
+        timeout: 8000,
+        shell: true,
+      });
+      cachedPythonBin = bin;
+      return bin;
+    } catch {
+      /* try next */
+    }
+  }
+
+  cachedPythonBin = process.platform === "win32" ? "python" : "python3";
+  return cachedPythonBin;
+}
+
+function execPython(args, opts = {}) {
+  const py = resolvePythonExecutable();
+  return execSync(`"${py}" ${args}`, { shell: true, ...opts });
 }
 
 function assertForecastRuntime(mode) {
@@ -95,7 +143,7 @@ async function fetchSeasonalInsights() {
   const repoRoot = getRepoRoot();
   const pyCmd =
     "import sys, json; sys.path.insert(0, 'waste_forecast/src'); from load_data import compute_seasonal_insights; print(json.dumps(compute_seasonal_insights()))";
-  const output = execSync(`python -c "${pyCmd}"`, {
+  const output = execPython(`-c "${pyCmd}"`, {
     cwd: repoRoot,
     timeout: 10000,
   }).toString();
@@ -113,12 +161,12 @@ function runLocalPredict(rows, mode) {
   fs.writeFileSync(inputPath, JSON.stringify(rows, null, 2));
 
   if (mode === "trend") {
-    execSync("python _run_trend.py", { cwd: modelDir, timeout: 30000 });
+    execPython("_run_trend.py", { cwd: modelDir, timeout: 30000 });
     const parsed = JSON.parse(fs.readFileSync(outputPath, "utf8"));
     return { predictions: Array.isArray(parsed) ? parsed : parsed.predictions || [] };
   }
 
-  execSync("python run_model.py", { cwd: modelDir, timeout: 30000 });
+  execPython("run_model.py", { cwd: modelDir, timeout: 30000 });
   const parsed = JSON.parse(fs.readFileSync(outputPath, "utf8"));
   if (parsed.error) {
     throw new Error(parsed.error);
@@ -153,7 +201,7 @@ async function runRetrainPipeline(opts = {}) {
 
   const repoRoot = getRepoRoot();
   const args = force ? " --force" : "";
-  const output = execSync(`python waste_forecast/src/retrain_pipeline.py${args}`, {
+  const output = execPython(`waste_forecast/src/retrain_pipeline.py${args}`, {
     cwd: repoRoot,
     timeout: RETRAIN_TIMEOUT_MS,
   }).toString();
@@ -200,4 +248,6 @@ module.exports = {
   fetchSeasonalInsights,
   runRetrainPipeline,
   fetchModelRegistry,
+  resolvePythonExecutable,
+  getRepoRoot,
 };

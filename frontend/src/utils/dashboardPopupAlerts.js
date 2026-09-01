@@ -1,5 +1,5 @@
 import { AlertTriangle, PawPrint } from "lucide-react";
-import { formatBinCode } from "./dashboardBins";
+import { formatBinCode, coerceLocation } from "./dashboardBins";
 
 /**
  * Build popup-worthy alerts from captures (illegal dumping + animal detection only).
@@ -11,8 +11,7 @@ export function buildDashboardPopupAlerts(captures) {
     if (!c?.id) continue;
 
     const binId = formatBinCode(c.device_id);
-    const location =
-      (c.location || c.device_location || c.address || "").trim() || null;
+    const location = coerceLocation(c.location, c.device_location, c.address);
     const base = {
       captureId: c.id,
       deviceId: c.device_id,

@@ -218,7 +218,8 @@ model.save("waste_classification_model.h5")
 
 print("\nModel saved successfully!")
 
-# Plot accuracy graph
+# Plot accuracy graph (also saved so it can be used in slides / viva)
+plt.figure(figsize=(7.2, 4.8))
 plt.plot(history.history['accuracy'], label='Train Accuracy')
 plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
 
@@ -226,5 +227,6 @@ plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.title('Training Accuracy')
-
+plt.tight_layout()
+plt.savefig("training_accuracy.png", dpi=180)
 plt.show()

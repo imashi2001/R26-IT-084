@@ -1,7 +1,6 @@
-# Express API gateway (backend/). Used when this Railway service has no
-# Root Directory set — the GitHub-connected service is named after the repo.
-# Prefer Settings → Root Directory = backend (then backend/Dockerfile is used).
-FROM node:20-alpine
+# Repo-root backend image (only when Railway Root Directory is unset / ".").
+# Prefer Root Directory = backend and backend/Dockerfile instead.
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
@@ -13,4 +12,4 @@ COPY backend/ ./
 ENV NODE_ENV=production
 EXPOSE 5000
 
-CMD ["node", "server.js"]
+CMD ["npm", "start"]

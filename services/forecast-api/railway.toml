@@ -1,0 +1,9 @@
+# Railway config for forecast-api (place in services/forecast-api with Root Directory = services/forecast-api)
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"

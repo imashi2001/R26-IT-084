@@ -50,16 +50,16 @@ export default function DashboardHero({
             key={heroUrl}
             src={heroUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-center md:object-right"
+            className="absolute inset-0 h-full w-full object-cover object-[70%_center] md:object-[right_center]"
             onError={() => setImgFailed(true)}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 via-slate-900 to-[#0b131e]" />
         )}
 
-        {/* Text readable on left; image visible on right */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0b131e] via-[#0b131e]/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b131e]/85 via-[#0b131e]/20 to-transparent" />
+        {/* Keep greeting/stats readable; show park + bins on the right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0b131e]/92 via-[#0b131e]/45 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b131e]/85 via-transparent to-[#0b131e]/15" />
 
         <div className="relative flex min-h-[12rem] flex-col justify-between gap-6 p-5 md:min-h-[14rem] md:p-6 lg:min-h-[16rem]">
           <div className="max-w-xl">
@@ -73,11 +73,6 @@ export default function DashboardHero({
               Real-time fill levels, risk scores, and alerts across your smart
               waste network.
             </p>
-            {!hasImage ? (
-              <p className="mt-2 text-xs text-slate-500">
-                Upload a hero banner in Settings → Dashboard Hero Image.
-              </p>
-            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">

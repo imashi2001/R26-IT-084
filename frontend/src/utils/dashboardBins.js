@@ -7,6 +7,16 @@ export function formatBinCode(id) {
   return `BIN-${String(num).padStart(2, "0")}`;
 }
 
+/** Safely coerce location/address fields that may arrive as non-strings from the API. */
+export function coerceLocation(...values) {
+  for (const v of values) {
+    if (v == null || v === "") continue;
+    const s = String(v).trim();
+    if (s) return s;
+  }
+  return null;
+}
+
 export function parseTs(v) {
   if (!v) return 0;
   const t = new Date(v).getTime();

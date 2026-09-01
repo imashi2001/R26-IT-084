@@ -67,9 +67,10 @@ const TYPE_LABELS = {
   risk_high: "High risk",
   buzzer: "Deterrence / buzzer",
   overflow: "Bin overflow",
-  littering_detected: "Littering event",
+  littering_detected: "Illegal dumping",
   litter_severity_high: "High litter severity",
   litter_add_bin: "Add a new bin",
+  animal: "Animal detected",
 };
 
 function severityTone(sev) {

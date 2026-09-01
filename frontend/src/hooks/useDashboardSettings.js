@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { apiUrl } from "../utils/apiBase";
+import { BRAND } from "../components/BrandLogo";
 
 /**
  * Rewrites backend upload URLs so images load through the Vite dev proxy
@@ -26,7 +27,9 @@ export function normalizeDashboardAssetUrl(url) {
 }
 
 export function resolveHeroUrl(settings) {
-  return normalizeDashboardAssetUrl(settings?.hero_image_url);
+  return (
+    normalizeDashboardAssetUrl(settings?.hero_image_url) || BRAND.heroDefault
+  );
 }
 
 export function resolvePromoUrl(settings) {

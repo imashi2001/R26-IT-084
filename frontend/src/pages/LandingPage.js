@@ -16,14 +16,8 @@ import {
 import "leaflet/dist/leaflet.css";
 import { MAP_TILE_LIGHT, MAP_ATTRIBUTION } from "../config/mapConfig";
 import {
-  Leaf,
   MapPin,
-  Search,
   Navigation,
-  Crosshair,
-  Moon,
-  Sun,
-  Bell,
   ChevronRight,
   Recycle,
   ShieldCheck,
@@ -34,6 +28,9 @@ import {
   Trees,
   HandHeart,
 } from "lucide-react";
+import PublicNav, { NAV_LINKS } from "../components/public/PublicNav";
+import PublicHero from "../components/public/PublicHero";
+import BrandLogo from "../components/BrandLogo";
 import { apiUrl } from "../utils/apiBase";
 import {
   BIN_STATUS,
@@ -46,21 +43,13 @@ import {
 } from "../utils/publicBinStatus";
 
 /**
- * Public VisionWaste landing (/) — Magiya-inspired search-first experience.
- * No admin login / dashboard CTAs. Focus: find nearest available bin.
+ * Public VisionWaste landing (/) — citizen bin finder.
+ * Geo search → GET /devices/nearest (live DB or demo fallback).
  */
 
-const HERO_VIDEO = "/videos/hero-bg.mov";
-const HERO_VIDEO_TYPE = "video/quicktime";
-
-const NAV_LINKS = [
-  { href: "#home", label: "Home" },
-  { href: "#find", label: "Find Nearest Bin" },
-  { href: "#map", label: "Bin Map" },
-  { href: "#guide", label: "Waste Guide" },
-  { href: "#schedule", label: "Schedule Pickup" },
-  { href: "#about", label: "About Us" },
-];
+const scrollToFind = () => {
+  document.getElementById("find")?.scrollIntoView({ behavior: "smooth", block: "center" });
+};
 
 function FitBounds({ points }) {
   const map = useMap();
@@ -182,9 +171,9 @@ export default function LandingPage() {
           (r) => Number.isFinite(r.latitude) && Number.isFinite(r.longitude)
         );
         if (!hit) {
-          // Fallback: known Sri Lanka centroids for popular chips
           const fallbacks = {
             Malabe: [6.9147, 79.9729],
+            Kaduwela: [6.935, 79.983],
             Kottawa: [6.841, 79.965],
             Battaramulla: [6.898, 79.919],
             Nugegoda: [6.864, 79.899],
@@ -200,11 +189,20 @@ export default function LandingPage() {
           }
           throw new Error("No matching location found. Try Malabe or Colombo.");
         }
-        await loadNearest(hit.latitude, hit.longitude, q);
+        await loadNearest(hit.latitude, hit.longitude, hit.label?.split(",")[0] || q);
       } catch (e) {
         setBusy(false);
         setError(e.message || "Search failed.");
       }
+    },
+    [query, loadNearest]
+  );
+
+  const selectGeoSuggestion = useCallback(
+    (hit) => {
+      const label = hit.label?.split(",")[0] || query;
+      setQuery(label);
+      loadNearest(hit.latitude, hit.longitude, label);
     },
     [query, loadNearest]
   );
@@ -216,32 +214,92 @@ export default function LandingPage() {
     }
     setBusy(true);
     setError("");
+
+    const finish = async (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const accuracyM = Number(accuracy);
+
+      // Desktop/WiFi geolocation is often wrong (e.g. shows Kandy instead of Malabe).
+      if (Number.isFinite(accuracyM) && accuracyM > 2000) {
+        setBusy(false);
+        setError(
+          `Your browser location looks inaccurate (about ±${Math.round(
+            accuracyM / 1000
+          )} km). Search your area — e.g. Malabe, Kaduwela, Nugegoda — for correct bins.`
+        );
+        return;
+      }
+
+      let label = "My location";
+      try {
+        const res = await fetch(
+          apiUrl(
+            `/geo/reverse?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(
+              longitude
+            )}`
+          )
+        );
+        const body = await res.json().catch(() => ({}));
+        if (res.ok && body.label) {
+          label = body.label;
+          setQuery(label);
+        }
+      } catch {
+        /* keep "My location" */
+      }
+      loadNearest(latitude, longitude, label);
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        loadNearest(pos.coords.latitude, pos.coords.longitude, "My location");
-      },
+      finish,
       () => {
         setBusy(false);
         setError("Could not read your location. Allow GPS or search by area.");
       },
-      { enableHighAccuracy: true, timeout: 12000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
-  }, [loadNearest]);
+  }, [loadNearest, setQuery]);
+
+  const handleBinSelect = useCallback(
+    (bin) => {
+      const st = binAvailability(bin);
+      if (st.key !== "full" && st.key !== "overflow") return;
+
+      const alternative = ranked.find((b) => {
+        if (b.id === bin.id) return false;
+        const s = binAvailability(b);
+        return s.key === "available" || s.key === "near_full";
+      });
+
+      const message = alternative
+        ? `${bin.name} is ${st.label.toLowerCase()}. Please choose another bin.\n\nSuggested: ${alternative.name} (${formatDistance(alternative.distance_meters)} away).`
+        : `${bin.name} is ${st.label.toLowerCase()}. Please choose another bin nearby.`;
+
+      window.alert(message);
+    },
+    [ranked]
+  );
 
   const shell = dark
     ? "bg-ink-950 text-ink-200"
     : "bg-eco-bg text-ink-900";
 
   return (
-    <div className={`min-h-screen font-sans antialiased ${shell}`}>
-      <PublicNav dark={dark} onToggleTheme={() => setDark((d) => !d)} />
+    <div className={`min-h-screen font-sans antialiased [&_a]:no-underline ${shell}`}>
+      <PublicNav
+        dark={dark}
+        onToggleTheme={() => setDark((d) => !d)}
+        onFindClick={scrollToFind}
+      />
 
-      <Hero
+      <PublicHero
         query={query}
         setQuery={setQuery}
         busy={busy}
         error={error}
+        searchedLabel={searchedLabel}
         onSearch={() => searchArea()}
+        onSelectSuggestion={selectGeoSuggestion}
         onChip={(area) => {
           setQuery(area);
           searchArea(area);
@@ -325,6 +383,18 @@ export default function LandingPage() {
                           {st.label} · {fillPercent(b) ?? "—"}%
                           <br />
                           {formatDistance(b.distance_meters)}
+                          {(st.key === "full" || st.key === "overflow") && (
+                            <>
+                              <br />
+                              <button
+                                type="button"
+                                onClick={() => handleBinSelect(b)}
+                                className="mt-2 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white"
+                              >
+                                Bin full — choose another
+                              </button>
+                            </>
+                          )}
                         </Popup>
                       </CircleMarker>
                     );
@@ -354,7 +424,13 @@ export default function LandingPage() {
                 </div>
               ) : (
                 visible.map((b, i) => (
-                  <BinCard key={b.id} bin={b} dark={dark} rank={i + 1} />
+                  <BinCard
+                    key={b.id}
+                    bin={b}
+                    dark={dark}
+                    rank={i + 1}
+                    onSelect={handleBinSelect}
+                  />
                 ))
               )}
               {ranked.length > listLimit && (
@@ -377,218 +453,6 @@ export default function LandingPage() {
       <SustainabilityBanner dark={dark} />
       <AboutFooter dark={dark} />
     </div>
-  );
-}
-
-function PublicNav({ dark, onToggleTheme }) {
-  return (
-    <header
-      className={`sticky top-0 z-40 border-b backdrop-blur-md ${
-        dark
-          ? "border-white/10 bg-ink-950/80"
-          : "border-eco-light bg-white/85"
-      }`}
-    >
-      <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <a href="#home" className="flex items-center gap-2.5 shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-eco-primary shadow-md shadow-eco-primary/25">
-            <Leaf className="h-5 w-5 text-white" />
-          </div>
-          <div className="leading-tight">
-            <div
-              className={`font-display text-lg font-extrabold tracking-tight ${
-                dark ? "text-white" : "text-ink-900"
-              }`}
-            >
-              VisionWaste
-            </div>
-            <div className="text-[11px] font-medium text-eco-primary">
-              Smart Waste Management
-            </div>
-          </div>
-        </a>
-
-        <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold">
-          {NAV_LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className={`transition hover:text-eco-primary ${
-                dark ? "text-ink-300" : "text-ink-500"
-              }`}
-            >
-              {l.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-2">
-          <select
-            aria-label="Language"
-            className={`rounded-lg border px-2 py-1.5 text-xs font-semibold ${
-              dark
-                ? "border-ink-700 bg-ink-900 text-ink-200"
-                : "border-slate-200 bg-white text-ink-700"
-            }`}
-            defaultValue="en"
-          >
-            <option value="en">English</option>
-            <option value="si">සිංහල</option>
-            <option value="ta">தமிழ்</option>
-          </select>
-          <button
-            type="button"
-            aria-label="Notifications"
-            className={`hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
-              dark
-                ? "border-ink-700 text-ink-300 hover:bg-ink-800"
-                : "border-slate-200 text-ink-500 hover:bg-eco-light"
-            }`}
-          >
-            <Bell className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            aria-label="Toggle theme"
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
-              dark
-                ? "border-ink-700 text-ink-200 hover:bg-ink-800"
-                : "border-slate-200 text-ink-700 hover:bg-eco-light"
-            }`}
-          >
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function Hero({
-  query,
-  setQuery,
-  busy,
-  error,
-  onSearch,
-  onChip,
-  onUseLocation,
-}) {
-  return (
-    <section id="home" className="relative isolate min-h-[92vh] overflow-hidden">
-      <video
-        className="absolute inset-0 h-full w-full object-cover"
-        autoPlay
-        muted
-        loop
-        playsInline
-        poster=""
-      >
-        <source src={HERO_VIDEO} type={HERO_VIDEO_TYPE} />
-        {/* Fallback if browser rejects .mov */}
-        <source src={HERO_VIDEO} type="video/mp4" />
-      </video>
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(15,23,42,0.55) 0%, rgba(27,94,32,0.45) 45%, rgba(15,23,42,0.72) 100%)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -left-8 top-28 h-24 w-24 animate-float opacity-40"
-      >
-        <Leaf className="h-full w-full text-eco-light" />
-      </div>
-
-      <div className="relative mx-auto flex min-h-[92vh] max-w-5xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
-        <p className="animate-fade-up text-sm font-semibold uppercase tracking-[0.22em] text-eco-light">
-          Together for a Cleaner Tomorrow
-        </p>
-        <h1
-          className="animate-fade-up mt-4 font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl"
-          style={{ animationDelay: "80ms" }}
-        >
-          Find the Nearest Bin,
-          <br />
-          Keep Our City <span className="text-[#A5D6A7]">Clean</span>
-        </h1>
-        <p
-          className="animate-fade-up mt-5 max-w-2xl text-base text-white/85 sm:text-lg"
-          style={{ animationDelay: "140ms" }}
-        >
-          Locate nearby available waste bins in real-time and dispose of your
-          waste responsibly for a cleaner, healthier city.
-        </p>
-
-        <div
-          id="find"
-          className="animate-fade-up mt-10 w-full scroll-mt-28"
-          style={{ animationDelay: "200ms" }}
-        >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              onSearch();
-            }}
-            className="mx-auto flex w-full max-w-3xl flex-col gap-2 rounded-[1.75rem] border border-white/30 bg-white/12 p-2 shadow-search backdrop-blur-md sm:flex-row sm:items-center sm:gap-0 sm:rounded-full sm:p-1.5"
-          >
-            <div className="flex flex-1 items-center gap-2 rounded-full bg-white px-4 py-3 sm:rounded-none sm:bg-transparent sm:px-4 sm:py-2">
-              <MapPin className="h-5 w-5 shrink-0 text-eco-primary" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search area or location (e.g. Malabe, Main Street...)"
-                className="w-full border-0 bg-transparent text-sm font-medium text-ink-900 outline-none placeholder:text-ink-400 sm:text-base"
-              />
-            </div>
-            <div className="flex gap-2 sm:pr-1">
-              <button
-                type="button"
-                onClick={onUseLocation}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/40 bg-white/15 px-3 py-3 text-xs font-semibold text-white transition hover:bg-white/25 sm:flex-none sm:px-4"
-              >
-                <Crosshair className="h-4 w-4" />
-                Use My Location
-              </button>
-              <button
-                type="submit"
-                disabled={busy}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-eco-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-eco-dark/30 transition hover:bg-eco-dark disabled:opacity-60 sm:flex-none sm:px-7"
-              >
-                <Search className="h-4 w-4" />
-                {busy ? "Searching…" : "Find Nearest Bin"}
-              </button>
-            </div>
-          </form>
-
-          {error ? (
-            <p className="mt-3 text-sm font-medium text-amber-200">{error}</p>
-          ) : (
-            <p className="mt-3 text-xs text-white/70">
-              Real-time availability · Prefer less-full bins first
-            </p>
-          )}
-
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
-              Popular
-            </span>
-            {POPULAR_AREAS.map((area) => (
-              <button
-                key={area}
-                type="button"
-                onClick={() => onChip(area)}
-                className="rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20"
-              >
-                {area}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -684,21 +548,42 @@ function Legend({ dark }) {
   );
 }
 
-function BinCard({ bin, dark, rank }) {
+function BinCard({ bin, dark, rank, onSelect }) {
   const st = binAvailability(bin);
   const pct = fillPercent(bin);
+  const isUnavailable = st.key === "full" || st.key === "overflow";
   const mapsUrl =
     Number.isFinite(Number(bin.latitude)) && Number.isFinite(Number(bin.longitude))
       ? `https://www.google.com/maps/dir/?api=1&destination=${bin.latitude},${bin.longitude}`
       : null;
 
+  function handleSelect() {
+    if (isUnavailable) onSelect?.(bin);
+  }
+
+  function handleDirections(e) {
+    if (isUnavailable) {
+      e.preventDefault();
+      onSelect?.(bin);
+    }
+  }
+
   return (
     <article
-      className={`flex items-center gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md ${
+      role="button"
+      tabIndex={0}
+      onClick={handleSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleSelect();
+        }
+      }}
+      className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md ${
         dark
           ? "border-ink-700 bg-ink-950"
           : "border-slate-200 bg-white"
-      }`}
+      } ${isUnavailable ? "ring-1 ring-red-400/40" : ""}`}
     >
       <div
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white"
@@ -745,6 +630,7 @@ function BinCard({ bin, dark, rank }) {
           target="_blank"
           rel="noreferrer"
           aria-label="Get directions"
+          onClick={handleDirections}
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-eco-light text-eco-primary transition hover:bg-eco-primary hover:text-white"
         >
           <Navigation className="h-4 w-4" />
@@ -909,16 +795,7 @@ function AboutFooter({ dark }) {
     >
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:grid-cols-3 sm:px-6">
         <div>
-          <div className="flex items-center gap-2">
-            <Leaf className="h-5 w-5 text-eco-primary" />
-            <span
-              className={`font-display text-base font-extrabold ${
-                dark ? "text-white" : "text-ink-900"
-              }`}
-            >
-              VisionWaste
-            </span>
-          </div>
+          <BrandLogo variant="footer" theme={dark ? "dark" : "light"} />
           <p className="mt-3 text-sm leading-relaxed">
             Smart waste management for Sri Lankan cities — find nearby bins,
             dispose responsibly, and keep streets clean with real-time

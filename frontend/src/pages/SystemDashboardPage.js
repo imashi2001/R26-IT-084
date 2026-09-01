@@ -10,6 +10,10 @@ import DashboardBinDetail from "../components/dashboard/DashboardBinDetail";
 import LiveBinMapCard from "../components/dashboard/cards/LiveBinMapCard";
 import RecentAlertsCard from "../components/dashboard/cards/RecentAlertsCard";
 import RiskTrend7dCard from "../components/dashboard/cards/RiskTrend7dCard";
+import WasteClassificationCard from "../components/dashboard/cards/WasteClassificationCard";
+import RottingPredictionCard from "../components/dashboard/cards/RottingPredictionCard";
+import AnimalDetectionCard from "../components/dashboard/cards/AnimalDetectionCard";
+import HygienicRiskLevelCard from "../components/dashboard/cards/HygienicRiskLevelCard";
 import { LAYOUT } from "../components/dashboard/dashboardTheme";
 import useSystemSnapshot from "../hooks/useSystemSnapshot";
 import useCaptureHistory from "../hooks/useCaptureHistory";
@@ -170,6 +174,15 @@ export default function SystemDashboardPage() {
             devices={fleet.devices}
             history={history.captures}
           />
+        </DashboardSection>
+
+        <DashboardSection label="Model insights">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <WasteClassificationCard snapshot={snapshot} />
+            <RottingPredictionCard snapshot={snapshot} />
+            <AnimalDetectionCard snapshot={snapshot} />
+            <HygienicRiskLevelCard snapshot={snapshot} />
+          </div>
         </DashboardSection>
 
         <DashboardSection label="Operations">

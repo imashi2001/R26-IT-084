@@ -1,6 +1,6 @@
 /** Normalize backend fill_level strings for comparisons / CSS modifiers. */
 export function normalizeFill(level) {
-  return (level || "").trim().toLowerCase();
+  return String(level || "").trim().toLowerCase();
 }
 
 /**
@@ -32,7 +32,7 @@ export function effectiveFillTier(binLike) {
 }
 
 export function fillLabel(level) {
-  const k = normalizeFill(level);
+  const k = normalizeFill(level != null ? String(level) : "");
   if (!k) return "Unknown";
   return k.charAt(0).toUpperCase() + k.slice(1);
 }

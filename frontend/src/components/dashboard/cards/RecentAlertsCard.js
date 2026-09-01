@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Card from "../Card";
 import { alertTone } from "../dashboardTheme";
-import { formatBinCode } from "../../../utils/dashboardBins";
+import { formatBinCode, coerceLocation } from "../../../utils/dashboardBins";
 import {
   ADD_BIN_STREAK,
   capturesForDevice,
@@ -40,8 +40,7 @@ function buildAlerts(captures) {
     const ts = c.captured_at;
     const binId =
       c.device_id != null ? formatBinCode(c.device_id) : "BIN—";
-    const location =
-      (c.location || c.device_location || c.address || "").trim() || null;
+    const location = coerceLocation(c.location, c.device_location, c.address);
 
     const deviceHistory = capturesForDevice(captures, c.device_id);
     const addBinKey = c.device_id != null ? String(c.device_id) : binId;
@@ -80,7 +79,7 @@ function buildAlerts(captures) {
       alerts.push({
         ts,
         binId,
-        title: "Littering event detected",
+        title: "Illegal dumping detected",
         sub: `${binId}${location ? ` · ${location}` : ""} · ${count} event${count === 1 ? "" : "s"} (${(conf * 100).toFixed(0)}% conf)`,
         Icon: AlertTriangle,
         tone: "warn",

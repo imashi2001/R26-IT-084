@@ -7,6 +7,7 @@ import {
   fillBarColor,
   fillPercent,
   formatBinCode,
+  coerceLocation,
   relativeFromNow,
   STATUS_PILL,
 } from "../../utils/dashboardBins";
@@ -40,7 +41,7 @@ export default function DashboardBinsTable({
   const zones = useMemo(() => {
     const set = new Set();
     for (const d of devices || []) {
-      const loc = (d.location || d.address || "").trim();
+      const loc = coerceLocation(d.location, d.address);
       if (loc) set.add(loc.split(",")[0].trim());
     }
     return ["all", ...Array.from(set).sort()];
@@ -63,8 +64,8 @@ export default function DashboardBinsTable({
     }
     if (zoneFilter !== "all") {
       list = list.filter((d) => {
-        const loc = (d.location || d.address || "").trim();
-        return loc.startsWith(zoneFilter);
+        const loc = coerceLocation(d.location, d.address);
+        return loc?.startsWith(zoneFilter);
       });
     }
     list.sort((a, b) => {

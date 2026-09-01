@@ -17,13 +17,13 @@ import {
   Smartphone,
   Settings,
   Volume2,
-  Leaf,
   CircleCheck,
   CircleAlert,
 } from "lucide-react";
 import axios from "axios";
 import { apiUrl } from "../../utils/apiBase";
 import useAlertBadgeCount from "../../hooks/useAlertBadgeCount";
+import BrandLogo from "../BrandLogo";
 import PromoFooter from "./PromoFooter";
 
 const NAV_ITEMS = [
@@ -169,18 +169,8 @@ export default function Sidebar() {
 
   return (
     <aside className="relative z-10 flex h-screen w-64 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
-      <div className="flex items-center gap-3 border-b border-slate-800/80 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 shadow-glow-brand">
-          <Leaf className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <div className="text-base font-bold leading-tight text-white">
-            VisionWaste
-          </div>
-          <div className="text-[11px] leading-tight text-slate-500">
-            Smart Waste Monitoring
-          </div>
-        </div>
+      <div className="border-b border-slate-800/80 px-4 py-4">
+        <BrandLogo variant="sidebar" theme="dark" />
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3">

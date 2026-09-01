@@ -12,7 +12,7 @@ RUN npm ci --omit=dev
 
 COPY backend/ ./
 COPY waste_forecast/ /app/waste_forecast/
-COPY ["forecasting dashboard/", "/app/forecasting dashboard/"]
+# forecasting dashboard/ is excluded by repo .dockerignore — set MODEL_FORECAST_URL in production
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip \

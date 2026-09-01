@@ -9,8 +9,8 @@ def get_holiday_cache_path() -> Path:
     file_dir = Path(__file__).resolve().parent
     workspace = file_dir.parents[2] if len(file_dir.parents) > 2 else Path.cwd()
     for candidate in [
-        workspace / "forecasting dashboard" / "holiday_cache.json",
         workspace / "backend" / "holiday_cache.json",
+        workspace / "forecasting dashboard" / "holiday_cache.json",
         file_dir.parents[1] / "data" / "holiday_cache.json",
         file_dir.parents[1] / "forecasting dashboard" / "holiday_cache.json",
         file_dir.parents[2] / "forecasting dashboard" / "holiday_cache.json",

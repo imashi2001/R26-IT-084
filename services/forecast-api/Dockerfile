@@ -17,9 +17,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY services/forecast-api/app.py ./app.py
 COPY waste_forecast/ ./waste_forecast/
-RUN mkdir -p "forecasting dashboard"
+# backend/holiday_cache.json — forecasting dashboard/ is excluded by repo .dockerignore
 COPY backend/holiday_cache.json ./backend/holiday_cache.json
-COPY ["forecasting dashboard/holiday_cache.json", "forecasting dashboard/holiday_cache.json"]
 
 ENV PORT=8000
 EXPOSE 8000

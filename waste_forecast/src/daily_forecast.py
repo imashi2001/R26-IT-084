@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -14,7 +15,9 @@ except ImportError:
     from src.calendar_features import build_daily_calendar
     from src.load_data import load_waste_data
 
-WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
+WORKSPACE_ROOT = Path(
+    os.environ.get("WORKSPACE_ROOT", Path(__file__).resolve().parents[2])
+)
 MODEL_PATH = WORKSPACE_ROOT / "waste_forecast" / "models" / "model.json"
 FEATURE_COLUMNS_PATH = WORKSPACE_ROOT / "waste_forecast" / "models" / "feature_columns.json"
 PROFILE_PATH = WORKSPACE_ROOT / "waste_forecast" / "models" / "daily_profile.json"

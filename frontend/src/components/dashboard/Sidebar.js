@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { to: "/littering-event", icon: UserRoundX, label: "Littering Detection" },
   { to: "/litter-severity", icon: ScanSearch, label: "Litter Severity" },
   { to: "/forecast", icon: TrendingUp, label: "Forecasting" },
+  { to: "/waste-update", icon: Database, label: "Waste Update" },
   { to: "/alerts", icon: Bell, label: "Alerts & Notifications", badge: true },
   { to: "/reports", icon: FileText, label: "Reports" },
   { to: "/history", icon: History, label: "History" },

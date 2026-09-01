@@ -10,6 +10,7 @@ services/
   fill-api/            -> Ultralytics YOLOv8n    (empty / half / overflow — garbage_fill_level_detection_v1)
   litter-severity-api/ -> Ultralytics YOLO + LSI (litter severity; see `MODEL_LITTER_URL` on Express)
   littering-action-api/ -> Ultralytics YOLO11 littering-event detector (`MODEL_LITTERING_ACTION_URL`)
+  forecast-api/          -> XGBoost municipal waste forecast (`MODEL_FORECAST_URL`)
 ```
 
 Each service exposes `GET /health` and `POST /predict` (multipart `file`).  
@@ -58,6 +59,7 @@ After deploying, point the main backend at the service URLs:
 $env:MODEL_WASTE_URL  = "https://waste-api-xxx.up.railway.app"
 $env:MODEL_ANIMAL_URL = "https://animal-api-xxx.up.railway.app"
 $env:MODEL_FILL_URL   = "https://fill-api-xxx.up.railway.app"
+$env:MODEL_FORECAST_URL = "https://forecast-api-xxx.up.railway.app"
 ```
 
 (The orchestrator code change to fan out to these instead of loading

@@ -65,6 +65,36 @@ export function riskBadgeClass(level) {
   }
 }
 
+export function forecastStatusBadgeClass(status) {
+  switch ((status || "").toUpperCase()) {
+    case "VERY_HIGH":
+      return "border-red-500/40 bg-red-500/15 text-red-300";
+    case "HIGH":
+      return "border-amber-500/30 bg-amber-500/15 text-amber-400";
+    case "NORMAL":
+      return "border-brand-500/30 bg-brand-500/15 text-brand-400";
+    case "LOW":
+      return "border-sky-500/30 bg-sky-500/15 text-sky-400";
+    default:
+      return "border-slate-600/50 bg-slate-800/50 text-slate-400";
+  }
+}
+
+export function forecastStatusColor(status) {
+  switch ((status || "").toUpperCase()) {
+    case "VERY_HIGH":
+      return "#ef4444";
+    case "HIGH":
+      return "#f97316";
+    case "NORMAL":
+      return "#22c55e";
+    case "LOW":
+      return "#3b82f6";
+    default:
+      return "#eab308";
+  }
+}
+
 export function bannerTone(tone) {
   switch (tone) {
     case "red":

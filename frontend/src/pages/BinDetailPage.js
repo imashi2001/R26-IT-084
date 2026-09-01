@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  Camera,
   ChevronRight,
   MapPin,
   RefreshCw,
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 import ImageCanvas from "../components/ImageCanvas";
 import PredictionList from "../components/PredictionList";
+import CaptureModelResultsPanel from "../components/dashboard/CaptureModelResultsPanel";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import PageShell from "../components/dashboard/PageShell";
 import PageHeader from "../components/dashboard/PageHeader";
@@ -18,7 +20,6 @@ import PageSkeleton from "../components/dashboard/PageSkeleton";
 import AudioTrackTestPanel from "../components/dashboard/AudioTrackTestPanel";
 import useAudioSettings from "../hooks/useAudioSettings";
 import { useAuth } from "../context/AuthContext";
-import StatusBanner from "../components/dashboard/StatusBanner";
 import {
   btnGhost,
   btnSecondary,
@@ -250,30 +251,53 @@ export default function BinDetailPage() {
                 </Card.Body>
               </Card>
 
-              <Card>
-                <Card.Header title="Latest capture" />
+              <Card glow={Boolean(imageUrl)}>
+                <Card.Header
+                  icon={Camera}
+                  title="Latest capture & model results"
+                  subtitle={
+                    latest?.captured_at
+                      ? `Captured ${formatTs(latest.captured_at)} · ${extras.source_type || "unknown source"}`
+                      : "Waiting for the next ESP32 or mobile upload"
+                  }
+                />
                 <Card.Body>
-                  {imageUrl ? (
-                    <div className="overflow-hidden rounded-xl border border-slate-700/50">
-                      <ImageCanvas imageUrl={imageUrl} predictions={predictions} />
+                  <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                    <div>
+                      {imageUrl ? (
+                        <div className="overflow-hidden rounded-xl border border-slate-700/50">
+                          <ImageCanvas
+                            imageUrl={imageUrl}
+                            predictions={predictions}
+                          />
+                        </div>
+                      ) : (
+                        <EmptyState
+                          title="No image yet"
+                          message="Send a capture from the ESP32, bridge, or mobile report."
+                          action={
+                            <Link to="/mobile-report" className={btnSecondary}>
+                              Mobile report
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </Link>
+                          }
+                        />
+                      )}
+                      {predictions.length > 0 ? (
+                        <details className="mt-3 rounded-lg border border-slate-800/60 bg-slate-950/30 px-3 py-2">
+                          <summary className="cursor-pointer text-xs font-semibold text-slate-400">
+                            Detection boxes ({predictions.length})
+                          </summary>
+                          <div className="mt-2">
+                            <PredictionList predictions={predictions} />
+                          </div>
+                        </details>
+                      ) : null}
                     </div>
-                  ) : (
-                    <EmptyState
-                      title="No image yet"
-                      message="Send a capture from the bridge or mobile report."
-                      action={
-                        <Link to="/mobile-report" className={btnSecondary}>
-                          Mobile report
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </Link>
-                      }
-                    />
-                  )}
-                  {predictions.length > 0 ? (
-                    <div className="mt-4">
-                      <PredictionList predictions={predictions} />
+                    <div>
+                      <CaptureModelResultsPanel latest={latest} />
                     </div>
-                  ) : null}
+                  </div>
                 </Card.Body>
               </Card>
 

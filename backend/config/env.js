@@ -26,6 +26,7 @@ const MODEL_FILL_URL_RAW =
 const MODEL_LITTER_URL_RAW = process.env.MODEL_LITTER_URL || "";
 const MODEL_LITTERING_ACTION_URL_RAW =
   process.env.MODEL_LITTERING_ACTION_URL || "";
+const MODEL_FORECAST_URL_RAW = process.env.MODEL_FORECAST_URL || "";
 
 /**
  * FastAPI services (waste, animal, fill) plus optional litter-severity-api (YOLO + LSI).
@@ -134,4 +135,13 @@ module.exports = {
       60,
       Number(process.env.LITTER_ADD_BIN_COOLDOWN_SECONDS || 3600) || 3600
     ) * 1000,
+
+  /** XGBoost waste forecast microservice (services/forecast-api). Empty = local Python fallback. */
+  MODEL_FORECAST_URL: MODEL_FORECAST_URL_RAW.trim()
+    ? normalizeModelServiceUrl(MODEL_FORECAST_URL_RAW, "http://localhost:8006")
+    : "",
+  FORECAST_TIMEOUT_MS: Math.max(
+    5000,
+    Number(process.env.FORECAST_TIMEOUT_MS || 45000) || 45000
+  ),
 };

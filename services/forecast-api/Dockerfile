@@ -1,4 +1,8 @@
-# Railway Root Directory: services/forecast-api
+# Build from repository root (not services/forecast-api):
+#   docker build -f services/forecast-api/Dockerfile -t forecast-api .
+#
+# Railway: Root Directory = . (repo root), Dockerfile Path = services/forecast-api/Dockerfile
+
 FROM python:3.11-slim
 
 ENV PIP_NO_CACHE_DIR=1 \
@@ -8,11 +12,14 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 WORKDIR /app
 
-COPY requirements.txt ./requirements.txt
+COPY services/forecast-api/requirements.txt ./requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY app.py ./app.py
+COPY services/forecast-api/app.py ./app.py
 COPY waste_forecast/ ./waste_forecast/
+RUN mkdir -p "forecasting dashboard"
+COPY backend/holiday_cache.json ./backend/holiday_cache.json
+COPY ["forecasting dashboard/holiday_cache.json", "forecasting dashboard/holiday_cache.json"]
 
 ENV PORT=8000
 EXPOSE 8000

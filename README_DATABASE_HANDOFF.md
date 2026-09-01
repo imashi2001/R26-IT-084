@@ -18,7 +18,8 @@
          │
          │ exportSnapshotForRetrain()
          ▼
-   waste_entries.json snapshot  →  retrain_pipeline.py
+   waste_entries.json snapshot  →  retrain_pipeline.py (local)
+                                or  forecast-api POST /retrain (Railway)
 ```
 
 | Component | Path |
@@ -107,7 +108,7 @@ Leave `DATABASE_URL` empty. Repository uses `backend/data/waste_entries.json` (`
 
 ## Retrain pipeline
 
-Python still reads `backend/data/waste_entries.json`. Before retrain, the repository exports a fresh snapshot from MySQL via `exportSnapshotForRetrain()`.
+Python retrain reads `backend/data/waste_entries.json` locally. On Railway, set `MODEL_FORECAST_URL` so retrain runs on **forecast-api** (`POST /retrain` with exported entries). Before retrain, the repository exports a fresh snapshot from MySQL via `exportSnapshotForRetrain()`.
 
 Requires Python + xgboost on the machine running retrain, or run retrain in CI/local and deploy updated `waste_forecast/models/`.
 

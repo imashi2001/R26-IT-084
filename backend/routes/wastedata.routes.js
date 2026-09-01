@@ -48,12 +48,18 @@ const CATEGORIES = [
 
 // ---------- helpers ----------
 function loadHolidayCache() {
-  try {
-    const p = path.join(__dirname, "..", "..", "forecasting dashboard", "holiday_cache.json");
-    return JSON.parse(fs.readFileSync(p, "utf8"));
-  } catch {
-    return {};
+  const candidates = [
+    path.join(__dirname, "..", "..", "forecasting dashboard", "holiday_cache.json"),
+    path.join(__dirname, "..", "holiday_cache.json"),
+  ];
+  for (const p of candidates) {
+    try {
+      return JSON.parse(fs.readFileSync(p, "utf8"));
+    } catch {
+      /* try next */
+    }
   }
+  return {};
 }
 
 /**

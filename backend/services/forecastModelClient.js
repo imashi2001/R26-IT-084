@@ -9,6 +9,8 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 const { MODEL_FORECAST_URL, FORECAST_TIMEOUT_MS } = require("../config/env");
 
+const RETRAIN_TIMEOUT_MS = Number(process.env.FORECAST_RETRAIN_TIMEOUT_MS) || 120000;
+
 function isRemoteEnabled() {
   return Boolean(MODEL_FORECAST_URL && String(MODEL_FORECAST_URL).trim());
 }
@@ -92,8 +94,75 @@ function runLocalPredict(rows, mode) {
   return parsed;
 }
 
+/**
+ * @param {{ entries?: object[], force?: boolean }} [opts]
+ * @returns {Promise<object>}
+ */
+async function runRetrainPipeline(opts = {}) {
+  const { entries = [], force = false } = opts;
+
+  if (isRemoteEnabled()) {
+    const base = String(MODEL_FORECAST_URL).replace(/\/+$/, "");
+    const res = await axios.post(
+      `${base}/retrain`,
+      { entries, force },
+      { timeout: RETRAIN_TIMEOUT_MS, validateStatus: () => true }
+    );
+    if (res.status >= 200 && res.status < 300 && res.data) {
+      return res.data;
+    }
+    const detail =
+      res.data?.detail || res.data?.error || res.statusText || `HTTP ${res.status}`;
+    throw new Error(String(detail));
+  }
+
+  const repoRoot = path.join(__dirname, "..", "..");
+  const args = force ? " --force" : "";
+  const output = execSync(`python waste_forecast/src/retrain_pipeline.py${args}`, {
+    cwd: repoRoot,
+    timeout: RETRAIN_TIMEOUT_MS,
+  }).toString();
+  try {
+    return JSON.parse(output.trim().split("\n").pop());
+  } catch {
+    return { status: "completed", rawOutput: output.trim() };
+  }
+}
+
+/**
+ * @returns {Promise<{ currentVersion: string, latestRun: object|null, registryHistory: object[] }>}
+ */
+async function fetchModelRegistry() {
+  if (isRemoteEnabled()) {
+    const base = String(MODEL_FORECAST_URL).replace(/\/+$/, "");
+    const res = await axios.get(`${base}/registry`, {
+      timeout: FORECAST_TIMEOUT_MS,
+      validateStatus: () => true,
+    });
+    if (res.status >= 200 && res.status < 300) {
+      return res.data;
+    }
+    throw new Error(res.data?.detail || `HTTP ${res.status}`);
+  }
+
+  const repoRoot = path.join(__dirname, "..", "..");
+  const registryPath = path.join(repoRoot, "waste_forecast", "models", "model_registry.json");
+  if (!fs.existsSync(registryPath)) {
+    return { currentVersion: "v1.0", latestRun: null, registryHistory: [] };
+  }
+  const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
+  const latestRun = registry.length > 0 ? registry[registry.length - 1] : null;
+  return {
+    currentVersion: latestRun ? latestRun.version : "v1.0",
+    latestRun,
+    registryHistory: registry.slice(-5).reverse(),
+  };
+}
+
 module.exports = {
   isRemoteEnabled,
   runForecastPredict,
   fetchSeasonalInsights,
+  runRetrainPipeline,
+  fetchModelRegistry,
 };

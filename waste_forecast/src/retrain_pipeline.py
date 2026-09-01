@@ -10,17 +10,30 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-WASTE_FORECAST_DIR = ROOT_DIR / "waste_forecast"
-MODELS_DIR = WASTE_FORECAST_DIR / "models"
+def resolve_workspace_root(workspace_root: Path | None = None) -> Path:
+    if workspace_root is not None:
+        return Path(workspace_root)
+    env_root = os.environ.get("WORKSPACE_ROOT")
+    if env_root:
+        return Path(env_root)
+    return Path(__file__).resolve().parents[2]
 
-LIVE_MODEL_PATH = MODELS_DIR / "model.json"
-CANDIDATE_MODEL_PATH = MODELS_DIR / "model_candidate.json"
-FEATURE_COLUMNS_PATH = MODELS_DIR / "feature_columns.json"
-REGISTRY_PATH = MODELS_DIR / "model_registry.json"
-DATA_FILE = ROOT_DIR / "backend" / "data" / "waste_entries.json"
 
-sys.path.insert(0, str(WASTE_FORECAST_DIR / "src"))
+def paths_for_root(root: Path) -> dict[str, Path]:
+    models_dir = root / "waste_forecast" / "models"
+    return {
+        "root": root,
+        "models_dir": models_dir,
+        "live_model": models_dir / "model.json",
+        "candidate_model": models_dir / "model_candidate.json",
+        "feature_columns": models_dir / "feature_columns.json",
+        "registry": models_dir / "model_registry.json",
+        "data_file": root / "backend" / "data" / "waste_entries.json",
+    }
+
+_DEFAULT_SRC = Path(__file__).resolve().parent
+sys.path.insert(0, str(_DEFAULT_SRC))
+sys.path.insert(0, str(_DEFAULT_SRC.parent))
 
 try:
     from features import build_feature_table
@@ -30,15 +43,20 @@ except ImportError:
     from src.load_data import load_waste_data
 
 
-def load_model_registry() -> list[dict[str, object]]:
-    if not REGISTRY_PATH.exists():
+def load_model_registry(workspace_root: Path | None = None) -> list[dict[str, object]]:
+    paths = paths_for_root(resolve_workspace_root(workspace_root))
+    registry_path = paths["registry"]
+    if not registry_path.exists():
         return []
-    with open(REGISTRY_PATH, "r", encoding="utf-8") as fh:
+    with open(registry_path, "r", encoding="utf-8") as fh:
         return json.load(fh)
 
 
-def save_model_registry(registry: list[dict[str, object]]) -> None:
-    with open(REGISTRY_PATH, "w", encoding="utf-8") as fh:
+def save_model_registry(
+    registry: list[dict[str, object]], workspace_root: Path | None = None
+) -> None:
+    paths = paths_for_root(resolve_workspace_root(workspace_root))
+    with open(paths["registry"], "w", encoding="utf-8") as fh:
         json.dump(registry, fh, indent=2)
 
 
@@ -51,13 +69,23 @@ def evaluate_model_rmse(model_path: Path, X: pd.DataFrame, y: pd.Series) -> floa
     return float(np.sqrt(np.mean((y - preds) ** 2)))
 
 
-def run_retrain_pipeline(force: bool = False, batch_size: int = 30) -> dict[str, object]:
+def run_retrain_pipeline(
+    force: bool = False,
+    batch_size: int = 30,
+    entries: list[dict[str, object]] | None = None,
+    persist_processed: bool = True,
+    workspace_root: Path | None = None,
+) -> dict[str, object]:
     print("[retrain_pipeline] Initiating validation-gated retrain check...")
 
-    entries = []
-    if DATA_FILE.exists():
-        with open(DATA_FILE, "r", encoding="utf-8") as fh:
-            entries = json.load(fh)
+    root = resolve_workspace_root(workspace_root)
+    paths = paths_for_root(root)
+
+    if entries is None:
+        entries = []
+        if paths["data_file"].exists():
+            with open(paths["data_file"], "r", encoding="utf-8") as fh:
+                entries = json.load(fh)
 
     unprocessed = [e for e in entries if not e.get("processed_for_training", False)]
     if len(unprocessed) < batch_size and not force:
@@ -66,7 +94,7 @@ def run_retrain_pipeline(force: bool = False, batch_size: int = 30) -> dict[str,
         return {"status": "skipped", "reason": msg, "unprocessedCount": len(unprocessed)}
 
     # Build monthly features and targets
-    waste_df, total_all = load_waste_data(ROOT_DIR)
+    waste_df, total_all = load_waste_data(root)
 
     # Incorporate new entries into total_all if any exist
     if entries:
@@ -87,18 +115,18 @@ def run_retrain_pipeline(force: bool = False, batch_size: int = 30) -> dict[str,
     # Train Candidate Model (saves to model_candidate.json)
     candidate_model = xgb.XGBRegressor(n_estimators=10, max_depth=3, learning_rate=0.1)
     candidate_model.fit(X, y)
-    candidate_model.save_model(str(CANDIDATE_MODEL_PATH))
+    candidate_model.save_model(str(paths["candidate_model"]))
 
     # Evaluate validation metrics
-    live_rmse = evaluate_model_rmse(LIVE_MODEL_PATH, X, y)
-    candidate_rmse = evaluate_model_rmse(CANDIDATE_MODEL_PATH, X, y)
+    live_rmse = evaluate_model_rmse(paths["live_model"], X, y)
+    candidate_rmse = evaluate_model_rmse(paths["candidate_model"], X, y)
 
     # Validation Gate: Candidate promoted only if candidate_rmse <= live_rmse * 1.02
     threshold_rmse = live_rmse * 1.02
     is_promoted = candidate_rmse <= threshold_rmse
 
     if is_promoted:
-        candidate_model.save_model(str(LIVE_MODEL_PATH))
+        candidate_model.save_model(str(paths["live_model"]))
         outcome_msg = f"PROMOTED: Candidate RMSE ({candidate_rmse:.4f}) <= Live Threshold ({threshold_rmse:.4f})"
     else:
         outcome_msg = f"NOT PROMOTED: Candidate RMSE ({candidate_rmse:.4f}) worse than Live Threshold ({threshold_rmse:.4f})"
@@ -106,9 +134,10 @@ def run_retrain_pipeline(force: bool = False, batch_size: int = 30) -> dict[str,
     print(f"[retrain_pipeline] {outcome_msg}")
 
     # Record run in registry
-    registry = load_model_registry()
+    registry = load_model_registry(workspace_root=root)
     version_str = f"v1.{len(registry) + 1}"
     record = {
+        "status": "completed",
         "version": version_str,
         "timestamp": datetime.now().isoformat(),
         "entriesCount": len(entries),
@@ -119,13 +148,13 @@ def run_retrain_pipeline(force: bool = False, batch_size: int = 30) -> dict[str,
         "outcome": outcome_msg,
     }
     registry.append(record)
-    save_model_registry(registry)
+    save_model_registry(registry, workspace_root=root)
 
-    # Mark entries as processed if retrain ran
-    if entries:
+    # Mark entries as processed in local JSON only (MySQL handled by Express backend)
+    if persist_processed and entries and paths["data_file"].exists():
         for e in entries:
             e["processed_for_training"] = True
-        with open(DATA_FILE, "w", encoding="utf-8") as fh:
+        with open(paths["data_file"], "w", encoding="utf-8") as fh:
             json.dump(entries, fh, indent=2)
 
     return record

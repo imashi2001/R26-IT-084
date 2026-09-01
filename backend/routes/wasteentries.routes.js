@@ -1,49 +1,30 @@
 const { Router } = require("express");
-const path = require("path");
-const fs = require("fs");
 const WasteEntriesRepository = require("../repositories/wasteEntries.repository");
+const {
+  runRetrainPipeline: runForecastRetrain,
+  fetchModelRegistry,
+} = require("../services/forecastModelClient");
 
 const router = Router();
 const VEHICLE_REGEX = /^[A-Za-z0-9]{2,3} \d{4}$/;
 
-const REPO_ROOT = path.join(__dirname, "..", "..");
-const REGISTRY_PATH = path.join(REPO_ROOT, "waste_forecast", "models", "model_registry.json");
-
-function getModelRegistry() {
-  if (!fs.existsSync(REGISTRY_PATH)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(REGISTRY_PATH, "utf8"));
-  } catch (err) {
-    return [];
-  }
-}
-
 async function runRetrainPipeline({ force = false } = {}) {
-  const unprocessedBefore = await WasteEntriesRepository.getUnprocessed();
-  await WasteEntriesRepository.exportSnapshotForRetrain();
+  const entries = await WasteEntriesRepository.exportSnapshotForRetrain();
 
-  const { exec } = require("child_process");
-  const args = force ? " --force" : "";
-  const cmd = `python waste_forecast/src/retrain_pipeline.py${args}`;
+  const result = await runForecastRetrain({ entries, force });
 
-  return new Promise((resolve, reject) => {
-    exec(cmd, { cwd: REPO_ROOT, timeout: force ? 30000 : 120000 }, async (err, stdout) => {
-      if (err) {
-        console.error("[waste-entries] Retrain error:", err.message);
-        reject(err);
-        return;
-      }
-      try {
-        const marked = await WasteEntriesRepository.markAllUnprocessedAsProcessed();
-        console.log(
-          `[waste-entries] Retrain done; marked ${marked} entries processed (storage=${WasteEntriesRepository.storageMode()}).`
-        );
-      } catch (markErr) {
-        console.error("[waste-entries] markProcessed after retrain:", markErr.message);
-      }
-      resolve(stdout);
-    });
-  });
+  if (result.status !== "skipped") {
+    try {
+      const marked = await WasteEntriesRepository.markAllUnprocessedAsProcessed();
+      console.log(
+        `[waste-entries] Retrain done; marked ${marked} entries processed (storage=${WasteEntriesRepository.storageMode()}).`
+      );
+    } catch (markErr) {
+      console.error("[waste-entries] markProcessed after retrain:", markErr.message);
+    }
+  }
+
+  return result;
 }
 
 // POST /api/waste-entries
@@ -126,18 +107,17 @@ router.get("/", async (req, res) => {
 // GET /api/waste-entries/retrain-status
 router.get("/retrain-status", async (_req, res) => {
   try {
-    const registry = getModelRegistry();
+    const registryInfo = await fetchModelRegistry();
     const stats = await WasteEntriesRepository.countStats();
-    const latestRun = registry.length > 0 ? registry[registry.length - 1] : null;
 
     return res.json({
-      currentVersion: latestRun ? latestRun.version : "v1.0",
+      currentVersion: registryInfo.currentVersion || "v1.0",
       totalEntries: stats.totalEntries,
       unprocessedCount: stats.unprocessedEntries,
       threshold: 30,
       storage: WasteEntriesRepository.storageMode(),
-      latestRun,
-      registryHistory: registry.slice(-5).reverse(),
+      latestRun: registryInfo.latestRun || null,
+      registryHistory: registryInfo.registryHistory || [],
     });
   } catch (err) {
     console.error("[waste-entries] Retrain status error:", err.message);
@@ -148,14 +128,13 @@ router.get("/retrain-status", async (_req, res) => {
 // POST /api/waste-entries/trigger-retrain
 router.post("/trigger-retrain", async (_req, res) => {
   try {
-    const output = await runRetrainPipeline({ force: true });
-    const registry = getModelRegistry();
-    const latestRun = registry.length > 0 ? registry[registry.length - 1] : null;
+    const result = await runRetrainPipeline({ force: true });
+    const registryInfo = await fetchModelRegistry();
     return res.json({
       message: "Retraining pipeline executed.",
-      latestRun,
+      latestRun: registryInfo.latestRun || result,
       storage: WasteEntriesRepository.storageMode(),
-      rawOutput: output.trim(),
+      result,
     });
   } catch (err) {
     console.error("[waste-entries] Trigger retrain error:", err.message);

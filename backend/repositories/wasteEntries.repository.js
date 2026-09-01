@@ -234,7 +234,7 @@ class WasteEntriesRepository {
     }
     ensureJsonFile();
     fs.writeFileSync(DB_FILE, JSON.stringify(items, null, 2));
-    return items.length;
+    return items;
   }
 
   static async update(id, entryData) {

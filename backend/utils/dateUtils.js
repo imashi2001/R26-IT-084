@@ -1,15 +1,20 @@
 const fs = require("fs");
 const path = require("path");
 
-function loadHolidayCache() {
-  const cachePath = path.join(__dirname, "..", "..", "forecasting dashboard", "holiday_cache.json");
-
-  try {
-    const raw = fs.readFileSync(cachePath, "utf8");
-    return JSON.parse(raw);
-  } catch (error) {
-    return {};
+def loadHolidayCache() {
+  const candidates = [
+    path.join(__dirname, "..", "..", "forecasting dashboard", "holiday_cache.json"),
+    path.join(__dirname, "..", "holiday_cache.json"),
+  ];
+  for (const cachePath of candidates) {
+    try {
+      const raw = fs.readFileSync(cachePath, "utf8");
+      return JSON.parse(raw);
+    } catch {
+      /* try next */
+    }
   }
+  return {};
 }
 
 function shiftDate(dateStr, days) {

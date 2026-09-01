@@ -137,6 +137,7 @@ export function demoBinsNear(lat, lng, queryLabel = "Malabe") {
 
 export const POPULAR_AREAS = [
   "Malabe",
+  "Kaduwela",
   "Kottawa",
   "Battaramulla",
   "Nugegoda",

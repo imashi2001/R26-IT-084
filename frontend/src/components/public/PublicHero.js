@@ -4,7 +4,10 @@ import useGeoAutocomplete from "../../hooks/useGeoAutocomplete";
 import { POPULAR_AREAS } from "../../utils/publicBinStatus";
 import { BRAND } from "../BrandLogo";
 
-const HERO_VIDEO = "/videos/hero-bg.mov";
+const HERO_MP4 = "/videos/hero-bg.mp4";
+const HERO_MOV = "/videos/hero-bg.mov";
+const HERO_VIDEO =
+  (import.meta.env.VITE_HERO_VIDEO_URL || "").trim() || HERO_MP4;
 const HERO_POSTER = BRAND.heroDefault;
 
 export default function PublicHero({
@@ -81,8 +84,8 @@ export default function PublicHero({
           poster={HERO_POSTER}
           onError={() => setVideoOk(false)}
         >
-          <source src={HERO_VIDEO} type="video/quicktime" />
           <source src={HERO_VIDEO} type="video/mp4" />
+          <source src={HERO_MOV} type="video/quicktime" />
         </video>
       ) : null}
 

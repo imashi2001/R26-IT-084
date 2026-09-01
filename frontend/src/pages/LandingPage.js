@@ -173,6 +173,7 @@ export default function LandingPage() {
         if (!hit) {
           const fallbacks = {
             Malabe: [6.9147, 79.9729],
+            Kaduwela: [6.935, 79.983],
             Kottawa: [6.841, 79.965],
             Battaramulla: [6.898, 79.919],
             Nugegoda: [6.864, 79.899],
@@ -213,33 +214,49 @@ export default function LandingPage() {
     }
     setBusy(true);
     setError("");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        let label = "My location";
-        try {
-          const res = await fetch(
-            apiUrl(
-              `/geo/reverse?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(
-                longitude
-              )}`
-            )
-          );
-          const body = await res.json().catch(() => ({}));
-          if (res.ok && body.label) {
-            label = body.label;
-            setQuery(label);
-          }
-        } catch {
-          /* keep "My location" */
+
+    const finish = async (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const accuracyM = Number(accuracy);
+
+      // Desktop/WiFi geolocation is often wrong (e.g. shows Kandy instead of Malabe).
+      if (Number.isFinite(accuracyM) && accuracyM > 2000) {
+        setBusy(false);
+        setError(
+          `Your browser location looks inaccurate (about ±${Math.round(
+            accuracyM / 1000
+          )} km). Search your area — e.g. Malabe, Kaduwela, Nugegoda — for correct bins.`
+        );
+        return;
+      }
+
+      let label = "My location";
+      try {
+        const res = await fetch(
+          apiUrl(
+            `/geo/reverse?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(
+              longitude
+            )}`
+          )
+        );
+        const body = await res.json().catch(() => ({}));
+        if (res.ok && body.label) {
+          label = body.label;
+          setQuery(label);
         }
-        loadNearest(latitude, longitude, label);
-      },
+      } catch {
+        /* keep "My location" */
+      }
+      loadNearest(latitude, longitude, label);
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      finish,
       () => {
         setBusy(false);
         setError("Could not read your location. Allow GPS or search by area.");
       },
-      { enableHighAccuracy: true, timeout: 12000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
   }, [loadNearest, setQuery]);
 
@@ -268,7 +285,7 @@ export default function LandingPage() {
     : "bg-eco-bg text-ink-900";
 
   return (
-    <div className={`min-h-screen font-sans antialiased ${shell}`}>
+    <div className={`min-h-screen font-sans antialiased [&_a]:no-underline ${shell}`}>
       <PublicNav
         dark={dark}
         onToggleTheme={() => setDark((d) => !d)}

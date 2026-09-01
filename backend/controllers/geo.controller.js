@@ -82,10 +82,12 @@ async function reversePlace(req, res, next) {
     }
 
     const label =
+      data.address?.neighbourhood ||
       data.address?.suburb ||
-      data.address?.city ||
+      data.address?.city_district ||
       data.address?.town ||
       data.address?.village ||
+      data.address?.city ||
       data.address?.county ||
       data.display_name?.split(",")[0] ||
       "My location";

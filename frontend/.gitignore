@@ -18,8 +18,8 @@ pnpm-debug.log*
 
 # Large local hero media (keep on disk; do not commit ~100MB+ clips)
 public/videos/*.mov
-public/videos/*.mp4
 public/videos/*.webm
+!public/videos/hero-bg.mp4
 !public/videos/.gitkeep
 
 # Editor / OS

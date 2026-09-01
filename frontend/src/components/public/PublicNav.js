@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Bell, Menu, Moon, Sun, X } from "lucide-react";
 import BrandLogo from "../BrandLogo";
 
@@ -44,7 +43,7 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
       ].join(" ")}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:h-[4.5rem]">
-        <a href="#home" className="flex shrink-0 items-center">
+        <a href="#home" className="flex shrink-0 items-center no-underline">
           <BrandLogo variant="landing" theme={navTheme} />
         </a>
 
@@ -54,7 +53,7 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
               key={l.href}
               href={l.href}
               className={[
-                "rounded-lg px-3 py-2 text-sm font-semibold transition",
+                "rounded-lg px-3 py-2 text-sm font-semibold no-underline transition",
                 solid
                   ? dark
                     ? "text-ink-300 hover:bg-white/10 hover:text-white"
@@ -80,20 +79,6 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
           >
             Find nearest bin
           </button>
-
-          <Link
-            to="/login"
-            className={[
-              "hidden rounded-lg px-3 py-2 text-sm font-semibold transition md:inline-flex",
-              solid
-                ? dark
-                  ? "text-ink-300 hover:text-white"
-                  : "text-ink-600 hover:text-eco-primary"
-                : "text-white/85 hover:text-white",
-            ].join(" ")}
-          >
-            Staff login
-          </Link>
 
           <select
             aria-label="Language"
@@ -175,7 +160,7 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
                 className={[
-                  "rounded-xl px-4 py-3 text-sm font-semibold",
+                  "rounded-xl px-4 py-3 text-sm font-semibold no-underline",
                   dark
                     ? "text-ink-200 hover:bg-ink-900"
                     : "text-ink-700 hover:bg-eco-light",
@@ -194,16 +179,6 @@ export default function PublicNav({ dark, onToggleTheme, onFindClick }) {
             >
               Find nearest bin
             </button>
-            <Link
-              to="/login"
-              onClick={() => setMenuOpen(false)}
-              className={[
-                "rounded-xl px-4 py-3 text-sm font-semibold",
-                dark ? "text-ink-400" : "text-ink-500",
-              ].join(" ")}
-            >
-              Staff login →
-            </Link>
           </nav>
         </div>
       ) : null}

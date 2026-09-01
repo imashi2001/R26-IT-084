@@ -14,7 +14,16 @@ async function bootstrap() {
   const connected = await db.connect();
 
   if (connected) {
-    models.init();
+    const registry = models.init();
+
+    if (registry?.WasteEntry) {
+      try {
+        await registry.WasteEntry.sync();
+        console.log("[db] waste_entries table ready.");
+      } catch (err) {
+        console.error("[db] waste_entries sync failed:", err.message);
+      }
+    }
 
     if (DB_SYNC) {
       try {

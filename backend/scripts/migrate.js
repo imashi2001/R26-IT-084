@@ -15,8 +15,8 @@ const { DATABASE_URL } = require("../config/env");
 
 async function main() {
   if (!DATABASE_URL) {
-    console.error("[migrate] DATABASE_URL is required.");
-    process.exit(1);
+    console.log("[migrate] DATABASE_URL not set — skipping migrations.");
+    process.exit(0);
   }
 
   const sequelize = new Sequelize(DATABASE_URL, {

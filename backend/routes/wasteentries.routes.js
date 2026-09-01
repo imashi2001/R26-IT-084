@@ -81,7 +81,18 @@ router.post("/", async (req, res) => {
     });
   } catch (err) {
     console.error("[waste-entries] Create error:", err.message);
-    return res.status(500).json({ error: "Failed to save waste entry." });
+    const detail = err.message || "Unknown error";
+    let hint;
+    if (/doesn't exist|no such table|unknown table/i.test(detail)) {
+      hint =
+        "The waste_entries table is missing. Redeploy the backend (migrations run on start) or run: node scripts/migrate.js";
+    }
+    return res.status(500).json({
+      error: "Failed to save waste entry.",
+      detail,
+      hint,
+      storage: WasteEntriesRepository.storageMode(),
+    });
   }
 });
 

@@ -35,8 +35,8 @@ function writeJsonEntries(entries) {
 
 function getWasteEntryModel() {
   if (!db.isDbEnabled()) return null;
-  const models = modelsRegistry.getModels() || modelsRegistry.init();
-  return models?.WasteEntry || null;
+  const registry = modelsRegistry.getModels() || modelsRegistry.init();
+  return registry?.WasteEntry || null;
 }
 
 function useDatabase() {

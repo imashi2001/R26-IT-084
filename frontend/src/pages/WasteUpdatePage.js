@@ -173,7 +173,9 @@ export default function WasteUpdatePage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Submission failed");
+        throw new Error(
+          data.detail || data.hint || data.error || "Submission failed"
+        );
       }
 
       setSubmitSuccess(`Entry #${data.record.id} saved successfully! (${data.record.vehicle_no} · ${data.record.weight_kg} kg)`);

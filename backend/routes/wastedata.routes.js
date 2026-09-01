@@ -11,7 +11,6 @@
 const { Router } = require("express");
 const path = require("path");
 const fs = require("fs");
-const { execSync } = require("child_process");
 const {
   calculateLongWeekend,
   getHolidaysForDate,
@@ -26,6 +25,7 @@ const {
   STATUS_COLORS,
   STATUS_LABELS,
 } = require("../utils/wasteStatus");
+const { runForecastPredict } = require("../services/forecastModelClient");
 
 const router = Router();
 
@@ -68,7 +68,7 @@ function classifyDayType({ isWeekend, isHoliday, isLongWeekend, isPoya }) {
 }
 
 // ---------- GET /api/waste-data ----------
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   // Use selected date from frontend; default to today in Asia/Colombo.
   const dateStr = req.query.date || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
   const cache = loadHolidayCache();
@@ -134,31 +134,20 @@ router.get("/", (req, res) => {
     }
   }
 
-  // Write input.json, execute model, read output.json
-  const modelDir = path.join(__dirname, "../../forecasting dashboard");
-  const inputPath = path.join(modelDir, "input.json");
-  const outputPath = path.join(modelDir, "output.json");
-
+  // Run XGBoost model (Railway forecast-api or local Python fallback)
   let predictions = [];
   let modelError = null;
   let reliability = "reliable";
   let reliabilityNote = null;
 
   try {
-    fs.writeFileSync(inputPath, JSON.stringify(rows, null, 2));
-    execSync("python run_model.py", { cwd: modelDir, timeout: 30000 });
-    const rawText = fs.readFileSync(outputPath, "utf8");
-    const parsedOutput = JSON.parse(rawText);
-    if (parsedOutput.error) {
-      throw new Error(parsedOutput.error);
+    const modelOut = await runForecastPredict(rows, { mode: "auto" });
+    if (modelOut.error) {
+      throw new Error(modelOut.error);
     }
-    if (Array.isArray(parsedOutput)) {
-      predictions = parsedOutput;
-    } else if (parsedOutput.predictions) {
-      predictions = parsedOutput.predictions;
-      reliability = parsedOutput.reliability || "reliable";
-      reliabilityNote = parsedOutput.reliabilityNote || null;
-    }
+    predictions = modelOut.predictions || [];
+    reliability = modelOut.reliability || "reliable";
+    reliabilityNote = modelOut.reliabilityNote || null;
   } catch (err) {
     console.error("[waste-data] ML model execution failed:", err.message);
     modelError = err.message;

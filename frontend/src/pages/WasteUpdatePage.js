@@ -20,6 +20,11 @@ import {
   Save,
 } from "lucide-react";
 import { apiUrl } from "../utils/apiBase";
+import DashboardLayout from "../components/dashboard/DashboardLayout";
+import PageShell from "../components/dashboard/PageShell";
+import PageHeader from "../components/dashboard/PageHeader";
+import Card from "../components/dashboard/Card";
+import { btnPrimary, btnSecondary, btnGhost, inputClass, selectClass, labelClass, bannerTone } from "../components/dashboard/dashboardUi";
 import "./WasteUpdatePage.css";
 
 const LOCATIONS = [
@@ -265,33 +270,26 @@ export default function WasteUpdatePage() {
   });
 
   return (
-    <div className="wup-root">
-      {/* Header */}
-      <header className="wup-header">
-        <div className="wup-header-inner">
-          <button className="wup-back-btn" onClick={() => navigate("/forecast")}>
-            <ArrowLeft size={16} />
-            <span>Back to Forecast</span>
-          </button>
+    <DashboardLayout>
+      <PageShell>
+        <PageHeader
+          title="Waste Entry & Retraining"
+          subtitle="Record daily collection logs · validation-gated model updates"
+          actions={
+            <>
+              <button type="button" className={btnGhost} onClick={() => navigate("/forecast")}>
+                <ArrowLeft className="h-4 w-4" />
+                Back to Forecast
+              </button>
+              <button type="button" className={btnSecondary} onClick={() => setShowPastDataModal(true)}>
+                <Database className="h-4 w-4 text-brand-400" />
+                View Past Data
+              </button>
+            </>
+          }
+        />
 
-          <div>
-            <h1 className="wup-title">Waste Entry & Retraining Pipeline</h1>
-            <p className="wup-subtitle">Record daily waste collection logs · Automatic validation-gated model updates</p>
-          </div>
-
-          {/* Top-Right "View Past Data" Button */}
-          <button
-            className="wup-past-data-btn"
-            onClick={() => setShowPastDataModal(true)}
-            title="View and Manage Past Waste Entries"
-          >
-            <Database size={16} style={{ color: "#67e8f9" }} />
-            <span>View Past Data</span>
-          </button>
-        </div>
-      </header>
-
-      <div className="wup-content">
+      <div className="wup-content wup-content-themed">
         {/* Main Form Section */}
         <div className="wup-card wup-form-card">
           <div className="wup-card-title">
@@ -622,6 +620,8 @@ export default function WasteUpdatePage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+      </PageShell>
+    </DashboardLayout>
   );
 }

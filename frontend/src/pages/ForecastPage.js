@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   MapContainer,
   TileLayer,
@@ -13,7 +13,6 @@ import {
   Calendar,
   TrendingUp,
   MapPin,
-  Activity,
   Sun,
   RefreshCw,
   Info,
@@ -22,40 +21,28 @@ import {
   ChevronUp,
   PlusCircle,
 } from "lucide-react";
+import DashboardLayout from "../components/dashboard/DashboardLayout";
+import PageShell from "../components/dashboard/PageShell";
+import PageHeader from "../components/dashboard/PageHeader";
+import Card from "../components/dashboard/Card";
+import StatusBanner from "../components/dashboard/StatusBanner";
+import EmptyState from "../components/dashboard/EmptyState";
 import DashboardInsights from "../components/DashboardInsights";
-import "./ForecastPage.css";
+import {
+  LAYOUT,
+  MAP_TILE_DARK,
+  MAP_ATTRIBUTION,
+  badge,
+} from "../components/dashboard/dashboardTheme";
+import {
+  btnSecondary,
+  btnGhost,
+  labelClass,
+  bannerTone,
+  forecastStatusBadgeClass,
+  forecastStatusColor,
+} from "../components/dashboard/dashboardUi";
 import { apiUrl } from "../utils/apiBase";
-
-/* ─── Status utilities (single source from backend) ─────────────────────── */
-function statusColor(status) {
-  switch (status) {
-    case "VERY_HIGH": return "#ef4444";
-    case "HIGH":      return "#f97316";
-    case "NORMAL":    return "#22c55e";
-    case "LOW":       return "#3b82f6";
-    case "UNAVAILABLE":
-    default:          return "#eab308";
-  }
-}
-
-function statusBadgeStyle(status) {
-  const color = statusColor(status);
-  return {
-    background: `${color}22`,
-    color,
-    border: `1px solid ${color}55`,
-  };
-}
-
-function statusIcon(status) {
-  switch (status) {
-    case "VERY_HIGH": return "🔴";
-    case "HIGH":      return "🟠";
-    case "NORMAL":    return "🟢";
-    case "LOW":       return "🔵";
-    default:          return "⚪";
-  }
-}
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -67,89 +54,112 @@ function tomorrow() {
   return d.toISOString().slice(0, 10);
 }
 
-/* ─── StatCard ─────────────────────────────────────────────────────────── */
-function StatCard({ icon: Icon, label, value, sub, accent }) {
+function StatCard({ icon: Icon, label, value, sub, tone = "default" }) {
+  const toneClass =
+    tone === "danger"
+      ? "border-red-500/30 bg-red-500/10"
+      : tone === "warn"
+        ? "border-amber-500/30 bg-amber-500/10"
+        : tone === "holiday"
+          ? "border-violet-500/30 bg-violet-500/10"
+          : "border-slate-700/50 bg-slate-950/40";
+
   return (
-    <div className="fp-stat-card" style={{ borderColor: accent?.border || "rgba(71,85,105,0.6)", background: accent?.bg || "rgba(30,41,59,0.4)" }}>
-      <div className="fp-stat-icon" style={{ color: accent?.iconColor || "#67e8f9" }}>
-        <Icon size={16} />
+    <Card className={`flex items-center gap-3 p-4 ${toneClass}`}>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700/50 bg-slate-900/60 text-brand-400">
+        <Icon className="h-4 w-4" />
       </div>
-      <div className="fp-stat-text">
-        <span className="fp-stat-label">{label}</span>
-        <span className="fp-stat-value">{value}</span>
-        {sub && <span className="fp-stat-sub">{sub}</span>}
+      <div className="min-w-0">
+        <div className={labelClass}>{label}</div>
+        <div className="truncate text-sm font-bold text-slate-100">{value}</div>
+        {sub ? <div className="truncate text-xs text-slate-500">{sub}</div> : null}
       </div>
-    </div>
+    </Card>
   );
 }
 
-/* ─── InsightCard (KG-based, no fill-level) ────────────────────────────── */
 function InsightCard({ loc }) {
-  const color = statusColor(loc.status);
-  const badge = statusBadgeStyle(loc.status);
+  const color = forecastStatusColor(loc.status);
   const predicted = loc.predictedWasteKg;
   const baseline = loc.baseline;
-  const comparison = loc.comparison;
 
-  let contextLine = "";
-  if (loc.status === "VERY_HIGH" && baseline && comparison?.kgAboveP90 != null) {
-    const pctAbove = baseline.p90Kg > 0
-      ? ((comparison.kgAboveP90 / baseline.p90Kg) * 100).toFixed(1)
-      : "0";
-    contextLine = `${pctAbove}% above historical high threshold`;
-  } else if (loc.status === "HIGH" && baseline) {
+  let contextLine = "Forecast unavailable";
+  if (loc.status === "VERY_HIGH" && baseline?.p90Kg != null) {
+    const pct =
+      baseline.p90Kg > 0
+        ? (((loc.comparison?.kgAboveP90 || 0) / baseline.p90Kg) * 100).toFixed(1)
+        : "0";
+    contextLine = `${pct}% above historical high threshold`;
+  } else if (loc.status === "HIGH") {
     contextLine = "Within upper historical range";
-  } else if (loc.status === "NORMAL" && baseline) {
+  } else if (loc.status === "NORMAL") {
     contextLine = "Within normal historical range";
-  } else if (loc.status === "LOW" && baseline) {
+  } else if (loc.status === "LOW") {
     contextLine = "Below typical historical range";
-  } else {
-    contextLine = "Forecast unavailable";
   }
 
   return (
-    <div className="fp-insight-card" style={{ borderColor: `${color}55`, background: "rgba(15,23,42,0.6)" }}>
-      <div className="fp-insight-header">
-        <div className="fp-insight-title">
-          <span style={{ fontSize: 13, flexShrink: 0 }}>{statusIcon(loc.status)}</span>
-          <div>
-            <div className="fp-insight-name">{loc.name}</div>
-            <div className="fp-insight-region">{loc.region}</div>
-          </div>
+    <div
+      className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 transition hover:border-slate-600/60"
+      style={{ borderLeftColor: color, borderLeftWidth: 3 }}
+    >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-slate-100">{loc.name}</div>
+          <div className="text-xs text-slate-500">{loc.region}</div>
         </div>
-        <span className="fp-badge" style={badge}>{loc.statusLabel || loc.status}</span>
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${forecastStatusBadgeClass(loc.status)}`}
+        >
+          {loc.statusLabel || loc.status}
+        </span>
       </div>
-
-      {predicted !== null && predicted !== undefined ? (
+      {predicted != null ? (
         <>
-          <div className="fp-bar-row">
-            <span className="fp-bar-label">Predicted</span>
-            <span className="fp-bar-val" style={{ color }}>{predicted} KG</span>
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-500">Predicted</span>
+            <span className="font-bold" style={{ color }}>
+              {predicted} KG
+            </span>
           </div>
-          {baseline && (
-            <div className="fp-bar-row" style={{ marginTop: 2 }}>
-              <span className="fp-bar-label" style={{ fontSize: 10 }}>Typical (median): {baseline.medianKg} KG</span>
-              {baseline.p90Kg && (
-                <span className="fp-bar-label" style={{ fontSize: 10 }}>P90: {baseline.p90Kg} KG</span>
-              )}
+          {baseline ? (
+            <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+              <span>Median: {baseline.medianKg} KG</span>
+              <span>P90: {baseline.p90Kg} KG</span>
             </div>
-          )}
-          <div className="fp-bar-label" style={{ fontSize: 10, color: `${color}cc`, marginTop: 4 }}>
+          ) : null}
+          <div className="mt-1 text-[10px]" style={{ color: `${color}cc` }}>
             {contextLine}
           </div>
         </>
       ) : (
-        <div className="fp-bar-label" style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-          Prediction unavailable
-        </div>
+        <p className="text-xs text-slate-500">Prediction unavailable</p>
       )}
     </div>
   );
 }
 
-/* ─── ForecastPage ─────────────────────────────────────────────────────── */
+function InsightSection({ title, color, icon: Icon, items }) {
+  if (!items.length) return null;
+  return (
+    <div className="mb-3">
+      <div
+        className="mb-2 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
+        style={{ color }}
+      >
+        <Icon className="h-3 w-3" />
+        {title} ({items.length})
+      </div>
+      <div className="space-y-2">
+        {items.map((l) => (
+          <InsightCard key={l.id} loc={l} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ForecastPage() {
-  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(tomorrow());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -170,348 +180,291 @@ export default function ForecastPage() {
     }
   }, []);
 
-  useEffect(() => { fetchData(selectedDate); }, [selectedDate, fetchData]);
+  useEffect(() => {
+    fetchData(selectedDate);
+  }, [selectedDate, fetchData]);
 
   const summary = data?.summary || {};
   const locations = data?.locations || [];
-
-  // Group by status
   const veryHighLocs = locations.filter((l) => l.status === "VERY_HIGH");
   const highLocs = locations.filter((l) => l.status === "HIGH");
   const normalLocs = locations.filter((l) => l.status === "NORMAL");
   const lowLocs = locations.filter((l) => l.status === "LOW");
   const unavailableLocs = locations.filter((l) => l.status === "UNAVAILABLE");
 
+  const headerActions = (
+    <>
+      <Link to="/waste-update" className={btnSecondary}>
+        <PlusCircle className="h-4 w-4" />
+        Waste Update
+      </Link>
+      <label className="flex items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-950/50 px-3 py-2">
+        <Calendar className="h-4 w-4 text-brand-400" />
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="border-0 bg-transparent text-sm text-slate-100 outline-none [color-scheme:dark]"
+        />
+      </label>
+      <button
+        type="button"
+        className={btnGhost}
+        onClick={() => fetchData(selectedDate)}
+        disabled={loading}
+        title="Refresh"
+      >
+        <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+      </button>
+    </>
+  );
+
   return (
-    <div className="fp-root">
+    <DashboardLayout>
+      <PageShell>
+        <PageHeader
+          title="Municipal Waste Forecast"
+          subtitle="Location-based KG forecasts with holiday and long-weekend awareness"
+          actions={headerActions}
+        />
 
-      {/* ── HEADER ── */}
-      <header className="fp-header">
-        <div className="fp-header-glow" />
-        <div className="fp-header-inner">
-          <div>
-            <div className="fp-header-eyebrow">
-              <Activity size={14} style={{ color: "#67e8f9" }} />
-              <span>VisionWaste · Forecast Dashboard</span>
-            </div>
-            <h1 className="fp-title">Municipal Waste Forecasting Dashboard</h1>
-            <p className="fp-subtitle">Historical-data-driven XGBoost predictions · Sri Lanka</p>
+        {data?.reliability === "out_of_range" ? (
+          <StatusBanner
+            tone="warn"
+            text={
+              data?.reliabilityNote ||
+              "Selected date exceeds the reliable 12-month forecast window."
+            }
+          />
+        ) : null}
+
+        {error ? (
+          <div className={`rounded-xl border px-4 py-3 text-sm ${bannerTone("error")}`}>
+            <AlertTriangle className="mr-2 inline h-4 w-4" />
+            {error}
           </div>
-          <div className="fp-header-controls">
-            <button
-              className="fp-waste-update-btn"
-              onClick={() => navigate("/waste-update")}
-              title="Waste Entry & Retraining Pipeline"
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            icon={Calendar}
+            label="Selected date"
+            value={data?.selectedDate || selectedDate}
+            sub={
+              data?.isLongWeekend
+                ? `Long weekend · ${data.longWeekendDates?.join(" → ")}`
+                : data?.isWeekend
+                  ? "Weekend"
+                  : "Weekday"
+            }
+            tone={data?.isLongWeekend ? "holiday" : "default"}
+          />
+          <StatCard
+            icon={Sun}
+            label="Day type"
+            value={data?.dayType ? data.dayType.replace(/_/g, " ") : "—"}
+            tone={data?.isHoliday ? "warn" : "default"}
+          />
+          <StatCard
+            icon={TrendingUp}
+            label="Avg predicted waste"
+            value={data ? `${summary.averagePredictedWasteKg} KG` : "—"}
+            sub={
+              data
+                ? `Across ${summary.totalSites || locations.length} sites`
+                : ""
+            }
+          />
+          <StatCard
+            icon={BarChart3}
+            label="Status mix"
+            value={
+              data
+                ? `${summary.veryHighCount || 0} very high · ${summary.highCount || 0} high`
+                : "—"
+            }
+            sub={
+              data
+                ? `${summary.normalCount || 0} normal · ${summary.lowCount || 0} low`
+                : ""
+            }
+            tone={(summary.veryHighCount || 0) > 0 ? "danger" : "default"}
+          />
+        </div>
+
+        <div className={`${LAYOUT.opsGrid} min-h-[28rem]`}>
+          <Card className="relative xl:col-span-8 overflow-hidden p-0">
+            {loading ? (
+              <div className="absolute inset-0 z-[500] flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-sm">
+                <RefreshCw className="h-6 w-6 animate-spin text-brand-400" />
+                <span className="mt-2 text-sm text-slate-400">Fetching forecast…</span>
+              </div>
+            ) : null}
+            <MapContainer
+              center={[6.84, 79.92]}
+              zoom={11}
+              className="h-[28rem] w-full min-h-[20rem]"
+              zoomControl
             >
-              <PlusCircle size={16} />
-              <span>Waste Update</span>
-            </button>
-            <label className="fp-date-picker">
-              <Calendar size={14} style={{ color: "#67e8f9" }} />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="fp-date-input"
+              <TileLayer url={MAP_TILE_DARK} attribution={MAP_ATTRIBUTION} maxZoom={19} />
+              {locations.map((loc) => {
+                if (loc.lat == null || loc.lng == null) return null;
+                const markerColor = forecastStatusColor(loc.status);
+                return (
+                  <CircleMarker
+                    key={loc.id}
+                    center={[loc.lat, loc.lng]}
+                    radius={10}
+                    pathOptions={{
+                      fillColor: markerColor,
+                      color: markerColor,
+                      fillOpacity: 0.85,
+                      weight: 2,
+                    }}
+                  >
+                    <Tooltip sticky direction="top">
+                      <strong>{loc.name}</strong>
+                      <br />
+                      {loc.predictedWasteKg != null
+                        ? `${loc.predictedWasteKg} KG`
+                        : "Unavailable"}
+                      <br />
+                      {loc.statusLabel || loc.status}
+                    </Tooltip>
+                    <Popup>
+                      <div className="min-w-[12rem] text-sm leading-relaxed">
+                        <div className="font-bold">{loc.name}</div>
+                        <div>
+                          Predicted:{" "}
+                          <strong style={{ color: markerColor }}>
+                            {loc.predictedWasteKg != null
+                              ? `${loc.predictedWasteKg} KG`
+                              : "N/A"}
+                          </strong>
+                        </div>
+                        {loc.baseline ? (
+                          <div className="text-xs text-slate-600">
+                            Median {loc.baseline.medianKg} KG · P90{" "}
+                            {loc.baseline.p90Kg} KG
+                          </div>
+                        ) : null}
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                );
+              })}
+            </MapContainer>
+            <div className="absolute bottom-3 left-3 z-[400] max-w-[14rem] rounded-xl border border-slate-700/60 bg-slate-950/90 p-3 text-xs text-slate-400 backdrop-blur">
+              <div className="mb-2 flex items-center gap-1 font-semibold text-slate-300">
+                <Info className="h-3 w-3" /> Status legend
+              </div>
+              {[
+                ["Very high", "#ef4444"],
+                ["High", "#f97316"],
+                ["Normal", "#22c55e"],
+                ["Low", "#3b82f6"],
+              ].map(([label, color]) => (
+                <div key={label} className="mb-1 flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ background: color }}
+                  />
+                  {label}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="flex max-h-[28rem] flex-col overflow-hidden xl:col-span-4">
+            <div className="flex items-center justify-between border-b border-slate-700/50 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                <MapPin className="h-4 w-4 text-brand-400" />
+                Forecast insights
+              </div>
+              <span className={badge.info}>{locations.length} sites</span>
+            </div>
+
+            {data?.isLongWeekend ? (
+              <div className={`mx-3 mt-3 rounded-xl border px-3 py-2 text-xs ${bannerTone("info")}`}>
+                <strong>Long weekend:</strong> {data.triggerHoliday?.name} · max surge expected
+              </div>
+            ) : null}
+            {data?.isHoliday && !data?.isLongWeekend ? (
+              <div className={`mx-3 mt-3 rounded-xl border px-3 py-2 text-xs ${bannerTone("warn")}`}>
+                <strong>{data.holidays?.[0]?.name}</strong> — elevated waste expected
+              </div>
+            ) : null}
+
+            <div className="flex-1 overflow-y-auto p-3">
+              {!data && !loading ? (
+                <EmptyState
+                  title="Select a date"
+                  message="Pick a date to load forecasts."
+                />
+              ) : null}
+              {loading && !locations.length ? (
+                <div className="flex flex-col items-center py-10 text-slate-500">
+                  <RefreshCw className="h-5 w-5 animate-spin text-brand-400" />
+                  <span className="mt-2 text-xs">Loading…</span>
+                </div>
+              ) : null}
+              <InsightSection
+                title="Very high"
+                color="#f87171"
+                icon={AlertTriangle}
+                items={veryHighLocs}
               />
-            </label>
-            <button
-              className="fp-refresh-btn"
-              onClick={() => fetchData(selectedDate)}
-              disabled={loading}
-              title="Refresh"
-            >
-              <RefreshCw size={14} className={loading ? "fp-spin" : ""} style={{ color: "#67e8f9" }} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── RELIABILITY HORIZON BANNER ── */}
-      {data?.reliability === "out_of_range" && (
-        <div style={{ background: "rgba(234,179,8,0.15)", border: "1px solid #eab308", color: "#fef08a", padding: "12px 16px", borderRadius: 8, margin: "16px 24px", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertTriangle size={16} style={{ color: "#eab308", flexShrink: 0 }} />
-          <span><strong>Forecast Horizon Notice:</strong> {data?.reliabilityNote || "The selected date exceeds the 12-month reliable forecast horizon (2023-01 to 2026-12). Showing nearest reliable forecast."}</span>
-        </div>
-      )}
-
-      {/* ── SUMMARY BAR ── */}
-      <div className="fp-summary-bar">
-        <StatCard
-          icon={Calendar}
-          label="Selected Date"
-          value={data?.selectedDate || selectedDate}
-          sub={
-            data?.isLongWeekend
-              ? `🏖 Long Weekend (${data.longWeekendDates?.join(" → ")})`
-              : data?.isWeekend
-                ? "Weekend"
-                : "Weekday"
-          }
-          accent={
-            data?.isLongWeekend
-              ? { border: "rgba(139,92,246,0.55)", bg: "rgba(76,29,149,0.25)", iconColor: "#c4b5fd" }
-              : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
-          }
-        />
-        <StatCard
-          icon={Sun}
-          label="Day Type"
-          value={
-            data?.dayType
-              ? data.dayType.replace(/_/g, " ")
-              : "—"
-          }
-          accent={
-            data?.isLongWeekend
-              ? { border: "rgba(139,92,246,0.55)", bg: "rgba(76,29,149,0.25)", iconColor: "#c4b5fd" }
-              : data?.isHoliday
-                ? { border: "rgba(245,158,11,0.5)", bg: "rgba(120,53,15,0.25)", iconColor: "#fbbf24" }
-                : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
-          }
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Average Predicted Waste"
-          value={data ? `${summary.averagePredictedWasteKg} KG` : "—"}
-          sub={data ? `Across ${summary.totalSites || locations.length} monitoring sites` : ""}
-        />
-        <StatCard
-          icon={BarChart3}
-          label="Forecast Status"
-          value={
-            data
-              ? `${summary.veryHighCount || 0} Very High · ${summary.highCount || 0} High`
-              : "—"
-          }
-          sub={
-            data
-              ? `${summary.normalCount || 0} Normal · ${summary.lowCount || 0} Low · ${summary.totalSites || locations.length} sites`
-              : ""
-          }
-          accent={
-            (summary.veryHighCount || 0) > 0
-              ? { border: "rgba(239,68,68,0.5)", bg: "rgba(127,29,29,0.25)", iconColor: "#f87171" }
-              : (summary.highCount || 0) > 0
-                ? { border: "rgba(249,115,22,0.5)", bg: "rgba(124,45,18,0.25)", iconColor: "#fb923c" }
-                : { border: "rgba(71,85,105,0.5)", bg: "rgba(30,41,59,0.4)" }
-          }
-        />
-      </div>
-
-      {/* ── BODY ── */}
-      <div className="fp-body">
-
-        {/* MAP */}
-        <div className="fp-map-wrap">
-          {loading && (
-            <div className="fp-map-overlay">
-              <RefreshCw size={26} className="fp-spin" style={{ color: "#67e8f9" }} />
-              <span style={{ color: "#94a3b8", fontSize: 13, marginTop: 8 }}>Fetching forecast…</span>
+              <InsightSection
+                title="High"
+                color="#fb923c"
+                icon={ChevronUp}
+                items={highLocs}
+              />
+              <InsightSection
+                title="Normal"
+                color="#4ade80"
+                icon={Info}
+                items={normalLocs}
+              />
+              <InsightSection
+                title="Low"
+                color="#60a5fa"
+                icon={ChevronDown}
+                items={lowLocs}
+              />
+              <InsightSection
+                title="Unavailable"
+                color="#94a3b8"
+                icon={Info}
+                items={unavailableLocs}
+              />
             </div>
-          )}
-          {error && (
-            <div className="fp-error-banner">
-              <AlertTriangle size={14} /> {error}
-            </div>
-          )}
 
-          <MapContainer
-            center={[6.84, 79.92]}
-            zoom={11}
-            style={{ height: "100%", width: "100%" }}
-            zoomControl
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              maxZoom={19}
-            />
-
-            {locations.map((loc) => {
-              if (loc.lat === undefined || loc.lng === undefined) return null;
-
-              const markerColor = statusColor(loc.status);
-
-              return (
-                <CircleMarker
-                  key={loc.id}
-                  center={[loc.lat, loc.lng]}
-                  radius={10}
-                  pathOptions={{
-                    fillColor: markerColor,
-                    color: markerColor,
-                    fillOpacity: 0.8,
-                    weight: 2
-                  }}
-                >
-                  <Tooltip sticky direction="top">
-                    <b>{loc.name}</b><br />
-                    Predicted: {loc.predictedWasteKg != null ? `${loc.predictedWasteKg} KG` : "Unavailable"}<br />
-                    Status: <b>{loc.statusLabel || loc.status}</b>
-                  </Tooltip>
-                  <Popup>
-                    <div style={{ fontFamily: "system-ui", minWidth: 200, lineHeight: 1.6 }}>
-                      <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14 }}>{loc.name}</div>
-                      <div>Forecast date: <b>{loc.forecastDate || data?.selectedDate}</b></div>
-                      <div>Predicted waste: <b style={{ color: markerColor }}>{loc.predictedWasteKg != null ? `${loc.predictedWasteKg} KG` : "Unavailable"}</b></div>
-                      {loc.baseline && (
-                        <>
-                          <div>Typical daily waste (median): <b>{loc.baseline.medianKg} KG</b></div>
-                          <div>High threshold (P90): <b>{loc.baseline.p90Kg} KG</b></div>
-                        </>
-                      )}
-                      <div>Status: <span style={{ color: markerColor, fontWeight: 700 }}>{loc.statusLabel || loc.status}</span></div>
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              );
-            })}
-          </MapContainer>
-
-          {/* Legend */}
-          <div className="fp-legend">
-            <div className="fp-legend-title"><Info size={11} /> Waste Forecast Status</div>
-            {[
-              { color: "#ef4444", label: "Very High: ≥ location P90" },
-              { color: "#f97316", label: "High: Q3 to < P90" },
-              { color: "#22c55e", label: "Normal: Q1 to < Q3" },
-              { color: "#3b82f6", label: "Low: < location Q1" },
-              { color: "#eab308", label: "Unavailable" },
-            ].map(({ color, label }) => (
-              <div key={label} className="fp-legend-row">
-                <span className="fp-legend-dot" style={{ background: color }} />
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* INSIGHTS PANEL */}
-        <aside className="fp-panel">
-          <div className="fp-panel-header">
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <MapPin size={14} style={{ color: "#a78bfa" }} />
-              <span className="fp-panel-title">Forecast Insights</span>
-            </div>
-            <span className="fp-panel-count">{locations.length} sites</span>
-          </div>
-
-          {/* Long Weekend banner */}
-          {data?.isLongWeekend && (
-            <div className="fp-banner fp-banner-longweekend">
-              <span style={{ fontSize: 16, flexShrink: 0 }}>🏖</span>
-              <div>
-                <div className="fp-banner-title" style={{ color: "#c4b5fd" }}>Long Weekend</div>
-                <div className="fp-banner-sub">
-                  {data.triggerHoliday?.name} ({data.triggerHoliday?.primary_type})
-                  {" · "}{data.longWeekendDates?.join(" → ")}
-                </div>
-                <div className="fp-banner-sub" style={{ marginTop: 2, color: "#a78bfa" }}>
-                  Maximum waste surge expected across all hotspots
-                </div>
-              </div>
-            </div>
-          )}
-          {/* Holiday banner */}
-          {data?.isHoliday && !data?.isLongWeekend && (
-            <div className="fp-banner fp-banner-holiday">
-              <Sun size={13} style={{ color: "#fbbf24", flexShrink: 0 }} />
-              <div>
-                <div className="fp-banner-title">{data.holidays?.[0]?.name}</div>
-                <div className="fp-banner-sub">{data.holidays?.[0]?.primary_type} · Elevated waste expected</div>
-              </div>
-            </div>
-          )}
-          {/* Weekend banner */}
-          {data?.isWeekend && !data?.isHoliday && !data?.isLongWeekend && (
-            <div className="fp-banner fp-banner-weekend">
-              <Info size={12} style={{ color: "#38bdf8", flexShrink: 0 }} />
-              <span className="fp-banner-sub">Weekend — moderately elevated waste expected</span>
-            </div>
-          )}
-
-          <div className="fp-scroll">
-            {!data && !loading && (
-              <p style={{ color: "#64748b", fontSize: 13, textAlign: "center", marginTop: 40 }}>
-                Select a date to load insights.
-              </p>
-            )}
-            {loading && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginTop: 40 }}>
-                <RefreshCw size={18} className="fp-spin" style={{ color: "#67e8f9" }} />
-                <span style={{ color: "#64748b", fontSize: 12 }}>Loading…</span>
-              </div>
-            )}
-
-            {!loading && locations.length > 0 && (
-              <>
-                {veryHighLocs.length > 0 && (
-                  <div className="fp-section">
-                    <div className="fp-section-label" style={{ color: "#f87171" }}>
-                      <AlertTriangle size={10} /> Very High Forecasts ({veryHighLocs.length})
-                    </div>
-                    {veryHighLocs.map((l) => <InsightCard key={l.id} loc={l} />)}
-                  </div>
-                )}
-                {highLocs.length > 0 && (
-                  <div className="fp-section">
-                    <div className="fp-section-label" style={{ color: "#fb923c" }}>
-                      <ChevronUp size={10} /> High Forecasts ({highLocs.length})
-                    </div>
-                    {highLocs.map((l) => <InsightCard key={l.id} loc={l} />)}
-                  </div>
-                )}
-                {normalLocs.length > 0 && (
-                  <div className="fp-section">
-                    <div className="fp-section-label" style={{ color: "#4ade80" }}>
-                      <Info size={10} /> Normal Forecasts ({normalLocs.length})
-                    </div>
-                    {normalLocs.map((l) => <InsightCard key={l.id} loc={l} />)}
-                  </div>
-                )}
-                {lowLocs.length > 0 && (
-                  <div className="fp-section">
-                    <div className="fp-section-label" style={{ color: "#60a5fa" }}>
-                      <ChevronDown size={10} /> Low Forecasts ({lowLocs.length})
-                    </div>
-                    {lowLocs.map((l) => <InsightCard key={l.id} loc={l} />)}
-                  </div>
-                )}
-                {unavailableLocs.length > 0 && (
-                  <div className="fp-section">
-                    <div className="fp-section-label" style={{ color: "#94a3b8" }}>
-                      Unavailable ({unavailableLocs.length})
-                    </div>
-                    {unavailableLocs.map((l) => <InsightCard key={l.id} loc={l} />)}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Recommendation footer */}
-          {data && !loading && (
-            <div className="fp-rec">
-              <div className="fp-rec-label">Recommendation</div>
-              <p className="fp-rec-text">
+            {data && !loading ? (
+              <div className="border-t border-slate-700/50 bg-slate-950/40 px-4 py-3 text-xs leading-relaxed text-slate-400">
+                <div className={labelClass}>Recommendation</div>
                 {data.isLongWeekend
-                  ? `🏖 Long weekend detected (${data.triggerHoliday?.name}). Deploy maximum collection capacity across all hotspots for ${data.longWeekendDates?.join(", ")}.`
+                  ? `Long weekend — deploy maximum collection capacity for ${data.longWeekendDates?.join(", ")}.`
                   : veryHighLocs.length > 0
-                    ? `🔴 ${veryHighLocs.length} site(s) forecasting above historical P90. Prioritize collection at ${veryHighLocs.map((a) => a.region).join(", ")}.`
+                    ? `${veryHighLocs.length} site(s) above P90 — prioritize ${veryHighLocs.map((a) => a.region).join(", ")}.`
                     : highLocs.length > 0
-                      ? `🟠 ${highLocs.length} site(s) in upper historical range. Pre-position vehicles near ${highLocs.map((w) => w.region).join(", ")}.`
-                      : "✅ All sites within normal or low range. Maintain scheduled routes."}
-              </p>
-            </div>
-          )}
-        </aside>
-      </div>
+                      ? `Pre-position vehicles near ${highLocs.map((w) => w.region).join(", ")}.`
+                      : "All sites within normal or low range — maintain scheduled routes."}
+              </div>
+            ) : null}
+          </Card>
+        </div>
 
-      {/* ── ADVANCED INSIGHTS SECTION ── */}
-      <div className="fp-insights-section">
-        <DashboardInsights selectedDate={selectedDate} locationsData={data?.locations} />
-      </div>
-    </div>
+        <Card>
+          <Card.Header title="Trend & composition analytics" subtitle="Historical baselines and category breakdown" />
+          <Card.Body className="mt-0">
+            <DashboardInsights
+              selectedDate={selectedDate}
+              locationsData={data?.locations}
+            />
+          </Card.Body>
+        </Card>
+      </PageShell>
+    </DashboardLayout>
   );
 }

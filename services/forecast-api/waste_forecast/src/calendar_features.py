@@ -1,32 +1,81 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
 
-def get_holiday_cache_path() -> Path:
-    file_dir = Path(__file__).resolve().parent
-    workspace = file_dir.parents[2] if len(file_dir.parents) > 2 else Path.cwd()
-    for candidate in [
-        file_dir.parents[1] / "data" / "holiday_cache.json",
-        workspace / "backend" / "holiday_cache.json",
-        workspace / "forecasting dashboard" / "holiday_cache.json",
-        file_dir.parents[1] / "forecasting dashboard" / "holiday_cache.json",
-        file_dir.parents[2] / "forecasting dashboard" / "holiday_cache.json",
-        Path.cwd() / "holiday_cache.json",
-        Path.cwd() / "forecasting dashboard" / "holiday_cache.json",
-    ]:
-        if candidate.exists():
-            return candidate
-    return file_dir.parents[1] / "data" / "holiday_cache.json"
 
-HOLIDAY_CACHE_PATH = get_holiday_cache_path()
+def _workspace_root() -> Path:
+    file_dir = Path(__file__).resolve().parent
+    default = file_dir.parents[2] if len(file_dir.parents) > 2 else Path.cwd()
+    return Path(os.environ.get("WORKSPACE_ROOT", default)).resolve()
+
+
+def _waste_forecast_root() -> Path:
+    for key in ("WASTE_FORECAST_ROOT", "WASTE_FORECAST_DIR"):
+        raw = os.environ.get(key, "").strip()
+        if raw:
+            root = Path(raw).resolve()
+            if root.exists():
+                return root
+
+    file_dir = Path(__file__).resolve().parent
+    # Standard layout: .../waste_forecast/src/calendar_features.py
+    if file_dir.name == "src":
+        pkg = file_dir.parent
+        if (pkg / "models").is_dir() or (pkg / "data").is_dir():
+            return pkg
+
+    workspace = _workspace_root()
+    nested = workspace / "waste_forecast"
+    if nested.is_dir():
+        return nested
+
+    # Flat layout: /app/src + /app/models (legacy Railpack copies)
+    if file_dir.name == "src" and (file_dir.parent / "models").is_dir():
+        return file_dir.parent
+
+    return file_dir.parent
+
+
+def get_holiday_cache_path() -> Path:
+    explicit = os.environ.get("HOLIDAY_CACHE_PATH", "").strip()
+    if explicit:
+        return Path(explicit).resolve()
+
+    wf_root = _waste_forecast_root()
+    workspace = _workspace_root()
+
+    for candidate in [
+        wf_root / "data" / "holiday_cache.json",
+        workspace / "waste_forecast" / "data" / "holiday_cache.json",
+        workspace / "backend" / "holiday_cache.json",
+        workspace / "data" / "holiday_cache.json",
+        workspace / "forecasting dashboard" / "holiday_cache.json",
+        Path.cwd() / "waste_forecast" / "data" / "holiday_cache.json",
+        Path.cwd() / "holiday_cache.json",
+    ]:
+        if candidate.is_file():
+            return candidate.resolve()
+
+    return (wf_root / "data" / "holiday_cache.json").resolve()
+
+
 QUALIFYING_HOLIDAY_TYPES = {"National holiday"}
 
 
-def load_holiday_cache(cache_path: str | Path = None) -> pd.DataFrame:
-    cache_path = cache_path or get_holiday_cache_path()
+def load_holiday_cache(cache_path: str | Path | None = None) -> pd.DataFrame:
+    cache_path = Path(cache_path or get_holiday_cache_path())
+    if not cache_path.is_file():
+        tried = get_holiday_cache_path()
+        raise FileNotFoundError(
+            f"Holiday cache not found at {cache_path}. "
+            f"Set HOLIDAY_CACHE_PATH or bundle waste_forecast/data/holiday_cache.json "
+            f"(expected near {tried})."
+        )
+
     with open(cache_path, "r", encoding="utf-8") as fh:
         payload = json.load(fh)
 
@@ -100,7 +149,7 @@ def detect_long_weekend_runs(calendar: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_daily_calendar(start_date: str = "2023-01-01", end_date: str = "2025-12-31") -> pd.DataFrame:
-    holiday_df = load_holiday_cache(HOLIDAY_CACHE_PATH)
+    holiday_df = load_holiday_cache()
     calendar = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
     calendar["year"] = calendar["date"].dt.year
     calendar["month"] = calendar["date"].dt.month

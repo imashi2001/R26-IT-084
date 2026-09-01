@@ -25,6 +25,12 @@ WASTE_FORECAST_DIR = WORKSPACE_ROOT / "waste_forecast"
 if not WASTE_FORECAST_DIR.exists():
     WASTE_FORECAST_DIR = APP_ROOT / "waste_forecast"
 
+os.environ.setdefault("WORKSPACE_ROOT", str(WORKSPACE_ROOT))
+os.environ.setdefault("WASTE_FORECAST_ROOT", str(WASTE_FORECAST_DIR))
+_holiday_cache = WASTE_FORECAST_DIR / "data" / "holiday_cache.json"
+if _holiday_cache.is_file():
+    os.environ.setdefault("HOLIDAY_CACHE_PATH", str(_holiday_cache))
+
 sys.path.insert(0, str(WASTE_FORECAST_DIR))
 sys.path.insert(0, str(WASTE_FORECAST_DIR / "src"))
 
@@ -78,9 +84,19 @@ def root() -> dict[str, Any]:
 @app.get("/health")
 def health() -> dict[str, Any]:
     model_path = WASTE_FORECAST_DIR / "models" / "model.json"
-    ok = model_path.exists()
-    err = None if ok else f"Missing model at {model_path}"
-    return {"ok": ok, "model_path": str(model_path), "error": err}
+    holiday_path = WASTE_FORECAST_DIR / "data" / "holiday_cache.json"
+    ok = model_path.is_file() and holiday_path.is_file()
+    err = None
+    if not model_path.is_file():
+        err = f"Missing model at {model_path}"
+    elif not holiday_path.is_file():
+        err = f"Missing holiday cache at {holiday_path}"
+    return {
+        "ok": ok,
+        "model_path": str(model_path),
+        "holiday_cache_path": str(holiday_path),
+        "error": err,
+    }
 
 
 @app.post("/predict")

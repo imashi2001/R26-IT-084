@@ -1,6 +1,6 @@
 /** Remote ESP32 DFPlayer audio (poll-based command queue). */
 
-export const AUDIO_TEST_TIMEOUT_MS = 45_000;
+export const AUDIO_TEST_TIMEOUT_MS = 90_000;
 export const AUDIO_TEST_POLL_MS = 1_500;
 
 function sleep(ms) {
@@ -12,7 +12,7 @@ async function waitForCommand({ authFetch, commandId, onStatus, successMsg }) {
     if (typeof onStatus === "function") onStatus(msg);
   };
 
-  say("Waiting for ESP32...");
+  say("Command queued. Waiting for the next ESP32 upload...");
   const deadline = Date.now() + AUDIO_TEST_TIMEOUT_MS;
 
   while (Date.now() < deadline) {

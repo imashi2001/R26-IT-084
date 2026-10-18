@@ -34,6 +34,7 @@ const modelClient = require("../services/modelClient");
 const captureService = require("../services/captureService");
 const latestState = require("../services/latestState");
 const deviceService = require("../services/deviceService");
+const deviceCommandService = require("../services/deviceCommandService");
 const audioTriggerService = require("../services/audioTriggerService");
 const litteringAlertService = require("../services/litteringAlertService");
 const litterSeverityAlertService = require("../services/litterSeverityAlertService");
@@ -643,6 +644,23 @@ async function predict(req, res, next) {
     // so the camera is free in ~2s instead of waiting ~30s for every model.
     if (isEsp32Source) {
       const timestamp = new Date().toISOString();
+      let pendingAudio = {};
+      if (device?.esp32_id) {
+        try {
+          const pending = await deviceCommandService.pollNextCommand(
+            device.esp32_id
+          );
+          if (pending?.command) {
+            pendingAudio = {
+              audio_command_id: pending.command.command_id,
+              audio_action: pending.command.action || pending.command.command,
+              audio_track: pending.command.track,
+            };
+          }
+        } catch (cmdErr) {
+          console.warn("[predict] pending audio attach skipped:", cmdErr.message);
+        }
+      }
       res.json({
         accepted: true,
         analyzing: true,
@@ -660,6 +678,7 @@ async function predict(req, res, next) {
         bridge_instance_id: bridgeInstanceId,
         source_type: sourceType,
         capture_id: savedCapture?.id || null,
+        ...pendingAudio,
       });
       setImmediate(() => {
         finishPredictAnalysis(analysisInput).catch((err) => {

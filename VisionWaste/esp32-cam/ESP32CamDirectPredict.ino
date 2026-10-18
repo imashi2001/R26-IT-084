@@ -52,7 +52,7 @@ const char* ESP32_ID = "esp-cam-1";
 #define PIR_PIN 14
 
 const unsigned long PIR_WARMUP_TIME = 60000;
-const unsigned long PIR_CAPTURE_INTERVAL = 8000;
+const unsigned long PIR_CAPTURE_INTERVAL = 30000;
 const unsigned long PIR_REARM_LOW_TIME = 1000;
 const unsigned long PIR_HIGH_DEBOUNCE_TIME = 150;
 
@@ -141,6 +141,7 @@ bool enqueueCapture(const char* reason);
 void performPredictUpload(uint8_t* jpegData, size_t jpegLen);
 void uploadWorkerTask(void* param);
 void checkForCommand();
+void handleQueuedCommand(const String& response, const char* source);
 bool acknowledgeCommand(const String& commandId, const String& status,
                         const String& errorMessage = "");
 
@@ -432,9 +433,84 @@ bool acknowledgeCommandWithRetry(const String& commandId, const String& status,
 // COMMAND POLL (dedicated HTTPS client — never blocked by /predict)
 // =====================================================
 
+void handleQueuedCommand(const String& response, const char* source)
+{
+  if (response.length() == 0) return;
+  if (response.indexOf("\"command\":null") >= 0 &&
+      response.indexOf("audio_action") < 0) {
+    return;
+  }
+
+  String commandId = getJsonString(response, "audio_command_id");
+  if (commandId.length() == 0) commandId = getJsonString(response, "command_id");
+  if (commandId.length() == 0) commandId = getJsonString(response, "id");
+
+  String command = getJsonString(response, "audio_action");
+  if (command.length() == 0) command = getJsonString(response, "action");
+  if (command.length() == 0) command = getJsonString(response, "command");
+
+  int track = getJsonInt(response, "audio_track");
+  if (track <= 0) track = getJsonInt(response, "track");
+
+  if (command.length() == 0 && commandId.length() == 0) return;
+
+  Serial.printf("[COMMAND] via %s id=%s cmd=%s track=%d\n",
+                source, commandId.c_str(), command.c_str(), track);
+
+  if (command == "PLAY_AUDIO") {
+    if (commandId.length() == 0 || track <= 0) {
+      if (commandId.length() > 0) {
+        acknowledgeCommandWithRetry(commandId, "failed", "Invalid audio track");
+      }
+      return;
+    }
+
+    const bool alreadyPlayed = (commandId == lastPlayedCommandId);
+    bool played = alreadyPlayed;
+
+    if (alreadyPlayed) {
+      Serial.println("[COMMAND] same PLAY_AUDIO id — ACK only (no replay)");
+    } else {
+      Serial.printf("[COMMAND] PLAY_AUDIO track=%d id=%s\n",
+                    track, commandId.c_str());
+      played = playAudioCommand((uint16_t)track);
+      if (played) {
+        lastPlayedCommandId = commandId;
+        audioBusyUntil = millis() + AUDIO_LOCK_MS;
+      }
+    }
+
+    acknowledgeCommandWithRetry(
+      commandId,
+      played ? "completed" : "failed",
+      played ? "" : "DFPlayer play failed"
+    );
+    return;
+  }
+
+  if (command == "STOP_AUDIO") {
+    if (commandId.length() == 0) return;
+    Serial.println("[COMMAND] STOP_AUDIO");
+    lastPlayedCommandId = "";
+    audioBusyUntil = 0;
+    bool stopped = stopMP3();
+    acknowledgeCommandWithRetry(commandId, stopped ? "completed" : "failed",
+                                stopped ? "" : "DFPlayer stop failed");
+    return;
+  }
+
+  if (command.length() > 0 && commandId.length() > 0) {
+    acknowledgeCommandWithRetry(commandId, "failed", "Unknown command");
+  }
+}
+
 void checkForCommand()
 {
   if (WiFi.status() != WL_CONNECTED) return;
+  if (uploadWorkerBusy) {
+    Serial.println("[COMMAND] poll skipped — upload in progress");
+    return;
+  }
 
   Serial.println("[COMMAND] polling...");
 
@@ -457,58 +533,7 @@ void checkForCommand()
     String response = http.getString();
     http.end();
     Serial.printf("[COMMAND] poll OK (%lu ms)\n", millis() - t0);
-
-    if (response.indexOf("\"command\":null") >= 0) {
-      return;
-    }
-
-    String commandId = getJsonString(response, "command_id");
-    if (commandId.length() == 0) commandId = getJsonString(response, "id");
-    String command = getJsonString(response, "action");
-    if (command.length() == 0) command = getJsonString(response, "command");
-    int track = getJsonInt(response, "track");
-
-    Serial.printf("[COMMAND] raw=%s\n", response.c_str());
-    Serial.printf("[COMMAND] received id=%s cmd=%s track=%d\n",
-                  commandId.c_str(), command.c_str(), track);
-
-    if (command == "PLAY_AUDIO") {
-      if (commandId.length() == 0 || track <= 0) {
-        if (commandId.length() > 0) {
-          acknowledgeCommandWithRetry(commandId, "failed", "Invalid audio track");
-        }
-        return;
-      }
-
-      const bool alreadyPlayed = (commandId == lastPlayedCommandId);
-      bool played = alreadyPlayed;
-
-      if (alreadyPlayed) {
-        Serial.println("[COMMAND] same PLAY_AUDIO id — ACK only (no replay)");
-      } else {
-        Serial.printf("[COMMAND] PLAY_AUDIO track=%d id=%s\n",
-                      track, commandId.c_str());
-        played = playAudioCommand((uint16_t)track);
-        if (played) {
-          lastPlayedCommandId = commandId;
-          audioBusyUntil = millis() + AUDIO_LOCK_MS;
-        }
-      }
-
-      const char* ackStatus = played ? "completed" : "failed";
-      const char* ackError = played ? "" : "DFPlayer play failed";
-      acknowledgeCommandWithRetry(commandId, ackStatus, ackError);
-    } else if (command == "STOP_AUDIO") {
-      if (commandId.length() == 0) return;
-      Serial.println("[COMMAND] STOP_AUDIO");
-      lastPlayedCommandId = "";
-      audioBusyUntil = 0;
-      bool stopped = stopMP3();
-      acknowledgeCommandWithRetry(commandId, stopped ? "completed" : "failed",
-                                  stopped ? "" : "DFPlayer stop failed");
-    } else if (command.length() > 0 && commandId.length() > 0) {
-      acknowledgeCommandWithRetry(commandId, "failed", "Unknown command");
-    }
+    handleQueuedCommand(response, "poll");
     return;
   }
 
@@ -611,12 +636,13 @@ void performPredictUpload(uint8_t* jpegData, size_t jpegLen)
 
   if (httpCode > 0) {
     String response = http.getString();
-    if (response.length() > 200) {
-      response = response.substring(0, 200) + "...";
-    }
     if (httpCode >= 200 && httpCode < 300) {
       Serial.println("[UPLOAD] OK — backend accepted image");
+      handleQueuedCommand(response, "predict");
     } else {
+      if (response.length() > 200) {
+        response = response.substring(0, 200) + "...";
+      }
       Serial.printf("[UPLOAD] backend error: %s\n", response.c_str());
     }
   } else {
@@ -934,20 +960,6 @@ void loop()
                     uploadWorkerBusy ? "YES" : "NO",
                     pendingCapture ? "YES" : "NO");
     }
-  }
-
-  // Fallback photo if PIR never fires (still uploads while camera is healthy).
-  static unsigned long lastWatchdogCapture = 0;
-  if (lastWatchdogCapture == 0) lastWatchdogCapture = millis();
-  if (WiFi.status() == WL_CONNECTED &&
-      millis() - lastWatchdogCapture >= 20000 &&
-      !uploadWorkerBusy) {
-    lastWatchdogCapture = millis();
-    Serial.println("[CAMERA] watchdog capture (20s, PIR still quiet)");
-    enqueueCapture("watchdog");
-  }
-  if (uploadWorkerBusy) {
-    lastWatchdogCapture = millis();
   }
 
   delay(10);

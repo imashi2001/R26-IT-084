@@ -11,7 +11,7 @@ class MapConfig {
 
   static const String _compileTimeKey = String.fromEnvironment(
     'MAPTILER_KEY',
-    defaultValue: '',
+    defaultValue: 'gN2oH17HaUqAxYaZMrTs',
   );
 
   static String _runtimeKey = '';

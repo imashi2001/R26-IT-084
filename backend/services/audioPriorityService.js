@@ -64,6 +64,31 @@ function isSignificantLitter(litter) {
   return Number.isFinite(lsi) && lsi > 30;
 }
 
+function litterDetectionCount(litter) {
+  if (!litter || litter.error) return 0;
+  if (Number.isFinite(Number(litter.detection_count))) {
+    return Math.max(0, Math.trunc(Number(litter.detection_count)));
+  }
+  if (Array.isArray(litter.detections)) return litter.detections.length;
+  return 0;
+}
+
+function maxLitterBoxConfidence(litter) {
+  if (!litter || litter.error || !Array.isArray(litter.detections)) return 0;
+  return litter.detections.reduce(
+    (m, d) => Math.max(m, Number(d.confidence) || 0),
+    0
+  );
+}
+
+/** Any litter box / LSI / severity — user wants this to play illegal dumping. */
+function isLitterDetected(litter) {
+  if (!litter || litter.error) return false;
+  if (isSignificantLitter(litter)) return true;
+  if (litterDetectionCount(litter) > 0) return true;
+  return maxLitterBoxConfidence(litter) > 0;
+}
+
 function isLitteringEvent(litteringAction) {
   if (!litteringAction || litteringAction.error) return false;
   const detected = Boolean(
@@ -143,7 +168,7 @@ function matchesCustomCondition(condition, risk) {
 
 function noIssues(input) {
   if (isLitteringEvent(input.littering_action)) return false;
-  if (isSignificantLitter(litterPayload(input))) return false;
+  if (isLitterDetected(litterPayload(input))) return false;
   if (isOverflow(input.bin_fill_level, input.fill_percentage, input.bin_fill)) {
     return false;
   }
@@ -179,12 +204,14 @@ function collectAudioCandidates(input = {}) {
   const fillConf = wasteFullConfidence(input);
   const litterSev = litterPayload(input);
   const litterSevConf = litterSeverityConfidence(litterSev);
-  const hasLitterIssue = isSignificantLitter(litterSev);
+  const hasLitterIssue = isLitterDetected(litterSev);
 
-  // Littering event OR litter-on-ground → illegal dumping (track 0001).
+  // Littering event OR any litter detection → illegal dumping (track 0001).
   if (isLitteringEvent(input.littering_action) || hasLitterIssue) {
     const fromAction = isLitteringEvent(input.littering_action) ? litterConf : 0;
-    const fromLitter = hasLitterIssue ? litterSevConf : 0;
+    const fromLitter = hasLitterIssue
+      ? Math.max(litterSevConf, maxLitterBoxConfidence(litterSev), 0.55)
+      : 0;
     const fromLitterWins = fromLitter > fromAction;
     candidates.push({
       scenario_key: "illegal_dumping",
@@ -281,7 +308,8 @@ function resolveAudioScenario(input = {}) {
   const candidates = collectAudioCandidates(input);
   if (!candidates.length) return null;
 
-  const winner = [...candidates].sort(compareCandidates)[0];
+  const illegal = candidates.find((c) => c.scenario_key === "illegal_dumping");
+  const winner = illegal || [...candidates].sort(compareCandidates)[0];
   return {
     scenario_key: winner.scenario_key,
     label: winner.label,
@@ -303,6 +331,7 @@ module.exports = {
   collectAudioCandidates,
   isLitteringEvent,
   isSignificantLitter,
+  isLitterDetected,
   litterSeverityConfidence,
   isOverflow,
   animalCount,

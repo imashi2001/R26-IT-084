@@ -78,31 +78,29 @@ async function cancelActiveCommands(esp32Id, reason) {
 }
 
 /**
- * Skip auto PLAY_AUDIO if a command is already in flight or played recently.
+ * Skip only a duplicate of the same track that just finished.
+ * Stale pending/sent commands are replaced by createPlayAudioCommand.
  */
-async function shouldSkipAutoPlay(esp32IdRaw) {
+async function shouldSkipAutoPlay(esp32IdRaw, track) {
   const models = ensureModels();
   if (!models) return true;
   const { DeviceCommand } = models;
   const esp32Id = String(esp32IdRaw || "").trim();
   if (!esp32Id) return true;
 
-  const active = await DeviceCommand.findOne({
-    where: {
-      esp32_id: esp32Id,
-      status: { [Op.in]: ACTIVE_STATUSES },
-    },
-  });
-  if (active) return true;
+  const trackNum = Number.isFinite(Number(track)) ? Math.trunc(Number(track)) : null;
+  const since = new Date(Date.now() - Math.min(AUDIO_TRIGGER_COOLDOWN_MS, 12_000));
+  const where = {
+    esp32_id: esp32Id,
+    command: "PLAY_AUDIO",
+    status: "completed",
+    completed_at: { [Op.gte]: since },
+  };
+  if (trackNum != null) where.track = trackNum;
 
-  const since = new Date(Date.now() - AUDIO_TRIGGER_COOLDOWN_MS);
   const recent = await DeviceCommand.findOne({
-    where: {
-      esp32_id: esp32Id,
-      command: "PLAY_AUDIO",
-      created_at: { [Op.gte]: since },
-    },
-    order: [["created_at", "DESC"]],
+    where,
+    order: [["completed_at", "DESC"]],
   });
   return Boolean(recent);
 }

@@ -66,8 +66,14 @@ async function maybeQueueFromPredict(input) {
   }
 
   const esp32Id = deviceCommandService.audioTargetId(device);
-  const skip = await deviceCommandService.shouldSkipAutoPlay(esp32Id);
+  const skip = await deviceCommandService.shouldSkipAutoPlay(
+    esp32Id,
+    resolved.track
+  );
   if (skip) {
+    console.log(
+      `[audioTrigger] skip duplicate track=${resolved.track} for ${esp32Id}`
+    );
     return { command: null, resolved };
   }
 

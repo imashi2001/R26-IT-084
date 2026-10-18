@@ -47,6 +47,13 @@ async function updateDevice(id, patch) {
   return row.toJSON();
 }
 
+function normalizeEsp32Id(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+}
+
 async function findDeviceByEsp32Id(esp32Id) {
   const models = ensureModels();
   if (!models || !esp32Id) return null;
@@ -62,6 +69,17 @@ async function findDeviceByEsp32Id(esp32Id) {
       where: where(fn("LOWER", col("esp32_id")), raw.toLowerCase()),
     });
   }
+  if (!row) {
+    const want = normalizeEsp32Id(raw);
+    if (want) {
+      const all = await Device.findAll({
+        where: {
+          esp32_id: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }] },
+        },
+      });
+      row = all.find((d) => normalizeEsp32Id(d.esp32_id) === want) || null;
+    }
+  }
   return row ? row.toJSON() : null;
 }
 
@@ -70,19 +88,7 @@ async function findDeviceIdForPredict(
   incomingBridgeRaw,
   { bypassBridgeCheck = false } = {}
 ) {
-  const models = ensureModels();
-  if (!models || !esp32Id) return null;
-
-  const { Device } = models;
-  const raw = String(esp32Id).trim();
-  let row = await Device.findOne({
-    where: { esp32_id: raw },
-  });
-  if (!row) {
-    row = await Device.findOne({
-      where: where(fn("LOWER", col("esp32_id")), raw.toLowerCase()),
-    });
-  }
+  const row = await findDeviceByEsp32Id(esp32Id);
   if (!row) return null;
 
   const incoming = incomingBridgeRaw

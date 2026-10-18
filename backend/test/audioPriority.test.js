@@ -25,13 +25,10 @@ describe("resolveAudioScenario by highest confidence", () => {
     assert.ok(out.confidence >= 0.9);
   });
 
-  it("picks overflow when fill confidence beats littering", () => {
+  it("picks overflow when fill is the only issue", () => {
     const out = audioPriorityService.resolveAudioScenario({
       settings: baseSettings,
-      littering_action: {
-        event_detected: true,
-        max_confidence: 0.55,
-      },
+      littering_action: { event_detected: false },
       bin_fill: {
         predictions: [{ label: "overflow", confidence: 0.91 }],
       },
@@ -39,6 +36,24 @@ describe("resolveAudioScenario by highest confidence", () => {
     });
     assert.equal(out.scenario_key, "waste_full");
     assert.ok(out.confidence >= 0.9);
+  });
+
+  it("plays illegal_dumping for LOW litter with detections", () => {
+    const out = audioPriorityService.resolveAudioScenario({
+      settings: baseSettings,
+      littering_action: { event_detected: false },
+      litter_severity: {
+        severity: "LOW",
+        lsi: 22,
+        detection_count: 2,
+        detections: [{ confidence: 0.44 }, { confidence: 0.42 }],
+      },
+      animal: { detections: [{ label: "cat", confidence: 0.64 }] },
+      bin_fill_level: "Empty",
+      bin_fill: { predictions: [{ label: "empty", confidence: 0.8 }] },
+    });
+    assert.equal(out.scenario_key, "illegal_dumping");
+    assert.equal(out.track, baseSettings.tracks.illegal_dumping);
   });
 
   it("picks animal when it has the highest confidence", () => {

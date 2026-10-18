@@ -77,9 +77,11 @@ async function cancelActiveCommands(esp32Id, reason) {
   return count;
 }
 
+const AUTO_PLAY_MAX_PER_WINDOW = 2;
+
 /**
- * Skip only a duplicate of the same track that just finished.
- * Stale pending/sent commands are replaced by createPlayAudioCommand.
+ * Same track may play at most twice in AUDIO_TRIGGER_COOLDOWN_MS (default 60s).
+ * Extra PIR bursts are dropped and leftover queued commands are cancelled.
  */
 async function shouldSkipAutoPlay(esp32IdRaw, track) {
   const models = ensureModels();
@@ -89,20 +91,39 @@ async function shouldSkipAutoPlay(esp32IdRaw, track) {
   if (!esp32Id) return true;
 
   const trackNum = Number.isFinite(Number(track)) ? Math.trunc(Number(track)) : null;
-  const since = new Date(Date.now() - Math.min(AUDIO_TRIGGER_COOLDOWN_MS, 12_000));
-  const where = {
-    esp32_id: esp32Id,
-    command: "PLAY_AUDIO",
-    status: "completed",
-    completed_at: { [Op.gte]: since },
-  };
-  if (trackNum != null) where.track = trackNum;
+  const since = new Date(Date.now() - AUDIO_TRIGGER_COOLDOWN_MS);
+  const trackWhere = trackNum != null ? { track: trackNum } : {};
 
-  const recent = await DeviceCommand.findOne({
-    where,
-    order: [["completed_at", "DESC"]],
+  const completed = await DeviceCommand.count({
+    where: {
+      esp32_id: esp32Id,
+      command: "PLAY_AUDIO",
+      status: "completed",
+      created_at: { [Op.gte]: since },
+      ...trackWhere,
+    },
   });
-  return Boolean(recent);
+  const inflight = await DeviceCommand.count({
+    where: {
+      esp32_id: esp32Id,
+      command: "PLAY_AUDIO",
+      status: { [Op.in]: ACTIVE_STATUSES },
+      ...trackWhere,
+    },
+  });
+
+  const used = completed + inflight;
+  if (used >= AUTO_PLAY_MAX_PER_WINDOW) {
+    await cancelActiveCommands(
+      esp32Id,
+      "cancelled: same command already played twice"
+    );
+    return true;
+  }
+  if (inflight > 0) {
+    return true;
+  }
+  return false;
 }
 
 async function keepOnlyCommand(esp32Id, keepId, reason) {

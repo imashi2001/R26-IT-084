@@ -72,7 +72,7 @@ async function maybeQueueFromPredict(input) {
   );
   if (skip) {
     console.log(
-      `[audioTrigger] skip duplicate track=${resolved.track} for ${esp32Id}`
+      `[audioTrigger] skip track=${resolved.track} for ${esp32Id} (max 2 plays / 60s)`
     );
     return { command: null, resolved };
   }

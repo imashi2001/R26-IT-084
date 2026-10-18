@@ -96,6 +96,27 @@ async function shouldSkipAutoPlay(esp32IdRaw) {
   return Boolean(recent);
 }
 
+async function keepOnlyCommand(esp32Id, keepId, reason) {
+  const models = ensureModels();
+  if (!models || !keepId) return 0;
+  const { DeviceCommand } = models;
+  const [count] = await DeviceCommand.update(
+    {
+      status: "failed",
+      completed_at: new Date(),
+      error_message: reason || "cancelled: superseded",
+    },
+    {
+      where: {
+        esp32_id: esp32Id,
+        id: { [Op.ne]: keepId },
+        status: { [Op.in]: ACTIVE_STATUSES },
+      },
+    }
+  );
+  return count;
+}
+
 async function createPlayAudioCommand(device, { track = 1 } = {}) {
   const models = ensureModels();
   if (!models) return null;
@@ -110,6 +131,9 @@ async function createPlayAudioCommand(device, { track = 1 } = {}) {
     throw err;
   }
 
+  // One in-flight command per device — extra PIR bursts must not stack voices.
+  await cancelActiveCommands(esp32Id, "cancelled: replaced by newer PLAY_AUDIO");
+
   const row = await DeviceCommand.create({
     device_id: device.id,
     esp32_id: esp32Id,
@@ -120,6 +144,8 @@ async function createPlayAudioCommand(device, { track = 1 } = {}) {
     completed_at: null,
     error_message: null,
   });
+
+  await keepOnlyCommand(esp32Id, row.id, "cancelled: duplicate PLAY_AUDIO race");
 
   return toApiCommand(row);
 }

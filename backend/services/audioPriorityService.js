@@ -190,9 +190,12 @@ function collectAudioCandidates(input = {}) {
   const fillConf = wasteFullConfidence(input);
   const litterSev = litterPayload(input);
   const litterSevConf = litterSeverityConfidence(litterSev);
-  const hasFillIssue =
-    isOverflow(input.bin_fill_level, input.fill_percentage, input.bin_fill) ||
-    isHalfFill(input.bin_fill_level, input.bin_fill);
+  // Half-full is watch-only: do not announce waste_full on every walk-by.
+  const hasFillIssue = isOverflow(
+    input.bin_fill_level,
+    input.fill_percentage,
+    input.bin_fill
+  );
   const hasLitterIssue = isSignificantLitter(litterSev);
   if (hasFillIssue || hasLitterIssue) {
     const conf = Math.max(fillConf, litterSevConf);

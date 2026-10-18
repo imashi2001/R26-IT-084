@@ -1,0 +1,4 @@
+trial,date_iso,esp32_id,network,jpeg_bytes,T0_capture_enqueued,T1_upload_start,T2_predict_http_done,T4_command_seen,T5_dfplayer_play,T6_flutter_updated,notes
+1,2026-10-10T10:00:00+05:30,esp-cam-1,wifi_home,,,,,,,# fill ISO timestamps or epoch ms
+2,,,,,,,,
+3,,,,,,,,

@@ -72,18 +72,17 @@ describe("resolveAudioScenario by highest confidence", () => {
     assert.ok(out.confidence >= 0.85);
   });
 
-  it("picks half fill when it is the only active signal", () => {
+  it("does not announce waste_full for half-only fill", () => {
     const out = audioPriorityService.resolveAudioScenario({
       settings: baseSettings,
-      risk: { level: "HIGH" },
-      littering_action: { event_detected: true, max_confidence: 0.1 },
+      risk: { level: "LOW" },
+      littering_action: { event_detected: false, max_confidence: 0.1 },
       animal: { detection_count: 0 },
       bin_fill_level: "Half",
       bin_fill: { predictions: [{ label: "half", confidence: 0.35 }] },
       fill_percentage: 40,
     });
-    assert.equal(out.scenario_key, "waste_full");
-    assert.equal(out.confidence, 0.35);
+    assert.equal(out, null);
   });
 
   it("custom risk_high wins when its tier confidence beats half fill", () => {

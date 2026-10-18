@@ -31,13 +31,13 @@ const char* WIFI_PASSWORD = "11111111";
 // =====================================================
 
 const char* BACKEND_BASE =
-  "https://r26-it-084-production-3f77.up.railway.app";
+  "https://r26-it-084-production-2220.up.railway.app";
 
 const char* PREDICT_URL =
-  "https://r26-it-084-production-3f77.up.railway.app/predict";
+  "https://r26-it-084-production-2220.up.railway.app/predict";
 
 const char* COMMAND_URL =
-  "https://r26-it-084-production-3f77.up.railway.app/devices/commands";
+  "https://r26-it-084-production-2220.up.railway.app/devices/commands";
 
 // =====================================================
 // DEVICE
@@ -74,9 +74,12 @@ bool captureInProgress = false;
 
 const unsigned long COMMAND_INTERVAL = 2000;
 const int COMMAND_ACK_RETRIES = 3;
+// DFPlayer clips overlap if a new PLAY_AUDIO starts too soon.
+const unsigned long AUDIO_LOCK_MS = 15000;
 unsigned long lastCommandCheck = 0;
-// Same PLAY_AUDIO is re-delivered until ACK; skip replay for this id.
-String activeAudioCommandId = "";
+// Never replay this command_id (backend re-delivers until ACK).
+String lastPlayedCommandId = "";
+unsigned long audioBusyUntil = 0;
 
 // =====================================================
 // UPLOAD WORKER (FreeRTOS)
@@ -451,28 +454,34 @@ void checkForCommand()
         return;
       }
 
-      bool played = false;
-      if (commandId == activeAudioCommandId) {
-        Serial.println("[COMMAND] duplicate PLAY_AUDIO — ACK retry only (no replay)");
+      const bool alreadyPlayed = (commandId == lastPlayedCommandId);
+      const bool audioLocked = (audioBusyUntil != 0 && millis() < audioBusyUntil);
+      bool played = alreadyPlayed;
+
+      if (alreadyPlayed) {
+        Serial.println("[COMMAND] same PLAY_AUDIO id — ACK only (no replay)");
+      } else if (audioLocked) {
+        Serial.println("[COMMAND] audio lock — ACK extra command without replay");
+        lastPlayedCommandId = commandId;
         played = true;
       } else {
         Serial.printf("[COMMAND] PLAY_AUDIO track=%d id=%s\n",
                       track, commandId.c_str());
         played = playAudioCommand((uint16_t)track);
         if (played) {
-          activeAudioCommandId = commandId;
+          lastPlayedCommandId = commandId;
+          audioBusyUntil = millis() + AUDIO_LOCK_MS;
         }
       }
 
       const char* ackStatus = played ? "completed" : "failed";
       const char* ackError = played ? "" : "DFPlayer play failed";
-      if (acknowledgeCommandWithRetry(commandId, ackStatus, ackError)) {
-        activeAudioCommandId = "";
-      }
+      acknowledgeCommandWithRetry(commandId, ackStatus, ackError);
     } else if (command == "STOP_AUDIO") {
       if (commandId.length() == 0) return;
       Serial.println("[COMMAND] STOP_AUDIO");
-      activeAudioCommandId = "";
+      lastPlayedCommandId = "";
+      audioBusyUntil = 0;
       bool stopped = stopMP3();
       acknowledgeCommandWithRetry(commandId, stopped ? "completed" : "failed",
                                   stopped ? "" : "DFPlayer stop failed");
@@ -630,6 +639,11 @@ bool enqueueCapture(const char* reason)
 {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Capture skipped: Wi-Fi unavailable.");
+    return false;
+  }
+
+  if (audioBusyUntil != 0 && millis() < audioBusyUntil) {
+    Serial.printf("Capture skipped (audio lock): %s\n", reason);
     return false;
   }
 

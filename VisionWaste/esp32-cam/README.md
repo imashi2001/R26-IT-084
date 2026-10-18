@@ -53,7 +53,7 @@ Audio is **not** read from `/predict` JSON. The backend queues `PLAY_AUDIO` in `
 
 While AI runs (30–60s), PIR diagnostics and command polling continue. Audio plays as soon as the backend finishes and the next poll sees the command.
 
-The backend re-delivers the same `PLAY_AUDIO` command every poll until the ESP32 ACKs it. The firmware tracks `activeAudioCommandId` so **each command plays once**; duplicate polls only retry ACK (up to 3 attempts), not DFPlayer replay.
+The backend re-delivers the same `PLAY_AUDIO` command every poll until the ESP32 ACKs it. The firmware tracks `lastPlayedCommandId` so **that id never replays**, and holds an **audio lock (15 s)** so a motion burst cannot start a second clip. Extra commands during the lock are ACK’d without replay. PIR captures are skipped while the lock is active.
 
 ### PIR behaviour
 

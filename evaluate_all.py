@@ -45,7 +45,7 @@ DEFAULT_PATHS = {
     "waste_data_root": ROOT / "waste_classification/data_set",
     "animal_model": ROOT / "services/animal-api/model/best.pt",
     "animal_data_yaml": ROOT / "animal_detection/dataset/data.yaml",
-    "bin_model": ROOT / "model-yolo/model/best.pt",
+    "bin_model": ROOT / "services/fill-api/model/best.pt",
     "bin_data_yaml": ROOT / "dataset/data.yaml",
     "litter_model": ROOT / "services/litter-severity-api/model/best.pt",
     "litter_data_yaml": ROOT / "services/litter-severity-api/dataset/data.yaml",

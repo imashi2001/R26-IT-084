@@ -436,8 +436,8 @@ bool acknowledgeCommandWithRetry(const String& commandId, const String& status,
 void handleQueuedCommand(const String& response, const char* source)
 {
   if (response.length() == 0) return;
-  if (response.indexOf("\"command\":null") >= 0 &&
-      response.indexOf("audio_action") < 0) {
+  if (response.indexOf("PLAY_AUDIO") < 0 &&
+      response.indexOf("STOP_AUDIO") < 0) {
     return;
   }
 
@@ -448,6 +448,10 @@ void handleQueuedCommand(const String& response, const char* source)
   String command = getJsonString(response, "audio_action");
   if (command.length() == 0) command = getJsonString(response, "action");
   if (command.length() == 0) command = getJsonString(response, "command");
+  if (command != "PLAY_AUDIO" && command != "STOP_AUDIO") {
+    if (response.indexOf("PLAY_AUDIO") >= 0) command = "PLAY_AUDIO";
+    else if (response.indexOf("STOP_AUDIO") >= 0) command = "STOP_AUDIO";
+  }
 
   int track = getJsonInt(response, "audio_track");
   if (track <= 0) track = getJsonInt(response, "track");
@@ -507,10 +511,6 @@ void handleQueuedCommand(const String& response, const char* source)
 void checkForCommand()
 {
   if (WiFi.status() != WL_CONNECTED) return;
-  if (uploadWorkerBusy) {
-    Serial.println("[COMMAND] poll skipped — upload in progress");
-    return;
-  }
 
   Serial.println("[COMMAND] polling...");
 
@@ -651,6 +651,7 @@ void performPredictUpload(uint8_t* jpegData, size_t jpegLen)
 
   http.end();
   Serial.println("[UPLOAD] END");
+  checkForCommand();
 }
 
 // =====================================================

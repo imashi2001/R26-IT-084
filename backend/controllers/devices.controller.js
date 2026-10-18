@@ -811,9 +811,17 @@ async function pollCommands(req, res, next) {
 
     const result = await deviceCommandService.pollNextCommand(esp32Id);
     if (!result.command) {
-      return res.json({ command: null });
+      return res.json({ audio_action: null, action: null });
     }
-    return res.json(result.command);
+    const cmd = result.command;
+    return res.json({
+      audio_command_id: cmd.command_id,
+      audio_action: cmd.action || cmd.command,
+      audio_track: cmd.track,
+      action: cmd.action || cmd.command,
+      id: cmd.command_id,
+      track: cmd.track,
+    });
   } catch (e) {
     if (e.status) {
       return res.status(e.status).json({ error: e.message });

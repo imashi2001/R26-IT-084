@@ -82,24 +82,9 @@ flutter pub get
 
 ### MapTiler (optional)
 
-Maps use **MapTiler** when you pass your API key at run/build time; otherwise free **CARTO/OpenStreetMap** tiles are used.
+The app loads the MapTiler key from the backend (`GET /map/config`). Set **`MAPTILER_KEY`** on the Railway **backend** service (same key as the website). If that variable is empty, free **CARTO/OpenStreetMap** tiles are used.
 
-1. Get a key: [MapTiler Cloud → API keys](https://cloud.maptiler.com/account/keys/)
-2. Copy `dart_defines.example.json` → `dart_defines.json` and paste your key
-3. Run with:
-   ```powershell
-   flutter run --dart-define-from-file=dart_defines.json
-   ```
-   Or use the helper script:
-   ```powershell
-   .\run_with_maps.ps1
-   ```
-4. Release APK:
-   ```powershell
-   flutter build apk --release --dart-define-from-file=dart_defines.json
-   ```
-
-`dart_defines.json` is gitignored — do not commit your API key.
+You can still override for one run with `--dart-define=MAPTILER_KEY=...`.
 
 Config: `lib/config/map_config.dart` · shared layer: `lib/config/map_layers.dart`
 
@@ -160,3 +145,15 @@ flutter build apk --release
 |------------|------|
 | Debug      | `mobile_app/build/app/outputs/flutter-apk/app-debug.apk` |
 | Release    | `mobile_app/build/app/outputs/flutter-apk/app-release.apk` |
+
+## UI, theme and build options
+
+- Design system lives in `lib/theme/app_theme.dart` (colours, gradients, Poppins typography) and
+  shared components in `lib/presentation/shared/` (`widgets.dart`, `motion.dart`,
+  `illustrations.dart`, `staff_charts.dart`).
+- Point the app at another backend without editing code:
+  `flutter run --dart-define=API_BASE_URL=https://your-backend.up.railway.app`
+- Optional photos: drop `home_hero.jpg` / `login_hero.jpg` into `assets/images/`
+  (see the README there); otherwise animated illustrations are shown.
+- Screenshots of every screen with sample data:
+  `flutter test test_screenshots/screens_test.dart --update-goldens` → `test_screenshots/goldens/`

@@ -10,6 +10,7 @@
         "cached_network_image",
         "dio",
         "flutter",
+        "flutter_animate",
         "flutter_map",
         "flutter_riverpod",
         "flutter_secure_storage",
@@ -48,6 +49,14 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "flutter_animate",
+      "version": "4.5.2",
+      "dependencies": [
+        "flutter",
+        "flutter_shaders"
       ]
     },
     {
@@ -281,6 +290,14 @@
         "stream_channel",
         "string_scanner",
         "term_glyph"
+      ]
+    },
+    {
+      "name": "flutter_shaders",
+      "version": "0.1.5",
+      "dependencies": [
+        "flutter",
+        "vector_math"
       ]
     },
     {

@@ -263,6 +263,7 @@ See `.env.example`:
 | `DB_SYNC_ALTER` | `false` | If syncing, also alter columns to match models |
 | `DB_LOGGING` | `false` | Echo SQL to stdout |
 | `OPENWEATHER_API_KEY` | (empty) | Optional real weather; stub otherwise |
+| `MAPTILER_KEY` | (empty) | Public MapTiler key for `GET /map/config` (mobile app) |
 
 ---
 
@@ -286,5 +287,6 @@ Start the **waste** and **animal** FastAPI services (see repo `services/waste-ap
   - `JWT_SECRET` → random secret string
   - `DB_SYNC=true` only on first deploy to create tables; turn off afterwards
   - **`OPENWEATHER_API_KEY`** (optional)
+  - **`MAPTILER_KEY`** (optional) — same MapTiler key as the website; mobile app reads it from `GET /map/config`
   - `CORS_ORIGIN` → your frontend URL(s)
 - Railway auto-detects Node and runs `npm install`.

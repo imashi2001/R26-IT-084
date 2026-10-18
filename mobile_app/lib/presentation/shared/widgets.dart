@@ -1,9 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import '../../domain/models.dart';
-import '../../theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-// ── Fill level helpers ────────────────────────────────────────────────────────
+import '../../domain/models.dart';
+import '../../services/api_client.dart';
+import '../../theme/app_theme.dart';
+import 'illustrations.dart';
+import 'motion.dart';
+
+// ── Fill / risk helpers ───────────────────────────────────────────────────────
 
 Color fillColor(String? level) {
   switch ((level ?? '').toLowerCase()) {
@@ -23,31 +28,58 @@ String fillLabel(String? level) {
     case 'empty':
       return 'Empty';
     case 'half':
-      return 'Half Full';
+      return 'Half full';
     case 'overflow':
-      return 'Overflow';
+      return 'Full';
     default:
-      return 'Unknown';
+      return 'No data';
+  }
+}
+
+IconData fillIcon(String? level) {
+  switch ((level ?? '').toLowerCase()) {
+    case 'empty':
+      return Icons.check_circle_rounded;
+    case 'half':
+      return Icons.timelapse_rounded;
+    case 'overflow':
+      return Icons.warning_rounded;
+    default:
+      return Icons.help_outline_rounded;
   }
 }
 
 double fillFraction(String? level, double? pct) {
   if (pct != null) return (pct.clamp(0, 100)) / 100;
   switch ((level ?? '').toLowerCase()) {
-    case 'empty':    return 0.18;
-    case 'half':     return 0.55;
-    case 'overflow': return 1.0;
-    default:         return 0.0;
+    case 'empty':
+      return 0.18;
+    case 'half':
+      return 0.55;
+    case 'overflow':
+      return 1.0;
+    default:
+      return 0.0;
   }
 }
 
+/// Fill percentage to show for a bin (estimated from the tier when the model
+/// did not return a percentage).
+int fillPercentOf(String? level, double? pct) =>
+    (fillFraction(level, pct) * 100).round();
+
 Color riskColor(String? level) {
   switch ((level ?? '').toUpperCase()) {
-    case 'LOW':      return AppColors.riskLow;
-    case 'MEDIUM':   return AppColors.riskMedium;
-    case 'HIGH':     return AppColors.riskHigh;
-    case 'CRITICAL': return AppColors.riskCritical;
-    default:         return AppColors.textSecondary;
+    case 'LOW':
+      return AppColors.riskLow;
+    case 'MEDIUM':
+      return AppColors.riskMedium;
+    case 'HIGH':
+      return AppColors.riskHigh;
+    case 'CRITICAL':
+      return AppColors.riskCritical;
+    default:
+      return AppColors.textSecondary;
   }
 }
 
@@ -58,7 +90,7 @@ String fillShort(String? level) {
     case 'half':
       return 'H';
     case 'overflow':
-      return 'O';
+      return 'F';
     default:
       return '?';
   }
@@ -70,19 +102,97 @@ String formatDistance(double? meters) {
   return '${(meters / 1000).toStringAsFixed(1)} km';
 }
 
+const _months = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
 String formatTs(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
   try {
     final t = DateTime.parse(iso).toLocal();
     final hh = t.hour.toString().padLeft(2, '0');
     final mm = t.minute.toString().padLeft(2, '0');
-    return '${t.day}/${t.month}/${t.year}  $hh:$mm';
+    return '${t.day} ${_months[t.month - 1]} ${t.year}, $hh:$mm';
   } catch (_) {
     return iso;
   }
 }
 
-// ── Last capture photo ────────────────────────────────────────────────────────
+String formatClock(DateTime t) =>
+    '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+String timeAgo(String? iso) {
+  if (iso == null || iso.isEmpty) return 'No data yet';
+  try {
+    final t = DateTime.parse(iso).toLocal();
+    final diff = DateTime.now().difference(t);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} h ago';
+    if (diff.inDays < 7) return '${diff.inDays} d ago';
+    return '${t.day} ${_months[t.month - 1]}';
+  } catch (_) {
+    return iso;
+  }
+}
+
+String binCode(int id) => 'BIN-${id.toString().padLeft(3, '0')}';
+
+String titleCase(String s) => s.isEmpty
+    ? s
+    : s
+        .split(RegExp(r'[\s_]+'))
+        .map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1))
+        .join(' ');
+
+// ── Images ────────────────────────────────────────────────────────────────────
+
+/// Network image that sends the staff token to our backend (capture photos
+/// are protected), shows a shimmer while loading and [fallback] on failure.
+class AppNetworkImage extends StatelessWidget {
+  final String? url;
+  final BoxFit fit;
+  final Widget? fallback;
+
+  const AppNetworkImage({
+    super.key,
+    required this.url,
+    this.fit = BoxFit.cover,
+    this.fallback,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fb = fallback ?? const _PhotoFallback();
+    if (url == null || url!.isEmpty) return fb;
+    return CachedNetworkImage(
+      imageUrl: url!,
+      httpHeaders: ApiClient.instance.imageHeadersFor(url!),
+      fit: fit,
+      fadeInDuration: Motion.medium,
+      placeholder: (_, __) => const SkeletonBox(radius: 0),
+      errorWidget: (_, __, ___) => fb,
+    );
+  }
+}
+
+class _PhotoFallback extends StatelessWidget {
+  const _PhotoFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(gradient: AppGradients.forest),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.photo_camera_outlined,
+        color: Colors.white.withValues(alpha: 0.35),
+        size: 32,
+      ),
+    );
+  }
+}
 
 class LastCapturePhoto extends StatelessWidget {
   final String? imageUrl;
@@ -97,59 +207,44 @@ class LastCapturePhoto extends StatelessWidget {
     required this.imageUrl,
     this.height = 180,
     this.width,
-    this.borderRadius = const BorderRadius.all(Radius.circular(14)),
+    this.borderRadius = const BorderRadius.all(Radius.circular(18)),
     this.capturedAt,
     this.showHeader = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl == null || imageUrl!.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (imageUrl == null || imageUrl!.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (showHeader) ...[
           const SectionTitle('Last capture'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
         ],
         ClipRRect(
           borderRadius: borderRadius,
           child: SizedBox(
             height: height,
             width: width ?? double.infinity,
-            child: CachedNetworkImage(
-              imageUrl: imageUrl!,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Container(
-                color: AppColors.surfaceElevated,
-                alignment: Alignment.center,
-                child: const SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-              errorWidget: (_, __, ___) => Container(
-                color: AppColors.surfaceElevated,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.broken_image_outlined,
-                  color: AppColors.textMuted,
-                ),
-              ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                AppNetworkImage(url: imageUrl),
+                if (capturedAt != null)
+                  Positioned(
+                    left: 10,
+                    bottom: 10,
+                    child: GlassChip(
+                      icon: Icons.schedule_rounded,
+                      label: timeAgo(capturedAt),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
-        if (capturedAt != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            'Captured ${formatTs(capturedAt)}',
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-          ),
-        ],
       ],
     );
   }
@@ -164,162 +259,83 @@ class LastCaptureThumbnail extends StatelessWidget {
   const LastCaptureThumbnail({
     super.key,
     required this.imageUrl,
-    this.size = 44,
-    this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+    this.size = 52,
+    this.borderRadius = const BorderRadius.all(Radius.circular(16)),
     required this.fallback,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl == null || imageUrl!.isEmpty) {
-      return fallback;
-    }
-
+    if (imageUrl == null || imageUrl!.isEmpty) return fallback;
     return ClipRRect(
       borderRadius: borderRadius,
       child: SizedBox(
         width: size,
         height: size,
-        child: CachedNetworkImage(
-          imageUrl: imageUrl!,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => fallback,
-          errorWidget: (_, __, ___) => fallback,
-        ),
+        child: AppNetworkImage(url: imageUrl, fallback: fallback),
       ),
     );
   }
 }
 
-/// Sidebar promo card — matches web PromoFooter ("Cleaner City, Better Tomorrow").
+/// Banner card ("Cleaner City, Better Tomorrow") — uses the promo image set
+/// from the web dashboard when available.
 class PromoFooterCard extends StatelessWidget {
   final String? imageUrl;
   final double height;
 
-  const PromoFooterCard({
-    super.key,
-    required this.imageUrl,
-    this.height = 148,
-  });
+  const PromoFooterCard({super.key, required this.imageUrl, this.height = 150});
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
-
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
         height: height,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.brand.withValues(alpha: 0.25)),
-          borderRadius: BorderRadius.circular(14),
-        ),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (hasImage)
-              CachedNetworkImage(
-                imageUrl: imageUrl!,
-                fit: BoxFit.cover,
-                filterQuality: FilterQuality.high,
-                placeholder: (_, __) => _fallbackBackground(),
-                errorWidget: (_, __, ___) => _fallbackBackground(),
+            if (imageUrl != null && imageUrl!.isNotEmpty)
+              AppNetworkImage(
+                url: imageUrl,
+                fallback: const CityScene(showBins: false),
               )
             else
-              _fallbackBackground(),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.background.withValues(alpha: 0.05),
-                    AppColors.background.withValues(alpha: 0.45),
-                    AppColors.background.withValues(alpha: 0.92),
-                  ],
-                ),
-              ),
-            ),
+              const CityScene(showBins: false),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    AppColors.background.withValues(alpha: 0.72),
-                    Colors.transparent,
+                    AppColors.background.withValues(alpha: 0.85),
+                    AppColors.background.withValues(alpha: 0.1),
                   ],
                 ),
               ),
             ),
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 14,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.brand.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: AppColors.brand.withValues(alpha: 0.35),
+                  const GlassChip(icon: Icons.eco_rounded, label: 'Our mission'),
+                  const SizedBox(height: 10),
+                  RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                        color: Colors.white,
                       ),
-                    ),
-                    child: const Icon(
-                      Icons.delete_outline,
-                      color: AppColors.brand,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Cleaner City,',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            height: 1.15,
-                          ),
-                        ),
-                        const Text(
-                          'Better Tomorrow',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.brandGlow,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.eco,
-                              size: 12,
-                              color: AppColors.brand.withValues(alpha: 0.9),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                'Smart waste for sustainable cities',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white.withValues(alpha: 0.82),
-                                ),
-                              ),
-                            ),
-                          ],
+                        TextSpan(text: 'Cleaner city,\n'),
+                        TextSpan(
+                          text: 'better tomorrow',
+                          style: TextStyle(color: AppColors.brandGlow),
                         ),
                       ],
                     ),
@@ -332,58 +348,29 @@ class PromoFooterCard extends StatelessWidget {
       ),
     );
   }
-
-  Widget _fallbackBackground() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF065F46),
-            AppColors.background,
-            Color(0xFF0F172A),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-String timeAgo(String? iso) {
-  if (iso == null || iso.isEmpty) return '—';
-  try {
-    final t = DateTime.parse(iso).toLocal();
-    final diff = DateTime.now().difference(t);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours} hr ago';
-    return '${diff.inDays} d ago';
-  } catch (_) {
-    return iso;
-  }
-}
-
-String binCode(int id) => 'BIN-${id.toString().padLeft(3, '0')}';
-
-// ── Layout primitives ───────────────────────────────────────────────────────────
+// ── Layout primitives ─────────────────────────────────────────────────────────
 
 class StaffCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final Color? tint;
+  final double radius;
+
   const StaffCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(18),
     this.tint,
+    this.radius = 22,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: padding,
-      decoration: AppColors.glassCard(tint: tint),
+      decoration: AppColors.glassCard(tint: tint, radius: radius),
       child: child,
     );
   }
@@ -391,16 +378,153 @@ class StaffCard extends StatelessWidget {
 
 class SectionTitle extends StatelessWidget {
   final String text;
-  const SectionTitle(this.text, {super.key});
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const SectionTitle(this.text, {super.key, this.actionLabel, this.onAction});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w800,
-        color: AppColors.textPrimary,
+    return Row(
+      children: [
+        Expanded(child: Text(text, style: AppText.h2)),
+        if (actionLabel != null)
+          GestureDetector(
+            onTap: onAction,
+            child: Row(
+              children: [
+                Text(
+                  actionLabel!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.brandGlow,
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    size: 18, color: AppColors.brandGlow),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Small translucent pill with an icon (on top of photos/maps).
+class GlassChip extends StatelessWidget {
+  final IconData? icon;
+  final String label;
+  final Color? color;
+
+  const GlassChip({super.key, this.icon, required this.label, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? Colors.white;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: c),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: c,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Coloured status pill ("Full", "HIGH", "Open"…).
+class StatusPill extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData? icon;
+  final bool solid;
+
+  const StatusPill({
+    super.key,
+    required this.label,
+    required this.color,
+    this.icon,
+    this.solid = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: solid ? color : color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(100),
+        border: solid ? null : Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: solid ? Colors.white : color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: solid ? Colors.white : color,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Rounded square with a soft tint and an icon.
+class IconTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final double size;
+  final Gradient? gradient;
+
+  const IconTile({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size = 44,
+    this.gradient,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: gradient == null ? color.withValues(alpha: 0.15) : null,
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(size * 0.32),
+      ),
+      child: Icon(
+        icon,
+        color: gradient == null ? color : Colors.white,
+        size: size * 0.5,
       ),
     );
   }
@@ -408,76 +532,112 @@ class SectionTitle extends StatelessWidget {
 
 class EmptyHint extends StatelessWidget {
   final String message;
-  const EmptyHint({super.key, required this.message});
+  final IconData icon;
+  final String? title;
+
+  const EmptyHint({
+    super.key,
+    required this.message,
+    this.icon = Icons.inbox_rounded,
+    this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IllustrationBadge(icon: icon, size: 64),
+          if (title != null) ...[
+            const SizedBox(height: 4),
+            Text(title!, style: AppText.title, textAlign: TextAlign.center),
+          ],
+          const SizedBox(height: 6),
+          Text(message, textAlign: TextAlign.center, style: AppText.body),
+        ],
       ),
-    );
+    ).animate().fadeIn(duration: Motion.medium);
   }
 }
 
+// ── KPI cards ─────────────────────────────────────────────────────────────────
+
 class KpiStatCard extends StatelessWidget {
   final String label;
-  final String value;
-  final Color color;
+  final num value;
+  final String suffix;
+  final Gradient gradient;
   final IconData icon;
   final double width;
+  final VoidCallback? onTap;
 
   const KpiStatCard({
     super.key,
     required this.label,
     required this.value,
-    required this.color,
+    required this.gradient,
     required this.icon,
-    this.width = 160,
+    this.suffix = '',
+    this.width = 150,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: 128,
-      child: StaffCard(
-        padding: const EdgeInsets.all(14),
-        tint: color.withValues(alpha: 0.1),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        width: width,
+        padding: const EdgeInsets.all(16),
+        decoration: AppColors.gradientCard(gradient),
+        child: Stack(
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.22),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: Colors.white, size: 18),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-                height: 1,
+            Positioned(
+              right: -18,
+              top: -18,
+              child: Icon(
+                icon,
+                size: 86,
+                color: Colors.white.withValues(alpha: 0.12),
               ),
             ),
-            Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedCount(
+                      value: value,
+                      suffix: suffix,
+                      style: AppText.number.copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.88),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -504,33 +664,30 @@ class SummaryMiniCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = accent ?? AppColors.brand;
     return StaffCard(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      tint: color.withValues(alpha: 0.06),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      radius: 18,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(height: 6),
+            IconTile(icon: icon!, color: color, size: 32),
+            const SizedBox(height: 10),
           ],
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 2),
           Text(
             label,
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+            style: AppText.caption,
           ),
         ],
       ),
@@ -538,11 +695,14 @@ class SummaryMiniCard extends StatelessWidget {
   }
 }
 
+// ── Filters ───────────────────────────────────────────────────────────────────
+
 class SegmentedFilterRow extends StatelessWidget {
   final List<(String, String)> options;
   final String selected;
   final ValueChanged<String> onSelected;
   final Map<String, Color>? accentById;
+  final Map<String, int>? countById;
 
   const SegmentedFilterRow({
     super.key,
@@ -550,25 +710,27 @@ class SegmentedFilterRow extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     this.accentById,
+    this.countById,
   });
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
       child: Row(
         children: [
-          for (final (id, label) in options) ...[
+          for (final (id, label) in options)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterPill(
                 label: label,
+                count: countById?[id],
                 selected: selected == id,
                 onTap: () => onSelected(id),
                 activeColor: accentById?[id],
               ),
             ),
-          ],
         ],
       ),
     );
@@ -594,30 +756,207 @@ class FilterPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = activeColor ?? AppColors.brand;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(100),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(100),
+    return Pressable(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: Motion.medium,
+        curve: Motion.curve,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(100),
+          color: selected ? accent : AppColors.surfaceElevated,
+          border: Border.all(
             color: selected
-                ? accent.withValues(alpha: 0.18)
-                : AppColors.surfaceElevated,
-            border: Border.all(
-              color: selected ? accent : AppColors.border.withValues(alpha: 0.5),
-              width: selected ? 1.5 : 1,
-            ),
+                ? accent
+                : Colors.white.withValues(alpha: 0.06),
           ),
-          child: Text(
-            count != null ? '$label ($count)' : label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: selected ? accent : AppColors.textSecondary,
+          boxShadow: selected ? AppShadows.glow(accent, strength: 0.3) : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
+            if (count != null) ...[
+              const SizedBox(width: 6),
+              AnimatedContainer(
+                duration: Motion.medium,
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? Colors.white.withValues(alpha: 0.25)
+                      : accent.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : accent,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bin list card ─────────────────────────────────────────────────────────────
+
+class PriorityBinTile extends StatelessWidget {
+  final Bin bin;
+  final VoidCallback? onTap;
+  final String? trailingNote;
+
+  const PriorityBinTile({
+    super.key,
+    required this.bin,
+    this.onTap,
+    this.trailingNote,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = fillColor(bin.latestFillLevel);
+    final frac = fillFraction(bin.latestFillLevel, bin.latestFillPercentage);
+    final pct = (frac * 100).round();
+
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: AppColors.glassCard(radius: 22),
+        child: Row(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                LastCaptureThumbnail(
+                  imageUrl: bin.latestImageUrl,
+                  size: 58,
+                  fallback: IconTile(
+                    icon: Icons.delete_outline_rounded,
+                    color: color,
+                    size: 58,
+                  ),
+                ),
+                Positioned(
+                  right: -4,
+                  bottom: -4,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.surface, width: 3),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(binCode(bin.id), style: AppText.title),
+                      const SizedBox(width: 8),
+                      if (bin.latestRiskLevel != null &&
+                          bin.latestRiskLevel!.toUpperCase() != 'LOW')
+                        StatusPill(
+                          label: bin.latestRiskLevel!.toUpperCase(),
+                          color: riskColor(bin.latestRiskLevel),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    bin.address ?? bin.location ?? bin.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  AnimatedFillBar(fraction: frac, color: color, height: 6),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  bin.latestFillLevel == null ? '—' : '$pct%',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  trailingNote ?? timeAgo(bin.latestCapturedAt),
+                  style: AppText.caption,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontal fill bar that animates from 0 to [fraction].
+class AnimatedFillBar extends StatelessWidget {
+  final double fraction;
+  final Color color;
+  final double height;
+
+  const AnimatedFillBar({
+    super.key,
+    required this.fraction,
+    required this.color,
+    this.height = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height),
+      child: Container(
+        height: height,
+        color: Colors.white.withValues(alpha: 0.06),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: fraction.clamp(0.0, 1.0)),
+          duration: const Duration(milliseconds: 1100),
+          curve: Curves.easeOutCubic,
+          builder: (_, v, __) => FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: v,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(height),
+                gradient: LinearGradient(
+                  colors: [color.withValues(alpha: 0.7), color],
+                ),
+              ),
             ),
           ),
         ),
@@ -626,107 +965,51 @@ class FilterPill extends StatelessWidget {
   }
 }
 
-class PriorityBinTile extends StatelessWidget {
-  final Bin bin;
-  final VoidCallback? onTap;
+// ── Alerts ────────────────────────────────────────────────────────────────────
 
-  const PriorityBinTile({super.key, required this.bin, this.onTap});
+Color alertColor(String severity) {
+  switch (severity) {
+    case 'critical':
+      return AppColors.riskHigh;
+    case 'warning':
+      return AppColors.riskMedium;
+    default:
+      return AppColors.accentBlue;
+  }
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final color = fillColor(bin.latestFillLevel);
-    final pct = bin.latestFillPercentage?.round() ??
-        (bin.latestFillLevel?.toLowerCase() == 'overflow'
-            ? 100
-            : bin.latestFillLevel?.toLowerCase() == 'half'
-                ? 55
-                : 10);
+IconData alertIcon(StaffAlert alert) {
+  final t = alert.title.toLowerCase();
+  if (t.contains('animal')) return Icons.pets_rounded;
+  if (t.contains('litter')) return Icons.report_rounded;
+  if (t.contains('overflow') || t.contains('full') || t.contains('fill')) {
+    return Icons.delete_sweep_rounded;
+  }
+  if (t.contains('risk') || t.contains('hygien')) {
+    return Icons.health_and_safety_rounded;
+  }
+  switch (alert.severity) {
+    case 'critical':
+      return Icons.error_rounded;
+    case 'warning':
+      return Icons.warning_amber_rounded;
+    default:
+      return Icons.info_rounded;
+  }
+}
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: AppColors.glassCard(tint: color.withValues(alpha: 0.06)),
-          child: Row(
-            children: [
-              LastCaptureThumbnail(
-                imageUrl: bin.latestImageUrl,
-                fallback: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.delete_outline, color: color, size: 22),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      binCode(bin.id),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      bin.address ?? bin.location ?? bin.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(100),
-                      border: Border.all(color: color.withValues(alpha: 0.4)),
-                    ),
-                    child: Text(
-                      '$pct%',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        color: color,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    timeAgo(bin.latestCapturedAt),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+String alertStatusLabel(String status) {
+  switch (status) {
+    case 'acknowledged':
+      return 'Seen';
+    case 'actioned':
+      return 'Resolved';
+    case 'dismissed':
+      return 'Dismissed';
+    case 'rejected':
+      return 'Rejected';
+    default:
+      return 'Open';
   }
 }
 
@@ -736,187 +1019,192 @@ class AlertFeedTile extends StatelessWidget {
 
   const AlertFeedTile({super.key, required this.alert, this.onTap});
 
-  Color get _color {
-    switch (alert.severity) {
-      case 'critical':
-        return AppColors.riskHigh;
-      case 'warning':
-        return AppColors.riskMedium;
-      default:
-        return const Color(0xFF38BDF8);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final color = _color;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: AppColors.glassCard(tint: color.withValues(alpha: 0.1)),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  alert.severity == 'critical'
-                      ? Icons.error_outline
-                      : alert.severity == 'warning'
-                          ? Icons.warning_amber_outlined
-                          : Icons.info_outline,
-                  color: color,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      alert.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    if (alert.summary != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        alert.summary!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+    final color = alertColor(alert.severity);
+    final open = alert.status == 'open';
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: AppColors.glassCard(radius: 22),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            IconTile(icon: alertIcon(alert), color: color, size: 46),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          alert.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.title.copyWith(
+                            color: open
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                          ),
                         ),
                       ),
+                      if (open) ...[
+                        const SizedBox(width: 8),
+                        LiveDot(color: color),
+                      ],
                     ],
-                    const SizedBox(height: 6),
+                  ),
+                  if (alert.summary != null) ...[
+                    const SizedBox(height: 3),
                     Text(
-                      timeAgo(alert.createdAt),
-                      style: TextStyle(fontSize: 11, color: color),
+                      alert.summary!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.body.copyWith(fontSize: 12),
                     ),
                   ],
-                ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      StatusPill(
+                        label: alertStatusLabel(alert.status),
+                        color: open ? color : AppColors.textMuted,
+                      ),
+                      if (alert.deviceId != null)
+                        StatusPill(
+                          label: alert.deviceName ?? binCode(alert.deviceId!),
+                          color: AppColors.textSecondary,
+                          icon: Icons.delete_outline_rounded,
+                        ),
+                      Text(timeAgo(alert.createdAt), style: AppText.caption),
+                    ],
+                  ),
+                ],
               ),
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(top: 4),
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+// ── Route stop (timeline) ─────────────────────────────────────────────────────
 
 class RouteStopTile extends StatelessWidget {
   final CollectionStop stop;
   final VoidCallback? onTap;
+  final bool isFirst;
+  final bool isLast;
 
-  const RouteStopTile({super.key, required this.stop, this.onTap});
+  const RouteStopTile({
+    super.key,
+    required this.stop,
+    this.onTap,
+    this.isFirst = false,
+    this.isLast = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final color = fillColor(stop.latestFillLevel);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: AppColors.glassCard(tint: color.withValues(alpha: 0.06)),
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.4),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '${stop.order}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
+    final pct = fillPercentOf(stop.latestFillLevel, stop.latestFillPercentage);
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 36,
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isFirst
+                        ? Colors.transparent
+                        : AppColors.brand.withValues(alpha: 0.35),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      binCode(stop.id),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    gradient: AppGradients.forFill(stop.latestFillLevel),
+                    shape: BoxShape.circle,
+                    boxShadow: AppShadows.glow(color, strength: 0.35),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${stop.order}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
                     ),
-                    Text(
-                      stop.address ?? stop.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: color.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  fillLabel(stop.latestFillLevel),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: color,
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isLast
+                        ? Colors.transparent
+                        : AppColors.brand.withValues(alpha: 0.35),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Pressable(
+                onTap: onTap,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: AppColors.glassCard(radius: 18),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(binCode(stop.id), style: AppText.title),
+                            Text(
+                              stop.address ?? stop.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.caption.copyWith(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      StatusPill(
+                        label: '${fillLabel(stop.latestFillLevel)} · $pct%',
+                        color: color,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Map pin: fill color + E/H/O (and % when known).
+// ── Map markers & legend ──────────────────────────────────────────────────────
+
+/// Map pin: gradient bubble showing the fill % (pulses when the bin is full).
 class BinFillMarker extends StatelessWidget {
   final String? fillLevel;
   final double? fillPercentage;
@@ -932,33 +1220,41 @@ class BinFillMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = fillColor(fillLevel);
-    final pct = fillPercentage != null ? '${fillPercentage!.round()}' : fillShort(fillLevel);
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      width: selected ? 48 : 40,
-      height: selected ? 48 : 40,
+    final label = fillLevel == null && fillPercentage == null
+        ? '?'
+        : '${fillPercentOf(fillLevel, fillPercentage)}';
+    final size = selected ? 46.0 : 38.0;
+    final isFull = (fillLevel ?? '').toLowerCase() == 'overflow';
+
+    Widget bubble = AnimatedContainer(
+      duration: Motion.medium,
+      curve: Curves.easeOutBack,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: color,
+        gradient: AppGradients.forFill(fillLevel),
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: selected ? 3 : 2),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: selected ? 0.55 : 0.35),
-            blurRadius: selected ? 12 : 6,
-          ),
-        ],
+        boxShadow: AppShadows.glow(color, strength: selected ? 0.6 : 0.4),
       ),
       child: Text(
-        pct,
+        label,
         style: TextStyle(
           color: Colors.white,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           fontSize: selected ? 13 : 11,
           height: 1,
         ),
       ),
     );
+
+    if (isFull) {
+      bubble = bubble
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scaleXY(begin: 1, end: 1.08, duration: 800.ms, curve: Curves.easeInOut);
+    }
+    return bubble;
   }
 }
 
@@ -970,39 +1266,33 @@ class MapFillLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
+        horizontal: compact ? 10 : 12,
         vertical: compact ? 6 : 8,
       ),
-      decoration: AppColors.glassCard(radius: compact ? 10 : 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: AppShadows.soft,
+      ),
+      child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!compact)
-            const Text(
-              'Fill level',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          if (!compact) const SizedBox(height: 4),
-          const _LegendRow(color: AppColors.fillOverflow, label: 'Full'),
-          SizedBox(height: compact ? 3 : 4),
-          const _LegendRow(color: AppColors.fillHalf, label: 'Half'),
-          SizedBox(height: compact ? 3 : 4),
-          const _LegendRow(color: AppColors.fillEmpty, label: 'Empty'),
+          _LegendDot(color: AppColors.fillOverflow, label: 'Full'),
+          SizedBox(width: 10),
+          _LegendDot(color: AppColors.fillHalf, label: 'Half'),
+          SizedBox(width: 10),
+          _LegendDot(color: AppColors.fillEmpty, label: 'Empty'),
         ],
       ),
     );
   }
 }
 
-class _LegendRow extends StatelessWidget {
+class _LegendDot extends StatelessWidget {
   final Color color;
   final String label;
-  const _LegendRow({required this.color, required this.label});
+  const _LegendDot({required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -1010,22 +1300,25 @@ class _LegendRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: 9,
+          height: 9,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
-        Text(label,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
       ],
     );
   }
 }
 
-// ── RiskBadge ─────────────────────────────────────────────────────────────────
+// ── Risk & fill ───────────────────────────────────────────────────────────────
 
 class RiskBadge extends StatelessWidget {
   final String? riskLevel;
@@ -1033,29 +1326,13 @@ class RiskBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = (riskLevel ?? 'Unknown').toUpperCase();
-    final color = riskColor(riskLevel);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: color.withValues(alpha: 0.6)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: color,
-          letterSpacing: 0.6,
-        ),
-      ),
+    return StatusPill(
+      label: (riskLevel ?? 'Unknown').toUpperCase(),
+      color: riskColor(riskLevel),
+      icon: Icons.shield_rounded,
     );
   }
 }
-
-// ── FillMeter ─────────────────────────────────────────────────────────────────
 
 class FillMeter extends StatelessWidget {
   final String? fillLevel;
@@ -1064,52 +1341,46 @@ class FillMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final frac  = fillFraction(fillLevel, fillPercentage);
+    final frac = fillFraction(fillLevel, fillPercentage);
     final color = fillColor(fillLevel);
-    final label = fillLabel(fillLevel);
-    final pct   = fillPercentage != null
-        ? '${fillPercentage!.round()}%'
-        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Icon(fillIcon(fillLevel), size: 16, color: color),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                fillLabel(fillLevel),
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
             Text(
-              label,
+              fillLevel == null && fillPercentage == null
+                  ? '—'
+                  : '${(frac * 100).round()}%',
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
             ),
-            if (pct != null)
-              Text(pct,
-                  style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12)),
           ],
         ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: frac,
-            minHeight: 8,
-            backgroundColor: AppColors.card,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-          ),
-        ),
+        const SizedBox(height: 8),
+        AnimatedFillBar(fraction: frac, color: color),
       ],
     );
   }
 }
 
-// ── BinLevelCard ──────────────────────────────────────────────────────────────
-
+/// Bin card for the public "nearest bins" list.
 class BinLevelCard extends StatelessWidget {
   final Bin bin;
   final double? distanceMeters;
@@ -1126,88 +1397,66 @@ class BinLevelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final color = fillColor(bin.latestFillLevel);
+    return Pressable(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: Motion.medium,
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.brand.withValues(alpha: 0.08) : AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? AppColors.brand : AppColors.border,
-            width: selected ? 1.5 : 0.8,
-          ),
+        decoration: AppColors.glassCard(
+          tint: selected ? AppColors.brand.withValues(alpha: 0.1) : null,
+          radius: 22,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: fillColor(bin.latestFillLevel),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    bin.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppColors.textPrimary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (distanceMeters != null)
-                  _distChip(distanceMeters!),
-              ],
+            IconTile(
+              icon: fillIcon(bin.latestFillLevel),
+              color: color,
+              gradient: AppGradients.forFill(bin.latestFillLevel),
+              size: 46,
             ),
-            if (bin.address != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                bin.address!,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            if (bin.latestImageUrl != null) ...[
-              const SizedBox(height: 10),
-              LastCapturePhoto(
-                imageUrl: bin.latestImageUrl,
-                height: selected ? 140 : 100,
-                showHeader: false,
-                capturedAt: bin.latestCapturedAt,
-              ),
-            ],
-            const SizedBox(height: 12),
-            FillMeter(
-                fillLevel: bin.latestFillLevel,
-                fillPercentage: bin.latestFillPercentage),
-            if (bin.latestRiskLevel != null) ...[
-              const SizedBox(height: 10),
-              Row(
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Risk: ',
-                      style: TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                  RiskBadge(riskLevel: bin.latestRiskLevel),
+                  Text(
+                    bin.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.title,
+                  ),
+                  if (bin.address != null)
+                    Text(
+                      bin.address!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.caption.copyWith(fontSize: 12),
+                    ),
+                  const SizedBox(height: 10),
+                  FillMeter(
+                    fillLevel: bin.latestFillLevel,
+                    fillPercentage: bin.latestFillPercentage,
+                  ),
                 ],
               ),
-            ],
-            if (bin.latestCapturedAt != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Updated ${formatTs(bin.latestCapturedAt)}',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
+            ),
+            if (distanceMeters != null) ...[
+              const SizedBox(width: 12),
+              Column(
+                children: [
+                  const Icon(Icons.near_me_rounded,
+                      size: 16, color: AppColors.accentBlue),
+                  const SizedBox(height: 4),
+                  Text(
+                    formatDistance(distanceMeters),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -1215,35 +1464,17 @@ class BinLevelCard extends StatelessWidget {
       ),
     );
   }
-
-  Widget _distChip(double meters) {
-    final label = meters < 1000
-        ? '${meters.round()} m'
-        : '${(meters / 1000).toStringAsFixed(1)} km';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary),
-      ),
-    );
-  }
 }
 
-// ── GlowPrimaryButton ─────────────────────────────────────────────────────────
+// ── Buttons ───────────────────────────────────────────────────────────────────
 
 class GlowPrimaryButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
   final bool fullWidth;
+  final bool loading;
+  final Gradient gradient;
 
   const GlowPrimaryButton({
     super.key,
@@ -1251,49 +1482,112 @@ class GlowPrimaryButton extends StatelessWidget {
     this.icon = Icons.play_arrow_rounded,
     this.onPressed,
     this.fullWidth = true,
+    this.loading = false,
+    this.gradient = AppGradients.brand,
   });
 
   @override
   Widget build(BuildContext context) {
-    final child = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          decoration: onPressed == null
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: AppColors.card,
-                )
-              : AppColors.glowButton(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 22),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: TextStyle(
-                  color: onPressed == null
-                      ? AppColors.textMuted
-                      : Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
+    final enabled = onPressed != null && !loading;
+    final button = Pressable(
+      onTap: enabled ? onPressed : null,
+      borderRadius: BorderRadius.circular(18),
+      child: AnimatedContainer(
+        duration: Motion.medium,
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17),
+        decoration: enabled
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: gradient,
+                boxShadow: AppShadows.glow(
+                  (gradient as LinearGradient).colors.last,
+                  strength: 0.45,
                 ),
+              )
+            : BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                color: AppColors.card,
               ),
-            ],
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            if (loading)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: Colors.white,
+                ),
+              )
+            else
+              Icon(
+                icon,
+                color: enabled ? Colors.white : AppColors.textMuted,
+                size: 22,
+              ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: enabled || loading ? Colors.white : AppColors.textMuted,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ],
         ),
       ),
     );
-    return fullWidth ? SizedBox(width: double.infinity, child: child) : child;
+    return fullWidth ? SizedBox(width: double.infinity, child: button) : button;
   }
 }
 
-// ── ErrorState ────────────────────────────────────────────────────────────────
+/// Circular translucent icon button (map overlays, headers).
+class GlassIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
+  final int badge;
+  final double size;
+
+  const GlassIconButton({
+    super.key,
+    required this.icon,
+    this.onTap,
+    this.tooltip,
+    this.badge = 0,
+    this.size = 46,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final btn = Pressable(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated.withValues(alpha: 0.92),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          boxShadow: AppShadows.soft,
+        ),
+        child: Badge(
+          isLabelVisible: badge > 0,
+          backgroundColor: AppColors.riskHigh,
+          label: Text('$badge'),
+          child: Icon(icon, color: AppColors.textPrimary, size: size * 0.46),
+        ),
+      ),
+    );
+    return tooltip == null ? btn : Tooltip(message: tooltip!, child: btn);
+  }
+}
+
+// ── States ────────────────────────────────────────────────────────────────────
 
 class ErrorState extends StatelessWidget {
   final String message;
@@ -1303,36 +1597,35 @@ class ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline,
-                size: 48, color: AppColors.riskHigh),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14),
+            const IllustrationBadge(
+              icon: Icons.cloud_off_rounded,
+              gradient: AppGradients.danger,
+              size: 72,
             ),
+            const SizedBox(height: 8),
+            const Text('Something went wrong', style: AppText.h2),
+            const SizedBox(height: 6),
+            Text(message, textAlign: TextAlign.center, style: AppText.body),
             if (onRetry != null) ...[
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
+              const SizedBox(height: 22),
+              GlowPrimaryButton(
+                label: 'Try again',
+                icon: Icons.refresh_rounded,
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                fullWidth: false,
               ),
             ],
           ],
         ),
-      ),
+      ).animate().fadeIn(duration: Motion.medium).scaleXY(begin: 0.96, end: 1),
     );
   }
 }
-
-// ── LoadingOverlay ────────────────────────────────────────────────────────────
 
 class CentredLoader extends StatelessWidget {
   final String? label;
@@ -1344,15 +1637,81 @@ class CentredLoader extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppColors.brand),
+          PulseGlow(
+            color: AppColors.brand,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppGradients.brand,
+              ),
+              child: const Icon(Icons.eco_rounded, color: Colors.white, size: 30),
+            ),
+          ),
           if (label != null) ...[
-            const SizedBox(height: 16),
-            Text(label!,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 20),
+            Text(label!, style: AppText.body),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Shimmering placeholder block.
+class SkeletonBox extends StatelessWidget {
+  final double? width;
+  final double? height;
+  final double radius;
+
+  const SkeletonBox({super.key, this.width, this.height, this.radius = 16});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    )
+        .animate(onPlay: (c) => c.repeat())
+        .shimmer(
+          duration: 1400.ms,
+          color: Colors.white.withValues(alpha: 0.06),
+        );
+  }
+}
+
+/// Skeleton of a list of cards — shown while data loads.
+class SkeletonList extends StatelessWidget {
+  final int count;
+  final double itemHeight;
+  final EdgeInsets padding;
+  final Widget? header;
+
+  const SkeletonList({
+    super.key,
+    this.count = 5,
+    this.itemHeight = 88,
+    this.padding = const EdgeInsets.all(20),
+    this.header,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: padding,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        if (header != null) header!,
+        for (var i = 0; i < count; i++) ...[
+          SkeletonBox(height: itemHeight, radius: 22),
+          const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }

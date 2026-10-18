@@ -1,17 +1,25 @@
-/// Map tile configuration — MapTiler when built with MAPTILER_KEY, else CARTO/OSM fallback.
+import '../services/api_client.dart';
+
+/// Map tiles — MapTiler when a key is available, else CARTO/OSM.
 ///
-/// Run with key:
-/// `flutter run --dart-define=MAPTILER_KEY=your_key_here`
-///
-/// Get your key: https://cloud.maptiler.com/account/keys/
+/// Key sources (first match wins):
+/// 1. `flutter run --dart-define=MAPTILER_KEY=...` (optional override)
+/// 2. Backend `GET /map/config` — set `MAPTILER_KEY` on Railway
+/// 3. CARTO fallback
 class MapConfig {
   MapConfig._();
 
-  /// Pass at build/run time: --dart-define=MAPTILER_KEY=...
-  static const String apiKey = String.fromEnvironment(
+  static const String _compileTimeKey = String.fromEnvironment(
     'MAPTILER_KEY',
     defaultValue: '',
   );
+
+  static String _runtimeKey = '';
+
+  static String get apiKey {
+    if (_compileTimeKey.isNotEmpty) return _compileTimeKey;
+    return _runtimeKey;
+  }
 
   static bool get useMapTiler => apiKey.isNotEmpty;
 
@@ -32,4 +40,19 @@ class MapConfig {
   static String get attribution => useMapTiler
       ? '© MapTiler © OpenStreetMap contributors'
       : '© OpenStreetMap contributors © CARTO';
+
+  /// Load MapTiler key from the Railway backend. Safe to call if offline.
+  static Future<void> loadFromBackend() async {
+    if (_compileTimeKey.isNotEmpty) return;
+    try {
+      final res = await ApiClient.instance.dio.get('/map/config');
+      final data = res.data;
+      if (data is Map) {
+        final key = (data['maptiler_key'] as String?)?.trim() ?? '';
+        if (key.isNotEmpty) _runtimeKey = key;
+      }
+    } catch (_) {
+      // CARTO tiles still work without a key.
+    }
+  }
 }

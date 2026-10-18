@@ -323,6 +323,136 @@ class DashboardSettings {
       );
 }
 
+class WeatherNow {
+  final double? tempC;
+  final double? humidityPct;
+  final String? condition;
+  final String? description;
+
+  const WeatherNow({
+    this.tempC,
+    this.humidityPct,
+    this.condition,
+    this.description,
+  });
+
+  factory WeatherNow.fromJson(Map<String, dynamic> j) => WeatherNow(
+        tempC: _dNull(j['temp_c']),
+        humidityPct: _dNull(j['humidity_pct']),
+        condition: j['condition'] as String?,
+        description: j['description'] as String?,
+      );
+}
+
+/// One hourly slot of the hygienic-risk forecast (GET /forecast).
+class RiskSlot {
+  final DateTime? time;
+  final double? tempC;
+  final double? humidityPct;
+  final String? condition;
+  final String level;
+  final String? message;
+
+  const RiskSlot({
+    this.time,
+    this.tempC,
+    this.humidityPct,
+    this.condition,
+    required this.level,
+    this.message,
+  });
+
+  factory RiskSlot.fromJson(Map<String, dynamic> j) {
+    DateTime? t;
+    final unix = j['ts_unix'];
+    if (unix is num) {
+      t = DateTime.fromMillisecondsSinceEpoch(unix.toInt() * 1000);
+    } else if (j['ts'] is String) {
+      t = DateTime.tryParse(j['ts'] as String)?.toLocal();
+    }
+    return RiskSlot(
+      time: t,
+      tempC: _dNull(j['temp_c']),
+      humidityPct: _dNull(j['humidity_pct']),
+      condition: j['condition'] as String?,
+      level: (j['level'] as String? ?? 'LOW').toUpperCase(),
+      message: j['message'] as String?,
+    );
+  }
+
+  /// 0..3 rank used for charts.
+  int get rank {
+    switch (level) {
+      case 'CRITICAL':
+        return 3;
+      case 'HIGH':
+        return 2;
+      case 'MEDIUM':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+}
+
+class RiskForecast {
+  final List<RiskSlot> slots;
+  final String? maxLevel;
+  final String? recommendation;
+
+  const RiskForecast({
+    required this.slots,
+    this.maxLevel,
+    this.recommendation,
+  });
+
+  factory RiskForecast.fromJson(Map<String, dynamic> j) {
+    final summary = j['summary'] as Map<String, dynamic>? ?? {};
+    return RiskForecast(
+      slots: (j['slots'] as List? ?? [])
+          .cast<Map<String, dynamic>>()
+          .map(RiskSlot.fromJson)
+          .toList(),
+      maxLevel: summary['max_level'] as String?,
+      recommendation: summary['recommendation'] as String?,
+    );
+  }
+}
+
+/// A past capture for a bin (GET /devices/:id/captures).
+class CaptureRecord {
+  final int id;
+  final String? capturedAt;
+  final String? fillLevel;
+  final double? fillPercentage;
+  final String? riskLevel;
+  final String? wasteLabel;
+  final int? animalCount;
+  final bool hasImage;
+
+  const CaptureRecord({
+    required this.id,
+    this.capturedAt,
+    this.fillLevel,
+    this.fillPercentage,
+    this.riskLevel,
+    this.wasteLabel,
+    this.animalCount,
+    this.hasImage = false,
+  });
+
+  factory CaptureRecord.fromJson(Map<String, dynamic> j) => CaptureRecord(
+        id: (j['id'] as num).toInt(),
+        capturedAt: j['captured_at'] as String?,
+        fillLevel: j['fill_level'] as String?,
+        fillPercentage: _dNull(j['fill_percentage']),
+        riskLevel: j['risk_level'] as String?,
+        wasteLabel: j['waste_label'] as String?,
+        animalCount: (j['animal_count'] as num?)?.toInt(),
+        hasImage: j['has_image'] == true,
+      );
+}
+
 // helpers
 double _d(dynamic v) {
   if (v == null) return 0.0;

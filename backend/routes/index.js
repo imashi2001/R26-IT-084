@@ -19,6 +19,7 @@ const collectionRoutes = require("./collection.routes");
 const wasteTrendRoutes = require("./wastetrend.routes");
 const wasteInsightsRoutes = require("./wasteinsights.routes");
 const wasteEntriesRoutes = require("./wasteentries.routes");
+const mapRoutes = require("./map.routes");
 
 const router = Router();
 
@@ -40,6 +41,7 @@ router.get("/", (_req, res) => {
     bridge:
       "GET /bridge/speaker-pending?bridge_instance_id=&esp32_id=, POST /bridge/speaker-ack",
     geo: "GET /geo/search?q=",
+    map: "GET /map/config — MapTiler key for the mobile app (set MAPTILER_KEY)",
     latest: "GET /latest (JSON) and GET /latest/image (jpeg)",
     waste_data:
       "GET /api/waste-data?date=YYYY-MM-DD — tourism demo fills (holiday_cache.json + geocode_cache.json)",
@@ -64,6 +66,7 @@ router.use("/auth", authRoutes);
 router.use("/devices", devicesRoutes);
 router.use("/bridge", bridgeRoutes);
 router.use("/geo", geoRoutes);
+router.use("/map", mapRoutes);
 router.use("/api/waste-data", wasteDataRoutes);
 router.use("/api/waste-trend", wasteTrendRoutes);
 router.use("/api/waste-insights", wasteInsightsRoutes);

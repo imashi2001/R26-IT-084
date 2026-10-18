@@ -19,13 +19,22 @@ import '../presentation/staff/staff_shell.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authProvider);
+  // Recreating GoRouter on every auth change resets to `/` (home).
+  // Keep one instance and only refresh redirects when login state changes.
+  final refresh = ValueNotifier<int>(0);
+  ref.listen<AuthState>(authProvider, (prev, next) {
+    if (prev?.isLoggedIn != next.isLoggedIn) {
+      refresh.value++;
+    }
+  });
+  ref.onDispose(refresh.dispose);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
+    refreshListenable: refresh,
     redirect: (context, state) {
-      final loggedIn = auth.isLoggedIn;
+      final loggedIn = ref.read(authProvider).isLoggedIn;
       final path = state.fullPath ?? state.uri.path;
       final isStaffPath = path.startsWith('/staff');
       final isLoginPath = path == '/staff/login';

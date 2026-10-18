@@ -14,6 +14,7 @@ import '../../domain/models.dart';
 import '../../domain/navigation_args.dart';
 import '../../services/google_maps_launcher.dart';
 import '../../theme/app_theme.dart';
+import '../shared/motion.dart';
 import '../shared/widgets.dart';
 import 'staff_shell.dart';
 
@@ -31,7 +32,6 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen>
   bool _loading = false;
   bool _refiningRoute = false;
   String? _error;
-  String _period = 'today';
   LatLng? _userPos;
 
   @override
@@ -196,6 +196,7 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen>
     return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -203,241 +204,315 @@ class _StaffRoutesScreenState extends ConsumerState<StaffRoutesScreen>
     final stops = plan?.stops ?? [];
     final distanceKm = plan != null ? _estimateDistanceKm(plan) : 0.0;
     final durationMin = _estimateDurationMin(distanceKm);
-    final mapHeight = (MediaQuery.sizeOf(context).height * 0.28).clamp(200.0, 280.0);
+    final now = DateTime.now();
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const StaffDrawer(),
-      appBar: StaffAppBar(
-        title: 'Collection Routes',
-        showMenu: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_loading || _refiningRoute)
-            const LinearProgressIndicator(color: AppColors.brand, minHeight: 2),
-          Expanded(
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          color: AppColors.brand,
+          backgroundColor: AppColors.surface,
+          onRefresh: _loadRoute,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
+              SliverToBoxAdapter(
+                child: StaffHeader(
+                  title: "Today's route",
+                  subtitle:
+                      '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]}',
+                  showBell: false,
+                  actions: [
+                    GlassIconButton(
+                      icon: Icons.refresh_rounded,
+                      tooltip: 'Re-plan route',
+                      size: 44,
+                      onTap: _loading ? null : _loadRoute,
+                    ),
+                  ],
+                ),
+              ),
+              if (_loading || _refiningRoute)
+                const SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: SegmentedFilterRow(
-                      options: const [
-                        ('today', 'Today'),
-                        ('week', 'Week'),
-                        ('month', 'Month'),
-                      ],
-                      selected: _period,
-                      onSelected: (v) => setState(() => _period = v),
+                    padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                      child: LinearProgressIndicator(minHeight: 3),
                     ),
                   ),
                 ),
-                if (_error != null)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: StaffCard(
-                        tint: AppColors.riskHigh.withValues(alpha: 0.08),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline,
-                                color: AppColors.riskHigh, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: const TextStyle(
-                                  color: AppColors.riskHigh,
-                                  fontSize: 12,
-                                ),
+              if (_error != null)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                    child: StaffCard(
+                      tint: AppColors.riskHigh.withValues(alpha: 0.1),
+                      child: Row(
+                        children: [
+                          const IconTile(
+                            icon: Icons.location_off_rounded,
+                            color: AppColors.riskHigh,
+                            size: 40,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: AppText.body.copyWith(
+                                color: AppColors.textPrimary,
                               ),
                             ),
-                            TextButton(
-                              onPressed: _loadRoute,
-                              child: const Text('Retry'),
+                          ),
+                          TextButton(
+                            onPressed: _loadRoute,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              if (_loading && plan == null)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Column(
+                      children: [
+                        SkeletonBox(height: 190, radius: 28),
+                        SizedBox(height: 14),
+                        SkeletonBox(height: 240, radius: 24),
+                      ],
+                    ),
+                  ),
+                )
+              else if (plan != null) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: _SummaryCard(
+                      stops: stops.length,
+                      distanceKm: distanceKm,
+                      durationMin: durationMin,
+                      skipped: plan.excludedEmptyCount,
+                      onStart: stops.isEmpty || _loading
+                          ? null
+                          : _startInAppNavigation,
+                      onMaps: stops.isEmpty || _loading ? null : _openGoogleMaps,
+                    ).entrance(),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Container(
+                      height: 250,
+                      decoration: AppColors.glassCard(radius: 24),
+                      padding: const EdgeInsets.all(6),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Stack(
+                          children: [
+                            _MapPreview(
+                              polyline: _polyline,
+                              stops: stops,
+                              userPos: _userPos,
+                              onStopTap: (id) => context.push('/staff/bins/$id'),
+                            ),
+                            const Positioned(
+                              left: 10,
+                              top: 10,
+                              child: MapFillLegend(compact: true),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                if (_loading && plan == null)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: CentredLoader(label: 'Planning route…'),
-                  )
-                else ...[
-                  if (plan != null)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                        child: StaffCard(
-                          tint: AppColors.brand.withValues(alpha: 0.06),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Text(
-                                          'Route 01',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 16,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.brand
-                                                .withValues(alpha: 0.18),
-                                            borderRadius:
-                                                BorderRadius.circular(100),
-                                          ),
-                                          child: const Text(
-                                            'In Progress',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.brand,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      '${stops.length} stops · ~$durationMin min · ${distanceKm.toStringAsFixed(1)} km',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                    if (plan.excludedEmptyCount > 0)
-                                      Text(
-                                        '${plan.excludedEmptyCount} empty bins skipped',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: _loadRoute,
-                                icon: const Icon(Icons.refresh),
-                                tooltip: 'Refresh route',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: SizedBox(
-                          height: mapHeight,
-                          child: Stack(
-                            children: [
-                              _MapPreview(
-                                polyline: _polyline,
-                                stops: stops,
-                                userPos: _userPos,
-                                onStopTap: (id) =>
-                                    context.push('/staff/bins/$id'),
-                              ),
-                              const Positioned(
-                                right: 8,
-                                bottom: 8,
-                                child: MapFillLegend(compact: true),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: SectionTitle('Route stops'),
-                    ),
-                  ),
-                  if (stops.isEmpty)
-                    const SliverToBoxAdapter(
-                      child: EmptyHint(
-                        message: 'No collection stops right now.',
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      sliver: SliverList.separated(
-                        itemCount: stops.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => RouteStopTile(
-                          stop: stops[i],
-                          onTap: () =>
-                              context.push('/staff/bins/${stops[i].id}'),
-                        ),
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                  top: BorderSide(
-                    color: AppColors.border.withValues(alpha: 0.5),
+                    ).entrance(index: 1),
                   ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GlowPrimaryButton(
-                    label: 'Start in-app navigation',
-                    icon: Icons.navigation_outlined,
-                    onPressed:
-                        stops.isEmpty || _loading ? null : _startInAppNavigation,
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                    child: SectionTitle(
+                      stops.isEmpty ? 'Stops' : 'Stops · ${stops.length}',
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: stops.isEmpty || _loading ? null : _openGoogleMaps,
-                    icon: const Icon(Icons.map_outlined),
-                    label: const Text('Open in Google Maps'),
+                ),
+                if (stops.isEmpty)
+                  const SliverToBoxAdapter(
+                    child: EmptyHint(
+                      icon: Icons.emoji_events_rounded,
+                      title: 'No pickups needed',
+                      message:
+                          'Every bin is below half full. Pull down to re-check later.',
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding:
+                        const EdgeInsets.fromLTRB(20, 0, 20, kNavBarClearance),
+                    sliver: SliverList.builder(
+                      itemCount: stops.length,
+                      itemBuilder: (_, i) => RouteStopTile(
+                        stop: stops[i],
+                        isFirst: i == 0,
+                        isLast: i == stops.length - 1,
+                        onTap: () => context.push('/staff/bins/${stops[i].id}'),
+                      ).entrance(index: i + 2),
+                    ),
                   ),
-                ],
+              ],
+              if (plan == null && !_loading)
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: kNavBarClearance),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final int stops;
+  final double distanceKm;
+  final int durationMin;
+  final int skipped;
+  final VoidCallback? onStart;
+  final VoidCallback? onMaps;
+
+  const _SummaryCard({
+    required this.stops,
+    required this.distanceKm,
+    required this.durationMin,
+    required this.skipped,
+    required this.onStart,
+    required this.onMaps,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: AppGradients.forest,
+        border: Border.all(color: AppColors.brand.withValues(alpha: 0.25)),
+        boxShadow: AppShadows.glow(AppColors.brandDark, strength: 0.3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const IconTile(
+                icon: Icons.local_shipping_rounded,
+                color: Colors.white,
+                gradient: AppGradients.brand,
+                size: 48,
               ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Optimised collection', style: AppText.h2),
+                    Text(
+                      stops == 0
+                          ? 'Nothing to collect right now'
+                          : 'Full bins first, then half full',
+                      style: AppText.caption.copyWith(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              StatusPill(
+                label: stops == 0 ? 'Clear' : 'Ready',
+                color: AppColors.brandGlow,
+                icon: Icons.check_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _Stat(value: '$stops', label: 'Stops', icon: Icons.pin_drop_rounded),
+              _Stat(
+                value: distanceKm.toStringAsFixed(1),
+                label: 'km',
+                icon: Icons.straighten_rounded,
+              ),
+              _Stat(
+                value: stops == 0 ? '0' : '$durationMin',
+                label: 'min',
+                icon: Icons.schedule_rounded,
+              ),
+              _Stat(
+                value: '$skipped',
+                label: 'Skipped',
+                icon: Icons.check_circle_outline_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: GlowPrimaryButton(
+                  label: 'Start navigation',
+                  icon: Icons.navigation_rounded,
+                  onPressed: onStart,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Opacity(
+                opacity: onMaps == null ? 0.4 : 1,
+                child: GlassIconButton(
+                  icon: Icons.map_rounded,
+                  tooltip: 'Open in Google Maps',
+                  size: 56,
+                  onTap: onMaps,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String value;
+  final String label;
+  final IconData icon;
+  const _Stat({required this.value, required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, size: 18, color: AppColors.brandGlow),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
             ),
           ),
+          Text(label, style: AppText.caption),
         ],
       ),
     );
@@ -459,7 +534,7 @@ class _MapPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    LatLng center = const LatLng(7.8731, 80.7718);
+    LatLng center = const LatLng(6.9271, 79.8612);
     if (userPos != null) {
       center = userPos!;
     } else if (stops.isNotEmpty) {
@@ -481,7 +556,12 @@ class _MapPreview extends StatelessWidget {
             polylines: [
               Polyline(
                 points: polyline,
-                color: AppColors.brand,
+                color: AppColors.brandGlow.withValues(alpha: 0.35),
+                strokeWidth: 10,
+              ),
+              Polyline(
+                points: polyline,
+                color: AppColors.brandGlow,
                 strokeWidth: 4,
               ),
             ],
@@ -491,26 +571,37 @@ class _MapPreview extends StatelessWidget {
             if (userPos != null)
               Marker(
                 point: userPos!,
-                width: 32,
-                height: 32,
-                child: const Icon(Icons.my_location, color: Color(0xFF38BDF8)),
+                width: 26,
+                height: 26,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.accentBlue,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: AppShadows.glow(AppColors.accentBlue),
+                  ),
+                ),
               ),
             ...stops.map(
               (s) => Marker(
                 point: LatLng(s.latitude, s.longitude),
-                width: 30,
-                height: 30,
+                width: 32,
+                height: 32,
                 child: GestureDetector(
                   onTap: () => onStopTap(s.id),
-                  child: CircleAvatar(
-                    radius: 14,
-                    backgroundColor: fillColor(s.latestFillLevel),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.forFill(s.latestFillLevel),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    alignment: Alignment.center,
                     child: Text(
                       '${s.order}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
                       ),
                     ),
                   ),

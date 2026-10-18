@@ -69,6 +69,38 @@ class BinRepository {
     return DashboardSettings.fromJson(res.data as Map<String, dynamic>);
   }
 
+  Future<List<CaptureRecord>> deviceCaptures(int id, {int limit = 12}) async {
+    final res = await _dio.get('/devices/$id/captures',
+        queryParameters: {'limit': limit});
+    final list = (res.data['captures'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    return list.map(CaptureRecord.fromJson).toList();
+  }
+
+  Future<RiskForecast> forecastForDevice(int id, {int hours = 24}) async {
+    final res =
+        await _dio.get('/forecast/$id', queryParameters: {'hours': hours});
+    return RiskForecast.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<RiskForecast> defaultForecast({int hours = 24}) async {
+    final res = await _dio.get('/forecast', queryParameters: {'hours': hours});
+    return RiskForecast.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<WeatherNow> weather({double? lat, double? lng}) async {
+    final res = await _dio.get('/weather', queryParameters: {
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+    });
+    return WeatherNow.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  /// status: acknowledged | actioned | dismissed | rejected | open (admin).
+  Future<void> updateAlertStatus(int id, String status) async {
+    await _dio.patch('/alerts/$id', data: {'status': status});
+  }
+
   Future<CollectionPlan> collectionPlan({
     required double latitude,
     required double longitude,

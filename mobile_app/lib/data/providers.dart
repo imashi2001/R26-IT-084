@@ -144,6 +144,28 @@ final dashboardSettingsProvider = FutureProvider<DashboardSettings>((_) async {
   return BinRepository.instance.dashboardSettings();
 });
 
+final binCapturesProvider =
+    FutureProvider.family<List<CaptureRecord>, int>((_, id) async {
+  return BinRepository.instance.deviceCaptures(id);
+});
+
+final binForecastProvider =
+    FutureProvider.family<RiskForecast, int>((_, id) async {
+  return BinRepository.instance.forecastForDevice(id);
+});
+
+final cityForecastProvider = FutureProvider<RiskForecast>((_) async {
+  return BinRepository.instance.defaultForecast();
+});
+
+final weatherProvider = FutureProvider<WeatherNow>((_) async {
+  return BinRepository.instance.weather();
+});
+
+/// Readable message for any error thrown by the API layer.
+String friendlyError(Object e) =>
+    e is Exception ? _msg(e) : e.toString();
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 String _msg(Exception e) {
@@ -151,7 +173,20 @@ String _msg(Exception e) {
   if (e is DioException) {
     final d = e.response?.data;
     if (d is Map && d['error'] != null) return d['error'] as String;
-    return 'Server error ${e.response?.statusCode ?? ''}';
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        return 'The server is taking too long to respond. Please try again.';
+      case DioExceptionType.connectionError:
+        return "Can't reach VisionWaste. Check your internet connection.";
+      default:
+        break;
+    }
+    final code = e.response?.statusCode;
+    if (code == 401) return 'Your session has expired. Please sign in again.';
+    if (code == 403) return "You don't have permission to do that.";
+    return 'Something went wrong${code != null ? ' (error $code)' : ''}.';
   }
   return s.replaceFirst('Exception: ', '');
 }

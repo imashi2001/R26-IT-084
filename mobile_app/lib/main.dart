@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'config/map_config.dart';
 import 'router/app_router.dart';
 import 'services/api_client.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Status bar style
@@ -22,8 +23,8 @@ void main() {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Init API client
   ApiClient.instance.init();
+  await MapConfig.loadFromBackend();
 
   runApp(const ProviderScope(child: VisionWasteApp()));
 }

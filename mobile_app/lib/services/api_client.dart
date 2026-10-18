@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
 
-// Change this to your Railway backend URL.
-// e.g.  https://r26-it-084-production-3f77.up.railway.app
-const String kBackendBaseUrl =
-    'https://r26-it-084-production-3f77.up.railway.app';
+/// Railway backend URL. Override per build without editing code:
+/// `flutter run --dart-define=API_BASE_URL=https://your-backend.up.railway.app`
+const String kBackendBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'https://r26-it-084-production-2220.up.railway.app',
+);
 
 class ApiClient {
   ApiClient._();
@@ -38,4 +40,15 @@ class ApiClient {
   String? get token => _token;
 
   Dio get dio => _dio;
+
+  /// Headers for loading protected backend images (capture photos).
+  /// Only attached for our own backend so the token never leaks elsewhere.
+  Map<String, String>? imageHeadersFor(String url) {
+    if (_token == null || !url.startsWith(kBackendBaseUrl)) return null;
+    return {'Authorization': 'Bearer $_token'};
+  }
+
+  /// Absolute URL of a capture photo (requires staff login).
+  String captureImageUrl(int captureId) =>
+      '$kBackendBaseUrl/captures/$captureId/image';
 }

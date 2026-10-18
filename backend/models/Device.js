@@ -22,6 +22,16 @@ module.exports = (sequelize) =>
         allowNull: true,
         unique: true,
       },
+      /** Separate AI-Thinker board that only plays DFPlayer audio. */
+      audio_esp32_id: {
+        type: DataTypes.STRING(80),
+        allowNull: true,
+        unique: true,
+      },
+      audio_last_seen_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
       location: {
         type: DataTypes.STRING(160),
         allowNull: true,

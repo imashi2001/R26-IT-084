@@ -35,10 +35,13 @@ function withPresence(device, extraSeenAt = null) {
     tsMs(extraSeenAt)
   );
   const online = Boolean(last && Date.now() - last <= ONLINE_MS);
+  const voiceLast = tsMs(device.audio_last_seen_at);
   return {
     ...device,
     camera_online: online,
+    voice_online: Boolean(voiceLast && Date.now() - voiceLast <= ONLINE_MS),
     last_seen_at: device.last_seen_at || extraSeenAt || null,
+    audio_last_seen_at: device.audio_last_seen_at || null,
   };
 }
 
@@ -195,6 +198,10 @@ async function create(req, res, next) {
       user_id: req.user?.id ?? body.user_id ?? null,
       name,
       esp32_id: body.esp32_id != null ? String(body.esp32_id).trim() || null : null,
+      audio_esp32_id:
+        body.audio_esp32_id != null
+          ? String(body.audio_esp32_id).trim() || null
+          : null,
       location: body.location != null ? String(body.location).trim() || null : null,
       address: body.address != null ? String(body.address).trim() || null : null,
       latitude:
@@ -271,6 +278,12 @@ async function patch(req, res, next) {
         body.esp32_id == null || body.esp32_id === ""
           ? null
           : String(body.esp32_id).trim();
+    }
+    if (body.audio_esp32_id !== undefined) {
+      patch.audio_esp32_id =
+        body.audio_esp32_id == null || body.audio_esp32_id === ""
+          ? null
+          : String(body.audio_esp32_id).trim();
     }
     if (body.location !== undefined) {
       patch.location =
@@ -350,6 +363,7 @@ async function patch(req, res, next) {
       manual_fill_level: merged.manual_fill_level,
       manual_fill_percentage: merged.manual_fill_percentage,
       esp32_id: merged.esp32_id,
+      audio_esp32_id: merged.audio_esp32_id,
       bridge_instance_id: merged.bridge_instance_id,
       camera_base_url: merged.camera_base_url,
     });
@@ -743,9 +757,10 @@ async function audioTest(req, res, next) {
     if (!device) {
       return res.status(404).json({ error: "Device not found" });
     }
-    if (!device.esp32_id || !String(device.esp32_id).trim()) {
+    if (!deviceCommandService.audioTargetId(device)) {
       return res.status(400).json({
-        error: "Device has no esp32_id. Set ESP32 ID on the bin first.",
+        error:
+          "Set ESP32 voice ID on the bin (e.g. esp-voice-1) before testing audio.",
       });
     }
 
@@ -781,9 +796,10 @@ async function audioStop(req, res, next) {
     if (!device) {
       return res.status(404).json({ error: "Device not found" });
     }
-    if (!device.esp32_id || !String(device.esp32_id).trim()) {
+    if (!deviceCommandService.audioTargetId(device)) {
       return res.status(400).json({
-        error: "Device has no esp32_id. Set ESP32 ID on the bin first.",
+        error:
+          "Set ESP32 voice ID on the bin (e.g. esp-voice-1) before stopping audio.",
       });
     }
 

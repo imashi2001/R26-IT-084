@@ -155,6 +155,7 @@ function applyBinTypePayload(body, payload, { isPatch = false } = {}) {
     }
 
     payload.esp32_id = null;
+    payload.audio_esp32_id = null;
     payload.bridge_instance_id = null;
     payload.camera_base_url = null;
   } else if (effectiveType === "smart") {

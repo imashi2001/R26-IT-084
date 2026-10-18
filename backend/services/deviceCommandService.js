@@ -16,10 +16,21 @@ function ensureModels() {
   return modelsRegistry.getModels() || modelsRegistry.init();
 }
 
-function requireEsp32Id(device) {
-  const esp32Id = device?.esp32_id ? String(device.esp32_id).trim() : "";
+function audioTargetId(device) {
+  const voice = device?.audio_esp32_id
+    ? String(device.audio_esp32_id).trim()
+    : "";
+  if (voice) return voice;
+  const cam = device?.esp32_id ? String(device.esp32_id).trim() : "";
+  return cam;
+}
+
+function requireAudioEsp32Id(device) {
+  const esp32Id = audioTargetId(device);
   if (!esp32Id) {
-    const err = new Error("Device has no esp32_id");
+    const err = new Error(
+      "Device has no ESP32 voice ID. Set audio_esp32_id (e.g. esp-voice-1)."
+    );
     err.status = 400;
     throw err;
   }
@@ -122,7 +133,7 @@ async function createPlayAudioCommand(device, { track = 1 } = {}) {
   if (!models) return null;
   const { DeviceCommand } = models;
 
-  const esp32Id = requireEsp32Id(device);
+  const esp32Id = requireAudioEsp32Id(device);
 
   const trackNum = Number.isFinite(Number(track)) ? Math.trunc(Number(track)) : 1;
   if (trackNum < 1 || trackNum > 9999) {
@@ -159,7 +170,7 @@ async function createStopAudioCommand(device) {
   if (!models) return null;
   const { DeviceCommand } = models;
 
-  const esp32Id = requireEsp32Id(device);
+  const esp32Id = requireAudioEsp32Id(device);
   await cancelActiveCommands(esp32Id, "cancelled: stop requested");
 
   const row = await DeviceCommand.create({
@@ -193,9 +204,18 @@ async function pollNextCommand(esp32IdRaw) {
     throw err;
   }
 
-  const device = await Device.findOne({ where: { esp32_id: esp32Id } });
+  const device = await Device.findOne({
+    where: {
+      [Op.or]: [{ audio_esp32_id: esp32Id }, { esp32_id: esp32Id }],
+    },
+  });
   if (device) {
-    await device.update({ last_seen_at: new Date() });
+    const voiceId = String(device.audio_esp32_id || "").trim();
+    if (voiceId && voiceId === esp32Id) {
+      await device.update({ audio_last_seen_at: new Date() });
+    } else {
+      await device.update({ last_seen_at: new Date() });
+    }
   }
 
   const row = await DeviceCommand.findOne({
@@ -304,6 +324,8 @@ async function getCommandById(commandId) {
 }
 
 module.exports = {
+  audioTargetId,
+  requireAudioEsp32Id,
   shouldSkipAutoPlay,
   createPlayAudioCommand,
   createStopAudioCommand,

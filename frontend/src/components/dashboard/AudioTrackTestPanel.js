@@ -25,8 +25,12 @@ export default function AudioTrackTestPanel({
   const [busyKey, setBusyKey] = useState(null);
   const [stopBusy, setStopBusy] = useState(false);
 
-  const hasEsp32 = Boolean(device?.esp32_id && String(device.esp32_id).trim());
-  const camOnline = isCameraOnline(device);
+  const hasEsp32 = Boolean(
+    (device?.audio_esp32_id && String(device.audio_esp32_id).trim()) ||
+      (device?.esp32_id && String(device.esp32_id).trim())
+  );
+  const voiceOnline = device?.voice_online === true;
+  const camOnline = voiceOnline || isCameraOnline(device);
   const list = Array.isArray(tracks) ? tracks : [];
 
   const onPlay = async (track, label) => {
@@ -70,7 +74,7 @@ export default function AudioTrackTestPanel({
   if (!hasEsp32) {
     return (
       <p className="text-sm text-slate-500">
-        Set an ESP32 ID on this bin to test DFPlayer audio remotely.
+        Set ESP32 voice ID (e.g. esp-voice-1) on this bin to test DFPlayer audio.
       </p>
     );
   }
@@ -88,7 +92,8 @@ export default function AudioTrackTestPanel({
       {!compact ? (
         <p className="text-sm text-slate-400">
           Each button queues <code className="text-brand-400">PLAY_AUDIO</code>{" "}
-          for track N → {mp3Path(1).replace("0001", "000N")} on the ESP32.
+          for track N → {mp3Path(1).replace("0001", "000N")} on the voice
+          board{device?.audio_esp32_id ? ` (${device.audio_esp32_id})` : ""}.
         </p>
       ) : null}
       {!camOnline ? (

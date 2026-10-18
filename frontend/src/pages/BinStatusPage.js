@@ -132,6 +132,7 @@ const EMPTY_FORM = {
   binType: "smart",
   name: "",
   esp32Id: "",
+  audioEsp32Id: "",
   bridgeInstanceId: "",
   cameraBaseUrl: "",
   status: "active",
@@ -205,7 +206,11 @@ export default function BinStatusPage() {
 
   const onTestAudio = useCallback(
     async (device) => {
-      if (!device?.id || !device?.esp32_id) return;
+      if (
+        !device?.id ||
+        !(device.audio_esp32_id || device.esp32_id)
+      )
+        return;
       setAudioBusyId(device.id);
       setAudioMsgs((m) => ({ ...m, [device.id]: null }));
       try {
@@ -231,7 +236,11 @@ export default function BinStatusPage() {
 
   const onStopAudio = useCallback(
     async (device) => {
-      if (!device?.id || !device?.esp32_id) return;
+      if (
+        !device?.id ||
+        !(device.audio_esp32_id || device.esp32_id)
+      )
+        return;
       setStopBusyId(device.id);
       setAudioMsgs((m) => ({ ...m, [device.id]: null }));
       try {
@@ -373,6 +382,7 @@ export default function BinStatusPage() {
       binType: (d.bin_type || "smart").toLowerCase() === "virtual" ? "virtual" : "smart",
       name: d.name || "",
       esp32Id: d.esp32_id || "",
+      audioEsp32Id: d.audio_esp32_id || "",
       bridgeInstanceId: d.bridge_instance_id || "",
       cameraBaseUrl: d.camera_base_url || "",
       status: d.status || "active",
@@ -486,10 +496,12 @@ export default function BinStatusPage() {
         return;
       }
       payload.esp32_id = null;
+      payload.audio_esp32_id = null;
       payload.bridge_instance_id = null;
       payload.camera_base_url = null;
     } else {
       payload.esp32_id = form.esp32Id.trim() || null;
+      payload.audio_esp32_id = form.audioEsp32Id.trim() || null;
       payload.bridge_instance_id = form.bridgeInstanceId.trim() || null;
       payload.camera_base_url = form.cameraBaseUrl.trim().replace(/\/+$/, "") || null;
     }
@@ -853,13 +865,22 @@ export default function BinStatusPage() {
                   {formStep === "device" && !isVirtualForm ? (
                     <div className="space-y-3 rounded-xl border border-slate-800/50 bg-slate-950/20 p-3">
                       <FieldRow
-                        label="ESP32 device ID"
-                        helperRight="(matches bridge DEVICE_ESP32_ID)"
+                        label="ESP32 camera ID"
+                        helperRight="(camera board)"
                         value={form.esp32Id}
                         onChange={(v) => updateField("esp32Id", v)}
                         placeholder="esp-cam-1"
                         disabled={!isAdmin || busy}
-                        help="Required for ESP32-CAM captures and remote audio tests."
+                        help="Camera board ID. Must match firmware ESP32_ID."
+                      />
+                      <FieldRow
+                        label="ESP32 voice ID"
+                        helperRight="(speaker board)"
+                        value={form.audioEsp32Id}
+                        onChange={(v) => updateField("audioEsp32Id", v)}
+                        placeholder="esp-voice-1"
+                        disabled={!isAdmin || busy}
+                        help="Second AI-Thinker board with DFPlayer only. Manual and auto audio go here."
                       />
                       <FieldRow
                         label="Bridge / laptop ID"

@@ -39,7 +39,7 @@ async function maybeQueueFromPredict(input) {
     return { command: null, resolved: null };
   }
   const device = input?.device;
-  if (!device?.id || !device?.esp32_id) {
+  if (!device?.id || !deviceCommandService.audioTargetId(device)) {
     return { command: null, resolved: null };
   }
 
@@ -65,7 +65,7 @@ async function maybeQueueFromPredict(input) {
     return { command: null, resolved: null };
   }
 
-  const esp32Id = String(device.esp32_id).trim();
+  const esp32Id = deviceCommandService.audioTargetId(device);
   const skip = await deviceCommandService.shouldSkipAutoPlay(esp32Id);
   if (skip) {
     return { command: null, resolved };

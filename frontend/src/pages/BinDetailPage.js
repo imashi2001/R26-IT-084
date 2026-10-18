@@ -226,8 +226,12 @@ export default function BinDetailPage() {
                       }
                     />
                     <MetaItem
-                      label="ESP32 ID"
+                      label="ESP32 camera ID"
                       value={data.device.esp32_id || "—"}
+                    />
+                    <MetaItem
+                      label="ESP32 voice ID"
+                      value={data.device.audio_esp32_id || "—"}
                     />
                     <MetaItem
                       label="Bridge / Laptop ID"

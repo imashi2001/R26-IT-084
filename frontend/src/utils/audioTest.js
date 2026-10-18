@@ -1,6 +1,6 @@
 /** Remote ESP32 DFPlayer audio (poll-based command queue). */
 
-export const AUDIO_TEST_TIMEOUT_MS = 25_000;
+export const AUDIO_TEST_TIMEOUT_MS = 45_000;
 export const AUDIO_TEST_POLL_MS = 1_500;
 
 function sleep(ms) {

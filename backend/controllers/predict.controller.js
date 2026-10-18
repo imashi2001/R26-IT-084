@@ -347,10 +347,24 @@ async function predict(req, res, next) {
       });
     }
 
-    const deviceId = await resolveDeviceId(body, {
+    let deviceId = await resolveDeviceId(body, {
       bypassBridgeCheck: bypassBridge,
     });
+    if (!deviceId && (body.esp32_id || sourceType === "esp32")) {
+      const fallback = await deviceService.findDeviceByEsp32Id(
+        body.esp32_id || "esp-cam-1"
+      );
+      if (fallback?.id) deviceId = fallback.id;
+    }
     const device = deviceId ? await deviceService.getDeviceById(deviceId) : null;
+    if (!deviceId) {
+      console.warn(
+        "[predict] capture has no device_id (esp32_id=%s) — website will keep the old photo",
+        body.esp32_id || ""
+      );
+    } else {
+      console.log("[predict] binding capture to device", deviceId);
+    }
 
     const { lat, lon, source: locationSource } = pickWeatherLocation(
       body,

@@ -2,7 +2,7 @@
  * Device CRUD and map-oriented queries (requires Sequelize models).
  */
 
-const { Op } = require("sequelize");
+const { Op, fn, col, where } = require("sequelize");
 
 const db = require("../config/db");
 const modelsRegistry = require("../models");
@@ -47,6 +47,24 @@ async function updateDevice(id, patch) {
   return row.toJSON();
 }
 
+async function findDeviceByEsp32Id(esp32Id) {
+  const models = ensureModels();
+  if (!models || !esp32Id) return null;
+  const { Device } = models;
+  const raw = String(esp32Id).trim();
+  if (!raw) return null;
+
+  let row = await Device.findOne({
+    where: { esp32_id: raw },
+  });
+  if (!row) {
+    row = await Device.findOne({
+      where: where(fn("LOWER", col("esp32_id")), raw.toLowerCase()),
+    });
+  }
+  return row ? row.toJSON() : null;
+}
+
 async function findDeviceIdForPredict(
   esp32Id,
   incomingBridgeRaw,
@@ -56,9 +74,15 @@ async function findDeviceIdForPredict(
   if (!models || !esp32Id) return null;
 
   const { Device } = models;
-  const row = await Device.findOne({
-    where: { esp32_id: esp32Id },
+  const raw = String(esp32Id).trim();
+  let row = await Device.findOne({
+    where: { esp32_id: raw },
   });
+  if (!row) {
+    row = await Device.findOne({
+      where: where(fn("LOWER", col("esp32_id")), raw.toLowerCase()),
+    });
+  }
   if (!row) return null;
 
   const incoming = incomingBridgeRaw
@@ -76,15 +100,6 @@ async function findDeviceIdForPredict(
   return row.id;
 }
 
-async function findDeviceByEsp32Id(esp32Id) {
-  const models = ensureModels();
-  if (!models || !esp32Id) return null;
-  const { Device } = models;
-  const row = await Device.findOne({
-    where: { esp32_id: String(esp32Id).trim() },
-  });
-  return row ? row.toJSON() : null;
-}
 
 /**
  * Find a device with a pending speaker action for this laptop + optional esp32_id.
@@ -155,21 +170,33 @@ async function findLatestCaptureRow(deviceId, { includeBuffer = false } = {}) {
     });
 
   let row = await query({ device_id: deviceId });
-  if (row) return row;
 
-  const deviceCount = await Device.count();
-  if (deviceCount > 1) return null;
+  const device = await Device.findByPk(deviceId);
+  const hasEsp32 = Boolean(device?.esp32_id && String(device.esp32_id).trim());
+  if (!hasEsp32) return row;
 
-  row = await query({ device_id: null });
-  if (row && !row.device_id) {
+  const linkedEsp32Count = await Device.count({
+    where: {
+      esp32_id: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }] },
+    },
+  });
+  if (linkedEsp32Count > 1) return row;
+
+  const orphan = await query({ device_id: null });
+  if (!orphan) return row;
+
+  const orphanTs = new Date(orphan.captured_at).getTime();
+  const rowTs = row ? new Date(row.captured_at).getTime() : 0;
+  if (!row || orphanTs > rowTs) {
     try {
-      await row.update({ device_id: deviceId });
+      await orphan.update({ device_id: deviceId });
     } catch (err) {
       console.warn(
         "[devices] could not backfill capture device_id:",
         err.message
       );
     }
+    return orphan;
   }
   return row;
 }

@@ -307,15 +307,44 @@ void playStartupAudio()
 // JSON HELPERS
 // =====================================================
 
-String getJsonString(const String& json, const String& key)
+// Find `"key":` as a full key. A naive search for "command" also matches "command_id".
+int findJsonKeyColon(const String& json, const String& key)
 {
   String search = "\"" + key + "\"";
-  int keyPosition = json.indexOf(search);
-  if (keyPosition < 0) return "";
-  int colonPosition = json.indexOf(':', keyPosition);
+  int from = 0;
+  while (from < (int)json.length()) {
+    int keyPosition = json.indexOf(search, from);
+    if (keyPosition < 0) return -1;
+    int i = keyPosition + search.length();
+    while (i < (int)json.length() &&
+           (json[i] == ' ' || json[i] == '\t' ||
+            json[i] == '\r' || json[i] == '\n')) {
+      i++;
+    }
+    if (i < (int)json.length() && json[i] == ':') {
+      return i;
+    }
+    from = keyPosition + 1;
+  }
+  return -1;
+}
+
+int skipJsonSpace(const String& json, int start)
+{
+  while (start < (int)json.length() &&
+         (json[start] == ' ' || json[start] == '\t' ||
+          json[start] == '\r' || json[start] == '\n')) {
+    start++;
+  }
+  return start;
+}
+
+String getJsonString(const String& json, const String& key)
+{
+  int colonPosition = findJsonKeyColon(json, key);
   if (colonPosition < 0) return "";
-  int quoteStart = json.indexOf('"', colonPosition + 1);
-  if (quoteStart < 0) return "";
+  int quoteStart = skipJsonSpace(json, colonPosition + 1);
+  if (quoteStart >= (int)json.length() || json[quoteStart] != '"') return "";
   int quoteEnd = json.indexOf('"', quoteStart + 1);
   if (quoteEnd < 0) return "";
   return json.substring(quoteStart + 1, quoteEnd);
@@ -323,19 +352,12 @@ String getJsonString(const String& json, const String& key)
 
 int getJsonInt(const String& json, const String& key)
 {
-  String search = "\"" + key + "\"";
-  int keyPosition = json.indexOf(search);
-  if (keyPosition < 0) return -1;
-  int colonPosition = json.indexOf(':', keyPosition);
+  int colonPosition = findJsonKeyColon(json, key);
   if (colonPosition < 0) return -1;
-  int start = colonPosition + 1;
-  while (start < (int)json.length() &&
-         (json[start] == ' ' || json[start] == '\t' ||
-          json[start] == '\r' || json[start] == '\n')) {
-    start++;
+  int start = skipJsonSpace(json, colonPosition + 1);
+  if (start >= (int)json.length() || json[start] == 'n' || json[start] == '"') {
+    return -1;
   }
-  if (start >= (int)json.length()) return -1;
-  if (json[start] == 'n') return -1;
   int end = start;
   while (end < (int)json.length() && json[end] >= '0' && json[end] <= '9') {
     end++;
@@ -642,11 +664,6 @@ bool enqueueCapture(const char* reason)
     return false;
   }
 
-  if (audioBusyUntil != 0 && millis() < audioBusyUntil) {
-    Serial.printf("Capture skipped (audio lock): %s\n", reason);
-    return false;
-  }
-
   if (uploadWorkerBusy) {
     pendingCapture = true;
     Serial.printf("Capture deferred (upload busy): %s\n", reason);
@@ -763,6 +780,7 @@ void checkMotion()
     pirLowSince = pirHigh ? 0 : now;
     pirHighSince = pirHigh ? now : 0;
     Serial.println("PIR WARM-UP FINISHED — ready");
+    enqueueCapture("pir-ready");
     return;
   }
 
@@ -863,6 +881,11 @@ void setup()
   Serial.println("Command poll: every 2s (independent HTTPS from /predict)");
   Serial.println("Predict upload: background task, 120s timeout, no command mutex");
   lastCommandCheck = millis();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("[CAMERA] boot capture — sending first image now");
+    enqueueCapture("boot");
+  }
 }
 
 // =====================================================
@@ -895,14 +918,37 @@ void loop()
   static unsigned long lastPIRDiagnostic = 0;
   if (millis() - lastPIRDiagnostic >= 5000) {
     lastPIRDiagnostic = millis();
-    Serial.printf("[PIR] GPIO=%s ready=%s armed=%s motion=%s capture=%s upload=%s pending=%s\n",
-                  digitalRead(PIR_PIN) ? "HIGH" : "LOW",
-                  pirReady ? "YES" : "NO",
-                  pirArmed ? "YES" : "NO",
-                  motionActive ? "YES" : "NO",
-                  captureInProgress ? "YES" : "NO",
-                  uploadWorkerBusy ? "YES" : "NO",
-                  pendingCapture ? "YES" : "NO");
+    if (!pirReady) {
+      unsigned long left =
+        (PIR_WARMUP_TIME > millis() - pirStartupTime)
+          ? (PIR_WARMUP_TIME - (millis() - pirStartupTime)) / 1000
+          : 0;
+      Serial.printf("[PIR] warming up — %lu s left, GPIO=%s\n",
+                    left, digitalRead(PIR_PIN) ? "HIGH" : "LOW");
+    } else {
+      Serial.printf("[PIR] GPIO=%s ready=%s armed=%s motion=%s capture=%s upload=%s pending=%s\n",
+                    digitalRead(PIR_PIN) ? "HIGH" : "LOW",
+                    pirReady ? "YES" : "NO",
+                    pirArmed ? "YES" : "NO",
+                    motionActive ? "YES" : "NO",
+                    captureInProgress ? "YES" : "NO",
+                    uploadWorkerBusy ? "YES" : "NO",
+                    pendingCapture ? "YES" : "NO");
+    }
+  }
+
+  // Fallback photo if PIR never fires (still uploads while camera is healthy).
+  static unsigned long lastWatchdogCapture = 0;
+  if (lastWatchdogCapture == 0) lastWatchdogCapture = millis();
+  if (WiFi.status() == WL_CONNECTED &&
+      millis() - lastWatchdogCapture >= 60000 &&
+      !uploadWorkerBusy) {
+    lastWatchdogCapture = millis();
+    Serial.println("[CAMERA] watchdog capture (60s, PIR still quiet)");
+    enqueueCapture("watchdog");
+  }
+  if (uploadWorkerBusy) {
+    lastWatchdogCapture = millis();
   }
 
   delay(10);

@@ -110,7 +110,7 @@ describe("resolveAudioScenario by highest confidence", () => {
     assert.ok(out.confidence > 0.5);
   });
 
-  it("picks litter severity when LSI beats half fill", () => {
+  it("picks illegal_dumping when litter is detected", () => {
     const out = audioPriorityService.resolveAudioScenario({
       settings: baseSettings,
       littering_action: { event_detected: false },
@@ -118,7 +118,8 @@ describe("resolveAudioScenario by highest confidence", () => {
       bin_fill_level: "Half",
       bin_fill: { predictions: [{ label: "half", confidence: 0.4 }] },
     });
-    assert.equal(out.scenario_key, "waste_full");
+    assert.equal(out.scenario_key, "illegal_dumping");
+    assert.equal(out.track, baseSettings.tracks.illegal_dumping);
     assert.equal(out.source, "litter");
     assert.ok(out.confidence >= 0.55);
   });

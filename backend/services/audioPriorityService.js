@@ -176,41 +176,42 @@ function collectAudioCandidates(input = {}) {
   const candidates = [];
 
   const litterConf = litteringConfidence(input.littering_action);
-  if (isLitteringEvent(input.littering_action)) {
+  const fillConf = wasteFullConfidence(input);
+  const litterSev = litterPayload(input);
+  const litterSevConf = litterSeverityConfidence(litterSev);
+  const hasLitterIssue = isSignificantLitter(litterSev);
+
+  // Littering event OR litter-on-ground → illegal dumping (track 0001).
+  if (isLitteringEvent(input.littering_action) || hasLitterIssue) {
+    const fromAction = isLitteringEvent(input.littering_action) ? litterConf : 0;
+    const fromLitter = hasLitterIssue ? litterSevConf : 0;
+    const fromLitterWins = fromLitter > fromAction;
     candidates.push({
       scenario_key: "illegal_dumping",
       label: BUILTIN_LABELS.illegal_dumping,
       track: audioSettingsService.trackForBuiltin("illegal_dumping", settings),
-      confidence: litterConf,
-      reason: `Littering detected (${Math.round(litterConf * 100)}% confidence).`,
-      source: "littering_action",
+      confidence: Math.max(fromAction, fromLitter),
+      reason: fromLitterWins
+        ? `Litter detected (${String(litterSev?.severity || "HIGH").toUpperCase()}, LSI ${Math.round(Number(litterSev?.lsi) || fromLitter * 100)}).`
+        : `Littering detected (${Math.round(fromAction * 100)}% confidence).`,
+      source: fromLitterWins ? "litter" : "littering_action",
     });
   }
 
-  const fillConf = wasteFullConfidence(input);
-  const litterSev = litterPayload(input);
-  const litterSevConf = litterSeverityConfidence(litterSev);
-  // Half-full is watch-only: do not announce waste_full on every walk-by.
+  // Overflow only — half-full is watch-only, litter is illegal dumping above.
   const hasFillIssue = isOverflow(
     input.bin_fill_level,
     input.fill_percentage,
     input.bin_fill
   );
-  const hasLitterIssue = isSignificantLitter(litterSev);
-  if (hasFillIssue || hasLitterIssue) {
-    const conf = Math.max(fillConf, litterSevConf);
-    const source = litterSevConf > fillConf ? "litter" : "bin_fill";
-    const reason =
-      source === "litter"
-        ? `Litter severity ${String(litterSev?.severity || "HIGH").toUpperCase()} (LSI ${Math.round(Number(litterSev?.lsi) || litterSevConf * 100)}).`
-        : `Bin fill alert (${Math.round(fillConf * 100)}% confidence).`;
+  if (hasFillIssue) {
     candidates.push({
       scenario_key: "waste_full",
       label: BUILTIN_LABELS.waste_full,
       track: audioSettingsService.trackForBuiltin("waste_full", settings),
-      confidence: conf,
-      reason,
-      source,
+      confidence: fillConf,
+      reason: `Bin fill alert (${Math.round(fillConf * 100)}% confidence).`,
+      source: "bin_fill",
     });
   }
 

@@ -185,8 +185,8 @@ When an **ESP32** uploads a photo (`source_type=esp32`), the gateway runs **ever
 
 | Scenario | Typical source | Maps to track |
 |----------|----------------|---------------|
-| `illegal_dumping` | Littering model confidence | `tracks.illegal_dumping` |
-| `waste_full` | Fill overflow/half confidence | `tracks.waste_full` |
+| `illegal_dumping` | Littering model **or** litter-on-ground | `tracks.illegal_dumping` |
+| `waste_full` | Fill overflow confidence | `tracks.waste_full` |
 | `animal_detected` | Best animal detection confidence | `tracks.animal_detected` |
 | Custom rules | Risk tier (HIGH/MEDIUM/CRITICAL) | custom `track` |
 | `correct_dumping` | Empty bin / clean capture confidence | `tracks.correct_dumping` |

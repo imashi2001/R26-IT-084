@@ -52,7 +52,7 @@ const char* ESP32_ID = "esp-cam-1";
 #define PIR_PIN 14
 
 const unsigned long PIR_WARMUP_TIME = 60000;
-const unsigned long PIR_CAPTURE_INTERVAL = 30000;
+const unsigned long PIR_CAPTURE_INTERVAL = 8000;
 const unsigned long PIR_REARM_LOW_TIME = 1000;
 const unsigned long PIR_HIGH_DEBOUNCE_TIME = 150;
 
@@ -174,16 +174,17 @@ bool startCamera()
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  config.frame_size = FRAMESIZE_UXGA;
-  config.jpeg_quality = 8;
-  config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+  config.frame_size = FRAMESIZE_SVGA;
+  config.jpeg_quality = 12;
+  config.grab_mode = CAMERA_GRAB_LATEST;
 
   if (psramFound()) {
     config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.fb_count = 1;
+    config.fb_count = 2;
   } else {
     config.fb_location = CAMERA_FB_IN_DRAM;
     config.fb_count = 1;
+    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   }
 
   esp_err_t err = esp_camera_init(&config);
@@ -194,7 +195,7 @@ bool startCamera()
 
   sensor_t* sensor = esp_camera_sensor_get();
   if (sensor) {
-    sensor->set_framesize(sensor, FRAMESIZE_UXGA);
+    sensor->set_framesize(sensor, FRAMESIZE_SVGA);
   }
 
   Serial.println("Camera OK");
@@ -462,9 +463,12 @@ void checkForCommand()
     }
 
     String commandId = getJsonString(response, "command_id");
-    String command = getJsonString(response, "command");
+    if (commandId.length() == 0) commandId = getJsonString(response, "id");
+    String command = getJsonString(response, "action");
+    if (command.length() == 0) command = getJsonString(response, "command");
     int track = getJsonInt(response, "track");
 
+    Serial.printf("[COMMAND] raw=%s\n", response.c_str());
     Serial.printf("[COMMAND] received id=%s cmd=%s track=%d\n",
                   commandId.c_str(), command.c_str(), track);
 
@@ -477,15 +481,10 @@ void checkForCommand()
       }
 
       const bool alreadyPlayed = (commandId == lastPlayedCommandId);
-      const bool audioLocked = (audioBusyUntil != 0 && millis() < audioBusyUntil);
       bool played = alreadyPlayed;
 
       if (alreadyPlayed) {
         Serial.println("[COMMAND] same PLAY_AUDIO id — ACK only (no replay)");
-      } else if (audioLocked) {
-        Serial.println("[COMMAND] audio lock — ACK extra command without replay");
-        lastPlayedCommandId = commandId;
-        played = true;
       } else {
         Serial.printf("[COMMAND] PLAY_AUDIO track=%d id=%s\n",
                       track, commandId.c_str());
@@ -941,10 +940,10 @@ void loop()
   static unsigned long lastWatchdogCapture = 0;
   if (lastWatchdogCapture == 0) lastWatchdogCapture = millis();
   if (WiFi.status() == WL_CONNECTED &&
-      millis() - lastWatchdogCapture >= 60000 &&
+      millis() - lastWatchdogCapture >= 20000 &&
       !uploadWorkerBusy) {
     lastWatchdogCapture = millis();
-    Serial.println("[CAMERA] watchdog capture (60s, PIR still quiet)");
+    Serial.println("[CAMERA] watchdog capture (20s, PIR still quiet)");
     enqueueCapture("watchdog");
   }
   if (uploadWorkerBusy) {

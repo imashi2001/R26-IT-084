@@ -214,6 +214,7 @@ export default function BinStatusPage() {
           deviceId: device.id,
           onStatus: (msg) =>
             setAudioMsgs((m) => ({ ...m, [device.id]: msg })),
+          cameraOnline: isCameraOnline(device),
         });
         loadDevices();
       } catch (e) {

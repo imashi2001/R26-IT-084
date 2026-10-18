@@ -90,10 +90,12 @@ export default function BinDetailPage() {
   const [historyError, setHistoryError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setHistoryError(null);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+      setHistoryError(null);
+    }
     try {
       const [latestRes, capRes] = await Promise.all([
         fetch(apiUrl(`/devices/${id}/latest`)),
@@ -108,21 +110,25 @@ export default function BinDetailPage() {
       setData(latestBody);
 
       if (!capRes.ok) {
-        setHistoryError(capBody.error || `HTTP ${capRes.status}`);
+        if (!silent) setHistoryError(capBody.error || `HTTP ${capRes.status}`);
         setCaptures([]);
       } else {
         setCaptures(Array.isArray(capBody.captures) ? capBody.captures : []);
       }
     } catch (e) {
-      setError(e.message || "Failed to load bin.");
-      setCaptures([]);
+      if (!silent) {
+        setError(e.message || "Failed to load bin.");
+        setCaptures([]);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    load();
+    load(false);
+    const t = setInterval(() => load(true), 3000);
+    return () => clearInterval(t);
   }, [load]);
 
   const latest = data?.latest;

@@ -207,6 +207,7 @@ export default function AdminPage() {
         authFetch,
         deviceId: d.id,
         onStatus: (msg) => setAudioMsgs((m) => ({ ...m, [d.id]: msg })),
+        cameraOnline: isCameraOnline(d),
       });
       loadDevices();
     } catch (e) {

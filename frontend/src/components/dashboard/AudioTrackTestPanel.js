@@ -5,6 +5,7 @@ import {
   mp3Path,
 } from "../../hooks/useAudioSettings";
 import {
+  isCameraOnline,
   runRemoteAudioStop,
   runRemoteAudioTest,
 } from "../../utils/audioTest";
@@ -25,6 +26,7 @@ export default function AudioTrackTestPanel({
   const [stopBusy, setStopBusy] = useState(false);
 
   const hasEsp32 = Boolean(device?.esp32_id && String(device.esp32_id).trim());
+  const camOnline = isCameraOnline(device);
   const list = Array.isArray(tracks) ? tracks : [];
 
   const onPlay = async (track, label) => {
@@ -38,6 +40,7 @@ export default function AudioTrackTestPanel({
         deviceId: device.id,
         track,
         onStatus: setStatus,
+        cameraOnline: camOnline,
       });
     } catch (e) {
       setStatus(`${label}: ${e.message || "Test failed."}`);
@@ -86,6 +89,12 @@ export default function AudioTrackTestPanel({
         <p className="text-sm text-slate-400">
           Each button queues <code className="text-brand-400">PLAY_AUDIO</code>{" "}
           for track N → {mp3Path(1).replace("0001", "000N")} on the ESP32.
+        </p>
+      ) : null}
+      {!camOnline ? (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Camera Offline — ESP32 is not polling commands. Power the board and
+          wait until it shows Online, then press a track.
         </p>
       ) : null}
 

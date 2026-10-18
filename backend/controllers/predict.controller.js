@@ -243,6 +243,271 @@ function persistModelLabel(bodyModel, registryFlags = {}) {
   return parts.join("+");
 }
 
+async function resolveBinForPredict(body, { sourceType, bypassBridge }) {
+  let deviceId = await resolveDeviceId(body, {
+    bypassBridgeCheck: bypassBridge,
+  });
+  if (!deviceId && (body.esp32_id || sourceType === "esp32")) {
+    const fallback = await deviceService.findDeviceByEsp32Id(
+      body.esp32_id || "esp-cam-1"
+    );
+    if (fallback?.id) deviceId = fallback.id;
+  }
+  const device = deviceId ? await deviceService.getDeviceById(deviceId) : null;
+  if (!deviceId) {
+    console.warn(
+      "[predict] capture has no device_id (esp32_id=%s) — website will keep the old photo",
+      body.esp32_id || ""
+    );
+  } else {
+    console.log("[predict] binding capture to device", deviceId);
+  }
+  return { deviceId, device };
+}
+
+async function runRequestedModels({
+  imageBuffer,
+  filename,
+  imageMimetype,
+  requestedModel,
+  runAllModels,
+  binFillOnly,
+}) {
+  const warnings = [];
+  let waste = null;
+  let animal = null;
+  let bin_fill = null;
+  let littering_action = null;
+  let litter_severity = null;
+
+  if (runAllModels) {
+    const all = await modelClient.inferAll({
+      fileBuffer: imageBuffer,
+      filename,
+      mimetype: imageMimetype,
+    });
+    waste = all.waste;
+    animal = all.animal;
+    bin_fill = all.bin_fill;
+    littering_action = all.littering_action;
+    litter_severity = all.litter_severity;
+    if (littering_action?.error) {
+      warnings.push(`littering_action: ${littering_action.error}`);
+      console.warn("[predict] littering_action:", littering_action.error);
+      littering_action = null;
+    }
+    if (litter_severity?.error) {
+      warnings.push(`litter_severity: ${litter_severity.error}`);
+      console.warn("[predict] litter_severity:", litter_severity.error);
+      litter_severity = null;
+    }
+  } else if (requestedModel === "waste") {
+    try {
+      waste = await modelClient.inferWaste({
+        fileBuffer: imageBuffer,
+        filename,
+        mimetype: imageMimetype,
+      });
+    } catch (e) {
+      waste = { error: e.message };
+    }
+  } else if (requestedModel === "animal") {
+    try {
+      animal = await modelClient.inferAnimal({
+        fileBuffer: imageBuffer,
+        filename,
+        mimetype: imageMimetype,
+      });
+    } catch (e) {
+      animal = { error: e.message };
+    }
+  } else if (binFillOnly) {
+    bin_fill = await modelClient.inferBinFillYolo({
+      fileBuffer: imageBuffer,
+      filename,
+      mimetype: imageMimetype,
+    });
+  }
+
+  return {
+    waste,
+    animal,
+    bin_fill,
+    littering_action,
+    litter_severity,
+    warnings,
+  };
+}
+
+async function finishPredictAnalysis({
+  imageBuffer,
+  filename,
+  imageMimetype,
+  requestedModel,
+  runAllModels,
+  binFillOnly,
+  persistLabel,
+  sourceType,
+  captureLat,
+  captureLon,
+  deviceId,
+  device,
+  savedCapture,
+}) {
+  const inferred = await runRequestedModels({
+    imageBuffer,
+    filename,
+    imageMimetype,
+    requestedModel,
+    runAllModels,
+    binFillOnly,
+  });
+  const { waste, animal, bin_fill } = inferred;
+  let { littering_action, litter_severity, warnings } = inferred;
+
+  const { lat, lon, source: locationSource } = pickWeatherLocation(
+    { lat: captureLat, lon: captureLon },
+    device
+  );
+  const weather = await weatherService.getCurrentWeather(lat, lon);
+  const animalsForEngine = animalsForRiskEngine(animal);
+  const tierPredictions =
+    bin_fill && !bin_fill.error && Array.isArray(bin_fill.predictions)
+      ? bin_fill.predictions
+      : [];
+  const bin_fill_level = deriveFillLevel(tierPredictions);
+  const risk = computeRisk({
+    waste:
+      waste && !waste.error
+        ? { label: waste.label, confidence: waste.confidence }
+        : null,
+    animals: animalsForEngine,
+    weather,
+    binDoc: device ? { name: device.name, hours_since_clean: 0 } : null,
+  });
+
+  const extras = {
+    waste_label: waste?.label || null,
+    waste_confidence: Number.isFinite(Number(waste?.confidence))
+      ? Number(waste.confidence)
+      : null,
+    animal_count: animalsForEngine.length,
+    risk_level: risk.level,
+    risk_case: risk.case,
+    rotting_hours: risk.rotting_hours,
+    temp_c: weather?.temp_c ?? null,
+    humidity_pct: weather?.humidity_pct ?? null,
+    weather_condition: weather?.condition ?? null,
+    source_type: sourceType,
+    latitude: captureLat,
+    longitude: captureLon,
+    fill_percentage:
+      bin_fill_level != null && YOLO_FILL_TIER_TO_PCT[bin_fill_level] != null
+        ? YOLO_FILL_TIER_TO_PCT[bin_fill_level]
+        : deriveFillPercentage(risk),
+    prediction_class: (() => {
+      if (waste && !waste.error && waste.label)
+        return String(waste.label).slice(0, 160);
+      if (bin_fill_level) return String(bin_fill_level).slice(0, 160);
+      return derivePredictionClass(waste, animalsForEngine.length, risk);
+    })(),
+    ...litteringExtras(littering_action),
+    ...litterSeverityExtras(litter_severity),
+  };
+
+  const predictionsToStore = [
+    ...predictionsToPersist(animal),
+    ...predictionsFromBinFill(bin_fill),
+    ...predictionsFromLitter(litter_severity),
+    ...predictionsFromLitteringAction(littering_action),
+  ];
+
+  try {
+    latestState.setLatest({
+      deviceId,
+      imageBuffer,
+      mimetype: imageMimetype,
+      filename,
+      modelName: persistLabel,
+      predictions: predictionsToStore,
+      extras,
+    });
+  } catch (e) {
+    console.error("[predict] failed to set latest state:", e.message);
+  }
+
+  if (savedCapture?.id) {
+    try {
+      await captureService.updateCaptureAnalysis(savedCapture.id, {
+        modelName: persistLabel,
+        fillLevel: bin_fill_level || null,
+        extras,
+        predictions: predictionsToStore,
+      });
+    } catch (err) {
+      console.error("[predict] failed to update capture analysis:", err.message);
+    }
+  }
+
+  try {
+    await litteringAlertService.maybeCreateLitteringAlert({
+      captureId: savedCapture?.id || null,
+      deviceId,
+      litteringAction: littering_action,
+    });
+  } catch (alertErr) {
+    console.error("[predict] littering alert skipped:", alertErr.message);
+  }
+
+  try {
+    await litterSeverityAlertService.maybeCreateLitterSeverityAlerts({
+      captureId: savedCapture?.id || null,
+      deviceId,
+      device,
+      litterPayload: litter_severity,
+      litteringAction: littering_action,
+    });
+  } catch (sevAlertErr) {
+    console.error("[predict] litter severity alert skipped:", sevAlertErr.message);
+  }
+
+  let audioTriggerResult = null;
+  try {
+    audioTriggerResult = await audioTriggerService.maybeQueueFromPredict({
+      device,
+      risk,
+      sourceType,
+      bin_fill_level,
+      fill_percentage: extras.fill_percentage,
+      animal,
+      littering_action,
+      litter_severity,
+      bin_fill,
+      waste,
+    });
+  } catch (audioErr) {
+    console.error("[predict] audio trigger skipped:", audioErr.message);
+  }
+
+  return {
+    timestamp: new Date().toISOString(),
+    waste,
+    animal,
+    bin_fill,
+    bin_fill_level,
+    littering_action,
+    litter_severity,
+    warnings,
+    weather,
+    locationSource,
+    lat,
+    lon,
+    risk,
+    extras,
+    audioTriggerResult,
+  };
+}
+
 async function predict(req, res, next) {
   try {
     if (!req.file) {
@@ -287,195 +552,50 @@ async function predict(req, res, next) {
     const hasLitterRegistry = Boolean(modelClient.getModelUrl("litter"));
     const hasLitteringActionRegistry = modelClient.isLitteringActionConfigured();
 
-    let waste = null;
-    let animal = null;
-    let bin_fill = null;
-    let littering_action = null;
-    let litter_severity = null;
-    const warnings = [];
-
-    if (runAllModels) {
-      const all = await modelClient.inferAll({
-        fileBuffer: req.file.buffer,
-        filename: req.file.originalname,
-        mimetype: req.file.mimetype,
-      });
-      waste = all.waste;
-      animal = all.animal;
-      bin_fill = all.bin_fill;
-      littering_action = all.littering_action;
-      litter_severity = all.litter_severity;
-      if (littering_action?.error) {
-        warnings.push(`littering_action: ${littering_action.error}`);
-        console.warn("[predict] littering_action:", littering_action.error);
-        littering_action = null;
-      }
-      if (litter_severity?.error) {
-        warnings.push(`litter_severity: ${litter_severity.error}`);
-        console.warn("[predict] litter_severity:", litter_severity.error);
-        litter_severity = null;
-      }
-    } else if (requestedModel === "waste") {
-      try {
-        waste = await modelClient.inferWaste({
-          fileBuffer: req.file.buffer,
-          filename: req.file.originalname,
-          mimetype: req.file.mimetype,
-        });
-      } catch (e) {
-        waste = { error: e.message };
-      }
-    } else if (requestedModel === "animal") {
-      try {
-        animal = await modelClient.inferAnimal({
-          fileBuffer: req.file.buffer,
-          filename: req.file.originalname,
-          mimetype: req.file.mimetype,
-        });
-      } catch (e) {
-        animal = { error: e.message };
-      }
-    } else if (binFillOnly) {
-      bin_fill = await modelClient.inferBinFillYolo({
-        fileBuffer: req.file.buffer,
-        filename: req.file.originalname,
-        mimetype: req.file.mimetype,
-      });
-    } else {
+    if (
+      requestedModel &&
+      !callBoth &&
+      !binFillOnly &&
+      requestedModel !== "waste" &&
+      requestedModel !== "animal"
+    ) {
       return res.status(400).json({
         error: `Unknown model '${requestedModel}'. Use 'waste', 'animal', 'yolo', 'fill', 'bin_fill', 'all', or omit.`,
       });
     }
 
-    let deviceId = await resolveDeviceId(body, {
-      bypassBridgeCheck: bypassBridge,
-    });
-    if (!deviceId && (body.esp32_id || sourceType === "esp32")) {
-      const fallback = await deviceService.findDeviceByEsp32Id(
-        body.esp32_id || "esp-cam-1"
-      );
-      if (fallback?.id) deviceId = fallback.id;
-    }
-    const device = deviceId ? await deviceService.getDeviceById(deviceId) : null;
-    if (!deviceId) {
-      console.warn(
-        "[predict] capture has no device_id (esp32_id=%s) — website will keep the old photo",
-        body.esp32_id || ""
-      );
-    } else {
-      console.log("[predict] binding capture to device", deviceId);
-    }
-
-    const { lat, lon, source: locationSource } = pickWeatherLocation(
-      body,
-      device
-    );
-    const weather = await weatherService.getCurrentWeather(lat, lon);
-
-    const animalsForEngine = animalsForRiskEngine(animal);
-    const tierPredictions =
-      bin_fill && !bin_fill.error && Array.isArray(bin_fill.predictions)
-        ? bin_fill.predictions
-        : [];
-    const bin_fill_level = deriveFillLevel(tierPredictions);
-
-    const binDoc = device
-      ? {
-          name: device.name,
-          hours_since_clean: 0,
-        }
-      : null;
-
-    const wasteForEngine =
-      waste && !waste.error
-        ? {
-            label: waste.label,
-            confidence: waste.confidence,
-          }
-        : null;
-
-    const risk = computeRisk({
-      waste: wasteForEngine,
-      animals: animalsForEngine,
-      weather,
-      binDoc,
-    });
-
-    const timestamp = new Date().toISOString();
     const persistLabel = persistModelLabel(body.model, {
       hasFill: hasFillRegistry,
       hasLitter: hasLitterRegistry,
       hasLitteringAction: hasLitteringActionRegistry,
     });
 
-    const extras = {
-      waste_label: waste?.label || null,
-      waste_confidence: Number.isFinite(Number(waste?.confidence))
-        ? Number(waste.confidence)
-        : null,
-      animal_count: animalsForEngine.length,
-      risk_level: risk.level,
-      risk_case: risk.case,
-      rotting_hours: risk.rotting_hours,
-      temp_c: weather?.temp_c ?? null,
-      humidity_pct: weather?.humidity_pct ?? null,
-      weather_condition: weather?.condition ?? null,
-      source_type: sourceType,
-      latitude: captureLat,
-      longitude: captureLon,
-      fill_percentage:
-        bin_fill_level != null &&
-        YOLO_FILL_TIER_TO_PCT[bin_fill_level] != null
-          ? YOLO_FILL_TIER_TO_PCT[bin_fill_level]
-          : deriveFillPercentage(risk),
-      prediction_class: (() => {
-        if (waste && !waste.error && waste.label)
-          return String(waste.label).slice(0, 160);
-        if (bin_fill_level) return String(bin_fill_level).slice(0, 160);
-        return derivePredictionClass(
-          waste,
-          animalsForEngine.length,
-          risk
-        );
-      })(),
-      ...litteringExtras(littering_action),
-      ...litterSeverityExtras(litter_severity),
-    };
+    const { deviceId, device } = await resolveBinForPredict(body, {
+      sourceType,
+      bypassBridge,
+    });
 
-    const predictionsToStore = [
-      ...predictionsToPersist(animal),
-      ...predictionsFromBinFill(bin_fill),
-      ...predictionsFromLitter(litter_severity),
-      ...predictionsFromLitteringAction(littering_action),
-    ];
-
-    try {
-      latestState.setLatest({
-        deviceId,
-        imageBuffer: req.file.buffer,
-        mimetype: req.file.mimetype,
-        filename: req.file.originalname,
-        modelName: persistLabel,
-        predictions: predictionsToStore,
-        extras,
-      });
-    } catch (e) {
-      console.error("[predict] failed to set latest state:", e.message);
-    }
+    const imageBuffer = Buffer.from(req.file.buffer);
+    const imageMimetype = req.file.mimetype || "image/jpeg";
+    const filename = req.file.originalname || "capture.jpg";
 
     let savedCapture = null;
     try {
       savedCapture = await captureService.saveCaptureWithPredictions({
         modelName: persistLabel,
         imageUrl: null,
-        imageBuffer: req.file.buffer,
-        imageMimetype: req.file.mimetype,
-        fillLevel: bin_fill_level || null,
+        imageBuffer,
+        imageMimetype,
+        fillLevel: null,
         userId: null,
         deviceId,
         bridgeInstanceId,
-        predictions: predictionsToStore,
-        extras,
+        predictions: [],
+        extras: {
+          source_type: sourceType,
+          latitude: captureLat,
+          longitude: captureLon,
+        },
       });
       if (savedCapture) res.set("X-Capture-Id", String(savedCapture.id));
     } catch (saveErr) {
@@ -483,81 +603,107 @@ async function predict(req, res, next) {
     }
 
     try {
-      await litteringAlertService.maybeCreateLitteringAlert({
-        captureId: savedCapture?.id || null,
+      latestState.setLatest({
         deviceId,
-        litteringAction: littering_action,
+        imageBuffer,
+        mimetype: imageMimetype,
+        filename,
+        modelName: persistLabel,
+        predictions: [],
+        extras: { source_type: sourceType },
       });
-    } catch (alertErr) {
-      console.error("[predict] littering alert skipped:", alertErr.message);
+    } catch (e) {
+      console.error("[predict] failed to set latest state:", e.message);
     }
 
-    try {
-      await litterSeverityAlertService.maybeCreateLitterSeverityAlerts({
-        captureId: savedCapture?.id || null,
-        deviceId,
-        device,
-        litterPayload: litter_severity,
-        litteringAction: littering_action,
-      });
-    } catch (sevAlertErr) {
-      console.error("[predict] litter severity alert skipped:", sevAlertErr.message);
-    }
+    const analysisInput = {
+      imageBuffer,
+      filename,
+      imageMimetype,
+      requestedModel,
+      runAllModels,
+      binFillOnly,
+      persistLabel,
+      sourceType,
+      captureLat,
+      captureLon,
+      deviceId,
+      device,
+      savedCapture,
+    };
 
-    let audioTriggerResult = null;
-    try {
-      audioTriggerResult = await audioTriggerService.maybeQueueFromPredict({
-        device,
-        risk,
-        sourceType,
-        bin_fill_level,
-        fill_percentage: extras.fill_percentage,
-        animal,
-        littering_action,
-        litter_severity,
-        bin_fill,
-        waste,
-      });
-    } catch (audioErr) {
-      console.error("[predict] audio trigger skipped:", audioErr.message);
-    }
-
-    return res.json({
-      timestamp,
-      model: persistLabel,
-      waste,
-      animal,
-      bin_fill,
-      bin_fill_level,
-      littering_action: litteringActionForResponse(littering_action),
-      litter_severity:
-        litter_severity && !litter_severity.error
+    // ESP32 only needs the JPEG stored. Models + audio continue after the reply
+    // so the camera is free in ~2s instead of waiting ~30s for every model.
+    if (isEsp32Source) {
+      const timestamp = new Date().toISOString();
+      res.json({
+        accepted: true,
+        analyzing: true,
+        timestamp,
+        model: persistLabel,
+        bin: device
           ? {
-              severity: litter_severity.severity,
-              lsi: litter_severity.lsi,
-              detection_count: litter_severity.detection_count,
-              metrics: litter_severity.metrics,
+              id: device.id,
+              name: device.name,
+              esp32_id: device.esp32_id,
+              latitude: device.latitude,
+              longitude: device.longitude,
             }
           : null,
-      audio_trigger: audioTriggerResult?.resolved
+        bridge_instance_id: bridgeInstanceId,
+        source_type: sourceType,
+        capture_id: savedCapture?.id || null,
+      });
+      setImmediate(() => {
+        finishPredictAnalysis(analysisInput).catch((err) => {
+          console.error("[predict] background analysis failed:", err.message);
+        });
+      });
+      return;
+    }
+
+    const analyzed = await finishPredictAnalysis(analysisInput);
+    return res.json({
+      timestamp: analyzed.timestamp,
+      model: persistLabel,
+      waste: analyzed.waste,
+      animal: analyzed.animal,
+      bin_fill: analyzed.bin_fill,
+      bin_fill_level: analyzed.bin_fill_level,
+      littering_action: litteringActionForResponse(analyzed.littering_action),
+      litter_severity:
+        analyzed.litter_severity && !analyzed.litter_severity.error
+          ? {
+              severity: analyzed.litter_severity.severity,
+              lsi: analyzed.litter_severity.lsi,
+              detection_count: analyzed.litter_severity.detection_count,
+              metrics: analyzed.litter_severity.metrics,
+            }
+          : null,
+      audio_trigger: analyzed.audioTriggerResult?.resolved
         ? {
-            scenario: audioTriggerResult.resolved.scenario_key,
-            label: audioTriggerResult.resolved.label,
-            track: audioTriggerResult.resolved.track,
-            confidence: audioTriggerResult.resolved.confidence,
+            scenario: analyzed.audioTriggerResult.resolved.scenario_key,
+            label: analyzed.audioTriggerResult.resolved.label,
+            track: analyzed.audioTriggerResult.resolved.track,
+            confidence: analyzed.audioTriggerResult.resolved.confidence,
             confidence_pct: Math.round(
-              (audioTriggerResult.resolved.confidence || 0) * 100
+              (analyzed.audioTriggerResult.resolved.confidence || 0) * 100
             ),
-            reason: audioTriggerResult.resolved.reason,
-            source: audioTriggerResult.resolved.source,
-            candidates: audioTriggerResult.resolved.candidates,
-            command_id: audioTriggerResult.command?.command_id ?? null,
-            queued: Boolean(audioTriggerResult.command),
+            reason: analyzed.audioTriggerResult.resolved.reason,
+            source: analyzed.audioTriggerResult.resolved.source,
+            candidates: analyzed.audioTriggerResult.resolved.candidates,
+            command_id: analyzed.audioTriggerResult.command?.command_id ?? null,
+            queued: Boolean(analyzed.audioTriggerResult.command),
           }
         : null,
-      warnings: warnings.length ? warnings : undefined,
-      weather: { ...weather, location_source: locationSource, lat, lon },
-      risk,
+      warnings: analyzed.warnings.length ? analyzed.warnings : undefined,
+      weather: {
+        ...analyzed.weather,
+        location_source: analyzed.locationSource,
+        lat: analyzed.lat,
+        lon: analyzed.lon,
+      },
+      risk: analyzed.risk,
       bin: device
         ? {
             id: device.id,

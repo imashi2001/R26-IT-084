@@ -5,7 +5,7 @@ import { apiUrl } from "../utils/apiBase";
 /**
  * Polls GET /devices?latest=1 for dashboard fleet overview.
  */
-export default function useDevicesOverview(intervalMs = 60_000) {
+export default function useDevicesOverview(intervalMs = 5_000) {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

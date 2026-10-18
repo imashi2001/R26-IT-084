@@ -42,10 +42,22 @@ async function waitForCommand({ authFetch, commandId, onStatus, successMsg }) {
  * Queue PLAY_AUDIO and poll until completed/failed/timeout.
  * @param {{ authFetch: Function, deviceId: number|string, track?: number, onStatus?: (msg: string) => void }} opts
  */
-export async function runRemoteAudioTest({ authFetch, deviceId, track = 1, onStatus }) {
+export async function runRemoteAudioTest({
+  authFetch,
+  deviceId,
+  track = 1,
+  onStatus,
+  cameraOnline,
+}) {
   const say = (msg) => {
     if (typeof onStatus === "function") onStatus(msg);
   };
+
+  if (cameraOnline === false) {
+    throw new Error(
+      "Camera Offline — ESP32 is not polling. Wait until Camera is Online, then try again."
+    );
+  }
 
   const trackNum = Number.isFinite(Number(track)) ? Math.trunc(Number(track)) : 1;
   const trackLabel = String(trackNum).padStart(4, "0");
@@ -57,7 +69,7 @@ export async function runRemoteAudioTest({ authFetch, deviceId, track = 1, onSta
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
 
-  const commandId = body.command_id;
+  const commandId = body.command_id || body.id;
   if (!commandId) throw new Error("No command_id returned from audio-test");
 
   return waitForCommand({

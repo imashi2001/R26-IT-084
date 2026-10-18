@@ -213,8 +213,46 @@ async function getCapture(id) {
   return row ? row.toJSON() : null;
 }
 
+async function updateCaptureAnalysis(
+  id,
+  { modelName, fillLevel = null, extras = null, predictions = [] } = {}
+) {
+  const models = ensureModels();
+  if (!models || !id) return null;
+  const { sequelize, Capture, Prediction } = models;
+  const safeExtras = sanitizeCaptureExtras(extras);
+  const predRows = sanitizePredictionRows(predictions);
+
+  return sequelize.transaction(async (t) => {
+    const row = await Capture.findByPk(id, { transaction: t });
+    if (!row) return null;
+    await row.update(
+      {
+        model_name: modelName
+          ? String(modelName).slice(0, 60)
+          : row.model_name,
+        fill_level: fillLevel ? String(fillLevel).slice(0, 40) : row.fill_level,
+        ...(safeExtras || {}),
+      },
+      { transaction: t }
+    );
+    if (predRows.length > 0) {
+      await Prediction.destroy({
+        where: { capture_id: id },
+        transaction: t,
+      });
+      await Prediction.bulkCreate(
+        predRows.map((p) => ({ ...p, capture_id: id })),
+        { transaction: t }
+      );
+    }
+    return row;
+  });
+}
+
 module.exports = {
   saveCaptureWithPredictions,
+  updateCaptureAnalysis,
   listCaptures,
   getCapture,
 };

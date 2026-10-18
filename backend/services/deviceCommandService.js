@@ -224,8 +224,11 @@ async function pollNextCommand(esp32IdRaw) {
   return {
     command: {
       command_id: row.id,
+      id: row.id,
       command: row.command,
+      action: row.command,
       track: row.track,
+      force: true,
     },
     device: device ? device.toJSON() : null,
   };

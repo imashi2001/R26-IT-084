@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ImageCanvas from "./ImageCanvas";
 import { apiUrl, getApiBaseUrl } from "../utils/apiBase";
 
-const POLL_MS = 60_000;
+const POLL_MS = 3_000;
 
 const LIVE_DEVICE_ID = (import.meta.env.VITE_LIVE_DEVICE_ID || "").trim();
 

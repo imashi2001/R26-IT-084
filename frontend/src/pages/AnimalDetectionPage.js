@@ -46,6 +46,7 @@ import {
   fetchBins,
   predictAnimal,
 } from "../utils/apiBase";
+import { withAuthToken } from "../utils/authTransport";
 
 /*
  * /animals  - Animal Detection center.
@@ -128,7 +129,7 @@ function riskBadge(level) {
 
 function captureImageUrl(captureId) {
   try {
-    return apiUrl(`/captures/${captureId}/image`);
+    return withAuthToken(apiUrl(`/captures/${captureId}/image`));
   } catch {
     return null;
   }

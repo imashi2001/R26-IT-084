@@ -13,11 +13,9 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 
-const char* WIFI_SSID = "Charukas_galaxy";
-const char* WIFI_PASSWORD = "11111111";
-
-const char* PREDICT_URL =
-  "https://r26-it-084-production-2220.up.railway.app/predict";
+// Wi-Fi, backend URL and device key live in secrets.h (git-ignored).
+// Copy secrets.example.h to secrets.h and fill in your values.
+#include "secrets.h"
 
 const char* ESP32_ID = "esp-cam-1";
 
@@ -172,7 +170,8 @@ void performPredictUpload(uint8_t* jpegData, size_t jpegLen)
   client.setInsecure();
   HTTPClient http;
 
-  if (!http.begin(client, PREDICT_URL)) {
+  String predictUrl = String(BACKEND_BASE) + "/predict";
+  if (!http.begin(client, predictUrl)) {
     Serial.println("[UPLOAD] HTTP begin FAILED");
     free(jpegData);
     return;
@@ -197,6 +196,9 @@ void performPredictUpload(uint8_t* jpegData, size_t jpegLen)
 
   http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
   http.addHeader("Accept", "application/json");
+  if (strlen(DEVICE_API_KEY) > 0) {
+    http.addHeader("X-Device-Key", DEVICE_API_KEY);
+  }
 
   uint8_t* requestBuffer = nullptr;
   if (psramFound()) {

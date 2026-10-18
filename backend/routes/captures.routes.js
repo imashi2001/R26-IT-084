@@ -4,11 +4,12 @@ const {
   getCapture,
   getCaptureImage,
 } = require("../controllers/captures.controller");
+const { requireAuth, requireAuthAllowQuery } = require("../middleware/auth");
 
 const router = Router();
 
-router.get("/", listCaptures);
-router.get("/:id/image", getCaptureImage);
-router.get("/:id", getCapture);
+router.get("/", requireAuth, listCaptures);
+router.get("/:id/image", requireAuthAllowQuery, getCaptureImage);
+router.get("/:id", requireAuth, getCapture);
 
 module.exports = router;

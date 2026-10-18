@@ -42,6 +42,7 @@ import {
 } from "../components/dashboard/dashboardUi";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl, fetchBins } from "../utils/apiBase";
+import { withAuthToken } from "../utils/authTransport";
 
 /*
  * /history — Unified event timeline (dashboard shell).
@@ -812,13 +813,13 @@ function CaptureRow({ event: e, binsById }) {
         <div className="flex w-full shrink-0 items-center gap-3 lg:w-48 lg:flex-col lg:items-stretch lg:justify-center">
           {c.has_image ? (
             <a
-              href={apiUrl(`/captures/${c.id}/image`)}
+              href={withAuthToken(apiUrl(`/captures/${c.id}/image`))}
               target="_blank"
               rel="noreferrer"
               className="block flex-1 overflow-hidden rounded-lg border border-slate-700/50 bg-slate-900/40 lg:flex-none"
             >
               <img
-                src={apiUrl(`/captures/${c.id}/image`)}
+                src={withAuthToken(apiUrl(`/captures/${c.id}/image`))}
                 alt=""
                 loading="lazy"
                 className="h-20 w-full object-cover lg:h-24"

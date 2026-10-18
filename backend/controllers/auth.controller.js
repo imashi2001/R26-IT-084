@@ -1,10 +1,24 @@
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/env");
+const {
+  JWT_SECRET,
+  JWT_EXPIRES_IN,
+  ADMIN_INVITE_SECRET,
+} = require("../config/env");
 const db = require("../config/db");
 const modelsRegistry = require("../models");
 const { assertJwtConfigured } = require("../middleware/auth");
+
+const MIN_PASSWORD_LENGTH = 8;
+
+function inviteMatches(provided) {
+  if (!ADMIN_INVITE_SECRET || typeof provided !== "string") return false;
+  const a = Buffer.from(provided.trim());
+  const b = Buffer.from(ADMIN_INVITE_SECRET);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 function ensureModels() {
   if (!db.isDbEnabled()) return null;
@@ -44,6 +58,10 @@ function publicUser(userRow) {
  *
  * Every registration is created with `role = "admin"`. There is no public
  * (non-admin) signup in this product; the dashboard is admin-only.
+ *
+ * The very first account can register freely (bootstraps the system).
+ * After that, `adminInvite` must match ADMIN_INVITE_SECRET; when that secret
+ * is unset, registration is closed.
  */
 async function register(req, res, next) {
   try {
@@ -62,6 +80,7 @@ async function register(req, res, next) {
       password,
       municipalCouncil,
       coveredArea,
+      adminInvite,
     } = req.body || {};
 
     const trimmedEmail = (email || "").trim().toLowerCase();
@@ -82,13 +101,23 @@ async function register(req, res, next) {
       });
     }
 
-    if (typeof password !== "string" || password.length < 6) {
-      return res
-        .status(400)
-        .json({ error: "password must be at least 6 characters" });
+    if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        error: `password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      });
     }
 
     const { User } = models;
+
+    const userCount = await User.count();
+    if (userCount > 0 && !inviteMatches(adminInvite)) {
+      return res.status(403).json({
+        error: ADMIN_INVITE_SECRET
+          ? "A valid admin invite code is required to register."
+          : "Registration is closed. Ask an existing admin to set ADMIN_INVITE_SECRET and share the invite code.",
+        code: "invite_required",
+      });
+    }
 
     const existing = await User.findOne({ where: { email: trimmedEmail } });
     if (existing) {

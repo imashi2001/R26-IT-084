@@ -34,11 +34,15 @@ def _load_model():
     return YOLO(MODEL_PATH)
 
 
+# Only the Express backend calls this service (server-to-server, no CORS needed).
+# Set CORS_ORIGINS="https://a.com,https://b.com" to allow browser access.
+CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+
 app = FastAPI(title="Animal Detection API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

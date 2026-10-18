@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculateLongWeekend, getForecastStatus, getKgThresholds } = require('./dateUtils');
+const { calculateLongWeekend, getForecastStatus, getKgThresholds } = require('../utils/dateUtils');
 
 test('3-day long weekend detection for Friday to Sunday', () => {
   const result = calculateLongWeekend('2026-01-02');

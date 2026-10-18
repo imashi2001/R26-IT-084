@@ -17,11 +17,9 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
-const char* WIFI_SSID = "Charukas_galaxy";
-const char* WIFI_PASSWORD = "11111111";
-
-const char* BACKEND_BASE =
-  "https://r26-it-084-production-2220.up.railway.app";
+// Wi-Fi, backend URL and device key live in secrets.h (git-ignored).
+// Copy secrets.example.h to secrets.h and fill in your values.
+#include "secrets.h"
 
 const char* ESP32_ID = "esp-voice-1";
 
@@ -174,6 +172,9 @@ bool acknowledgeCommand(const String& commandId, const String& status,
   if (http.begin(client, ackURL)) {
     http.setTimeout(COMMAND_HTTP_TIMEOUT_MS);
     http.addHeader("Content-Type", "application/json");
+    if (strlen(DEVICE_API_KEY) > 0) {
+      http.addHeader("X-Device-Key", DEVICE_API_KEY);
+    }
     String json = "{\"esp32_id\":\"" + String(ESP32_ID) + "\",\"status\":\"" + status + "\"";
     if (errorMessage.length() > 0) {
       json += ",\"error_message\":\"" + errorMessage + "\"";
@@ -259,6 +260,9 @@ void checkForCommand()
 
   http.setTimeout(COMMAND_HTTP_TIMEOUT_MS);
   http.addHeader("Accept", "application/json");
+  if (strlen(DEVICE_API_KEY) > 0) {
+    http.addHeader("X-Device-Key", DEVICE_API_KEY);
+  }
   int code = http.GET();
   if (code >= 200 && code < 300) {
     String response = http.getString();

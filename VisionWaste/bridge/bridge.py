@@ -68,6 +68,11 @@ BACKEND_RETRY_DELAY_SEC = float(os.environ.get("BACKEND_RETRY_DELAY_SEC", "2"))
 
 # Sent as multipart field alongside `image` so the backend can attach captures to a Device row.
 DEVICE_ESP32_ID = os.environ.get("DEVICE_ESP32_ID", "").strip()
+# Must match the backend's DEVICE_API_KEY (sent as X-Device-Key). Empty = none.
+DEVICE_API_KEY = os.environ.get("DEVICE_API_KEY", "").strip()
+BACKEND_HEADERS: dict[str, str] = (
+    {"X-Device-Key": DEVICE_API_KEY} if DEVICE_API_KEY else {}
+)
 
 # Stable per-laptop ID (file .bridge_id or VISIONWASTE_BRIDGE_ID env).
 BRIDGE_INSTANCE_ID = get_bridge_instance_id()
@@ -162,6 +167,7 @@ def post_predict_with_retries(image_bytes: bytes) -> requests.Response:
                 BACKEND_PREDICT_URL,
                 files=files,
                 data=data,
+                headers=BACKEND_HEADERS,
                 timeout=BACKEND_TIMEOUT,
             )
             if resp.status_code >= 500:
@@ -248,6 +254,7 @@ def ack_speaker_command(device_id: int) -> None:
         requests.post(
             url,
             json={"device_id": device_id},
+            headers=BACKEND_HEADERS,
             timeout=BACKEND_TIMEOUT,
         )
     except requests.RequestException as e:
@@ -262,7 +269,9 @@ def poll_and_relay_speaker_commands() -> None:
 
     url = f"{BACKEND_ROOT_URL}/bridge/speaker-pending"
     try:
-        resp = requests.get(url, params=params, timeout=BACKEND_TIMEOUT)
+        resp = requests.get(
+            url, params=params, headers=BACKEND_HEADERS, timeout=BACKEND_TIMEOUT
+        )
     except requests.RequestException as e:
         print(f"speaker-pending poll failed: {e}", file=sys.stderr)
         return

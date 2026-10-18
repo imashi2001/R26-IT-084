@@ -1,7 +1,12 @@
 const { Router } = require("express");
 
 const devices = require("../controllers/devices.controller");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const {
+  requireAuth,
+  requireAuthAllowQuery,
+  requireRole,
+  requireDevice,
+} = require("../middleware/auth");
 
 const router = Router();
 
@@ -12,9 +17,9 @@ router.get("/", devices.list);
 
 router.post("/", requireAuth, requireRole("admin"), devices.create);
 
-/** ESP32 DFPlayer command poll / ACK (no auth — same model as /bridge/*). */
-router.get("/commands", devices.pollCommands);
-router.post("/commands/:command_id/ack", devices.ackCommand);
+/** ESP32 DFPlayer command poll / ACK (X-Device-Key when DEVICE_API_KEY is set). */
+router.get("/commands", requireDevice, devices.pollCommands);
+router.post("/commands/:command_id/ack", requireDevice, devices.ackCommand);
 router.get(
   "/commands/:command_id",
   requireAuth,
@@ -48,9 +53,9 @@ router.post(
   devices.audioStop
 );
 
-router.get("/:id/captures", devices.listCapturesForDevice);
+router.get("/:id/captures", requireAuth, devices.listCapturesForDevice);
 router.get("/:id/latest", devices.latestDetail);
-router.get("/:id/image/latest", devices.latestImage);
+router.get("/:id/image/latest", requireAuthAllowQuery, devices.latestImage);
 
 router.get("/:id", devices.getOne);
 

@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { apiUrl } from "../../utils/apiBase";
 import { fillLabel, markerFillFromBin } from "../../utils/fillTier";
+import { withAuthToken } from "../../utils/authTransport";
 
 /*
  * Modal: every detail an admin needs about a bin.
@@ -141,9 +142,11 @@ export default function BinDetailsModal({ bin, onClose }) {
   const capturedAt = latest?.latest?.captured_at || bin.latest_captured_at;
   const imageUrl =
     capturedAt || latest?.latest?.image?.url || bin.latest_image_url
-      ? `${apiUrl(`/devices/${bin.id}/image/latest`)}?t=${encodeURIComponent(
-          capturedAt || ""
-        )}`
+      ? withAuthToken(
+          `${apiUrl(`/devices/${bin.id}/image/latest`)}?t=${encodeURIComponent(
+            capturedAt || ""
+          )}`
+        )
       : null;
   const fillTier =
     latest?.latest?.fill_level || bin.latest_fill_level || null;

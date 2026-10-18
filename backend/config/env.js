@@ -99,6 +99,23 @@ module.exports = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
   ADMIN_INVITE_SECRET: process.env.ADMIN_INVITE_SECRET || "",
 
+  /**
+   * Shared key for ESP32 boards and the laptop bridge (header X-Device-Key).
+   * Required on /predict, /devices/commands and /bridge/* when set.
+   * Empty = open (legacy behaviour, logged as a warning on startup).
+   */
+  DEVICE_API_KEY: (process.env.DEVICE_API_KEY || "").trim(),
+
+  /** Failed + successful login/register attempts allowed per IP per window. */
+  AUTH_RATE_LIMIT_MAX: Math.max(
+    1,
+    Number(process.env.AUTH_RATE_LIMIT_MAX || 20) || 20
+  ),
+  AUTH_RATE_LIMIT_WINDOW_MS:
+    Math.max(1, Number(process.env.AUTH_RATE_LIMIT_WINDOW_MINUTES || 15) || 15) *
+    60 *
+    1000,
+
   OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY || "",
   DEFAULT_WEATHER_LAT: parseFloatSafe(process.env.DEFAULT_WEATHER_LAT, 6.9271),
   DEFAULT_WEATHER_LON: parseFloatSafe(process.env.DEFAULT_WEATHER_LON, 79.8612),

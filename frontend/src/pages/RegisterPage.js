@@ -8,6 +8,7 @@ import {
   MapPin,
   Loader2,
   AlertCircle,
+  KeyRound,
 } from "lucide-react";
 import axios from "axios";
 import { apiUrl } from "../utils/apiBase";
@@ -23,8 +24,12 @@ import { STAFF_HOME } from "../utils/authRoutes";
  *   - email            : official council email
  *   - municipalCouncil : municipal council name (e.g. "Colombo MC")
  *   - coveredArea      : geographic area covered (free text)
- *   - password         : min 6 characters
+ *   - password         : min 8 characters
+ *   - adminInvite      : invite code (ADMIN_INVITE_SECRET); not needed for
+ *                        the very first account
  */
+const MIN_PASSWORD_LENGTH = 8;
+
 export default function RegisterPage() {
   const { token, login } = useAuth();
   const navigate = useNavigate();
@@ -36,6 +41,7 @@ export default function RegisterPage() {
     coveredArea: "",
     password: "",
     confirm: "",
+    adminInvite: "",
   });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -52,8 +58,8 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (form.password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (form.password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
     }
     if (form.password !== form.confirm) {
@@ -69,6 +75,7 @@ export default function RegisterPage() {
         municipalCouncil: form.municipalCouncil.trim(),
         coveredArea: form.coveredArea.trim(),
         password: form.password,
+        adminInvite: form.adminInvite.trim() || undefined,
       };
       const { data } = await axios.post(apiUrl("/auth/register"), payload);
       login(data.token, data.user);
@@ -156,11 +163,11 @@ export default function RegisterPage() {
           icon={Lock}
           type="password"
           autoComplete="new-password"
-          minLength={6}
+          minLength={MIN_PASSWORD_LENGTH}
           required
           value={form.password}
           onChange={update("password")}
-          placeholder="At least 6 characters"
+          placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
         />
 
         <Field
@@ -169,11 +176,21 @@ export default function RegisterPage() {
           icon={Lock}
           type="password"
           autoComplete="new-password"
-          minLength={6}
+          minLength={MIN_PASSWORD_LENGTH}
           required
           value={form.confirm}
           onChange={update("confirm")}
           placeholder="Repeat your password"
+        />
+
+        <Field
+          id="adminInvite"
+          label="Admin invite code"
+          icon={KeyRound}
+          autoComplete="off"
+          value={form.adminInvite}
+          onChange={update("adminInvite")}
+          placeholder="Provided by an existing admin"
         />
 
         {error ? <ErrorBanner message={error} /> : null}

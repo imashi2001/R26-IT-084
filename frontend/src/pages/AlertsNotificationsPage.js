@@ -34,6 +34,7 @@ import {
 } from "../components/dashboard/dashboardUi";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../utils/apiBase";
+import { withAuthToken } from "../utils/authTransport";
 
 /*
  * /alerts — Alerts & notifications (dashboard shell).
@@ -119,7 +120,7 @@ function formatTs(iso) {
 function captureThumbUrl(captureId) {
   if (!captureId) return null;
   try {
-    return apiUrl(`/captures/${captureId}/image`);
+    return withAuthToken(apiUrl(`/captures/${captureId}/image`));
   } catch {
     return null;
   }

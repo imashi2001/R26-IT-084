@@ -2,10 +2,12 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 import { apiUrl } from "../utils/apiBase";
+import { AUTH_EXPIRED_EVENT } from "../utils/authTransport";
 
 const AuthContext = createContext(null);
 
@@ -37,6 +39,13 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
   }, []);
+
+  // Any API call that comes back "token expired/invalid" signs the user out;
+  // ProtectedRoute then redirects to /login.
+  useEffect(() => {
+    window.addEventListener(AUTH_EXPIRED_EVENT, logout);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, logout);
+  }, [logout]);
 
   const authFetch = useCallback(
     async (path, options = {}) => {

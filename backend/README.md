@@ -101,8 +101,20 @@ The backend works both **with** and **without** a database:
 2. On **backend** service → Variables → add **`DATABASE_URL`** (reference from Postgres plugin).
 3. Set **`DB_SYNC=true`** for the **first** deploy to create tables; then set **`DB_SYNC=false`** for normal operation.
 4. Set **`JWT_SECRET`** to a long random string (required for `/auth/*`).
-5. Optional: **`ADMIN_INVITE_SECRET`** — share this code once so a teammate can `POST /auth/register` with `"adminInvite"` and receive role `admin`.
+5. **`ADMIN_INVITE_SECRET`** — the first account registers without a code; every later `POST /auth/register` must send `"adminInvite"` equal to this value. Leave it empty to close sign-up after the first admin.
 6. Set **`CORS_ORIGIN`** to your frontend Railway URL (and `http://localhost:3000` for dev).
+7. Set **`DEVICE_API_KEY`** to a long random string and put the same value in `VisionWaste/esp32-*/secrets.h` and the bridge's `DEVICE_API_KEY` env var.
+
+### Which endpoints need what
+
+| Access | Endpoints |
+|--------|-----------|
+| Public | `/health`, `/auth/login`, `/auth/register` (rate limited), `GET /devices`, `/devices/map`, `/devices/nearest`, `/devices/:id`, `/devices/:id/latest`, `/geo/*`, `/forecast*`, `/weather`, `/api/waste-data`, `/api/waste-trend`, `/api/waste-insights`, `/collection/plan`, `GET /dashboard/settings*` |
+| Device key **or** login | `POST /predict`, `GET /devices/commands`, `POST /devices/commands/:id/ack`, `/bridge/*` (open when `DEVICE_API_KEY` is unset) |
+| Login | `/captures*`, `/latest*`, `/devices/:id/captures`, `/devices/:id/image/latest`, `/alerts`, `/litter-severity`, `/littering-action`, `GET /api/waste-entries*` |
+| Admin | device create/edit/audio, `PATCH /alerts/:id`, dashboard settings writes, `POST/PUT/DELETE /api/waste-entries`, `POST /api/waste-entries/trigger-retrain` |
+
+Image endpoints also accept `?token=<jwt>` so `<img src>` can load them; the frontend adds it with `withAuthToken()` in `src/utils/authTransport.js`.
 
 `POST /predict` adds a response header `X-Capture-Id` whenever the row was saved.
 
@@ -236,9 +248,12 @@ See `.env.example`:
 | `MODEL_FILL_URL` | (empty) | Optional **`fill-api`** bin-fill service (`POST /predict`, multipart **`file`**). Legacy alias: `MODEL_YOLO_URL`. When empty, **`bin_fill`** is omitted from **`inferAll`** |
 | `MODEL_LITTER_URL` | (empty) | Optional **`litter-severity-api`** (`POST /predict`, multipart **`file`** via gateway **`POST /litter-severity`** with **`image`**) |
 | `CORS_ORIGIN` | (empty) | Comma-separated allowed frontend origins; empty keeps permissive CORS |
-| `JWT_SECRET` | (empty) | Required for auth routes (min 8 chars recommended) |
+| `JWT_SECRET` | (empty) | Required for auth routes; production refuses to start without it (32+ random chars recommended) |
 | `JWT_EXPIRES_IN` | `7d` | JWT expiry passed to `jsonwebtoken` |
-| `ADMIN_INVITE_SECRET` | (empty) | Optional invite code for admin registration |
+| `ADMIN_INVITE_SECRET` | (empty) | Invite code required for every registration after the first; empty = sign-up closed |
+| `DEVICE_API_KEY` | (empty) | Shared key ESP32 boards / bridge send as `X-Device-Key`; empty = device endpoints open |
+| `AUTH_RATE_LIMIT_MAX` | `20` | Login/register attempts per IP per window |
+| `AUTH_RATE_LIMIT_WINDOW_MINUTES` | `15` | Rate-limit window |
 | `DEFAULT_MODEL` | `waste` | Default when client picks a single model |
 | `INFER_TIMEOUT_SECONDS` | `60` | Max wait per model inference |
 | `MAX_UPLOAD_MB` | `25` | Max upload size |

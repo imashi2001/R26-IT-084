@@ -29,6 +29,7 @@ import {
 } from "../../utils/litterSeverity";
 import { buildAlerts } from "./cards/RecentAlertsCard";
 import { alertTone } from "./dashboardTheme";
+import { withAuthToken } from "../../utils/authTransport";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: Trash2 },
@@ -111,7 +112,9 @@ export default function DashboardBinDetail({ device, history }) {
   const showAddBin =
     Boolean(device.litter_add_bin_recommended) ||
     (Number(device.litter_high_streak) || 0) >= ADD_BIN_STREAK;
-  const imageUrl = `${apiUrl(`/devices/${device.id}/image/latest`)}?t=${encodeURIComponent(device.latest_captured_at || Date.now())}`;
+  const imageUrl = withAuthToken(
+    `${apiUrl(`/devices/${device.id}/image/latest`)}?t=${encodeURIComponent(device.latest_captured_at || Date.now())}`
+  );
   const online = device.camera_online;
   const zone = device.location || device.address || "—";
   const accent =

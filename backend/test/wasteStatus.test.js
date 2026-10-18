@@ -1,7 +1,7 @@
 /**
  * wasteStatus.test.js — Unit tests for waste forecast status classification.
  *
- * Run: node backend/tests/wasteStatus.test.js
+ * Run: npm test (from backend/)
  */
 
 const path = require("path");

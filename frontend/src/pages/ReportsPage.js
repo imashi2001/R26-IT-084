@@ -53,6 +53,7 @@ import {
 import { CHART } from "../components/dashboard/dashboardTheme";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl, fetchBins } from "../utils/apiBase";
+import { withAuthToken } from "../utils/authTransport";
 
 /*
  * /reports — Aggregated reports + CSV export.
@@ -1005,7 +1006,7 @@ export default function ReportsPage() {
                         <td className="px-2 py-2">
                           {c.has_image ? (
                             <a
-                              href={apiUrl(`/captures/${c.id}/image`)}
+                              href={withAuthToken(apiUrl(`/captures/${c.id}/image`))}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-400 hover:text-brand-300"

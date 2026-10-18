@@ -55,6 +55,7 @@ import {
   formatRouteDuration,
   isVirtualBin,
 } from "../utils/collectionRoute";
+import { withAuthToken } from "../utils/authTransport";
 
 /*
  * /map — Collection planning map (dashboard shell).
@@ -1192,7 +1193,7 @@ export default function MapPage() {
                         {b.latest_image_url ? (
                           <img
                             className="mt-2 max-h-24 w-full rounded-lg object-cover ring-1 ring-slate-700/50"
-                            src={b.latest_image_url}
+                            src={withAuthToken(b.latest_image_url)}
                             alt=""
                           />
                         ) : null}

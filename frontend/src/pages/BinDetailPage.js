@@ -26,6 +26,7 @@ import {
   statusBadgeClass,
 } from "../components/dashboard/dashboardUi";
 import { apiUrl } from "../utils/apiBase";
+import { withAuthToken } from "../utils/authTransport";
 
 function formatTs(iso) {
   if (!iso) return "—";
@@ -135,9 +136,11 @@ export default function BinDetailPage() {
   const extras = latest?.extras || {};
   const imageUrl =
     latest?.captured_at || latest?.image?.url
-      ? `${apiUrl(`/devices/${id}/image/latest`)}?t=${encodeURIComponent(
-          latest?.captured_at || ""
-        )}`
+      ? withAuthToken(
+          `${apiUrl(`/devices/${id}/image/latest`)}?t=${encodeURIComponent(
+            latest?.captured_at || ""
+          )}`
+        )
       : null;
   const predictions = Array.isArray(latest?.predictions)
     ? latest.predictions
@@ -355,12 +358,12 @@ export default function BinDetailPage() {
                             <td className="py-2">
                               {c.has_image ? (
                                 <a
-                                  href={apiUrl(`/captures/${c.id}/image`)}
+                                  href={withAuthToken(apiUrl(`/captures/${c.id}/image`))}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
                                   <img
-                                    src={apiUrl(`/captures/${c.id}/image`)}
+                                    src={withAuthToken(apiUrl(`/captures/${c.id}/image`))}
                                     alt=""
                                     className="h-10 w-10 rounded-lg border border-slate-700/50 object-cover"
                                   />

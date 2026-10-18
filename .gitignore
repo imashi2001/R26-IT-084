@@ -83,6 +83,12 @@ mobile_app/build/
 
 # MapTiler / local Flutter secrets (never commit real keys)
 mobile_app/dart_defines.json
+mobile_app/.idea/
+mobile_app/.flutter-plugins
+mobile_app/.flutter-plugins-dependencies
+
+# ESP32 firmware credentials (copy secrets.example.h -> secrets.h)
+VisionWaste/**/secrets.h
 
 # Backend local
 backend/.env

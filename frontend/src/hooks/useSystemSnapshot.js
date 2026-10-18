@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import { apiUrl } from "../utils/apiBase";
+import { withAuthToken } from "../utils/authTransport";
 
 /*
  * useSystemSnapshot
@@ -109,7 +110,9 @@ export default function useSystemSnapshot(intervalMs = DEFAULT_INTERVAL_MS) {
         extras: body.extras || {},
         // Use a relative URL so the Vite dev proxy serves it from the backend.
         // ?t= ensures the <img> reloads when timestamp changes.
-        imageUrl: `${apiUrl("/latest/image")}?t=${encodeURIComponent(body.timestamp || "")}`,
+        imageUrl: withAuthToken(
+          `${apiUrl("/latest/image")}?t=${encodeURIComponent(body.timestamp || "")}`
+        ),
         imageMimetype: body.image?.mimetype || "image/jpeg",
       });
     } catch (e) {

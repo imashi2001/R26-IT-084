@@ -1,12 +1,14 @@
 const { Router } = require("express");
 const WasteEntriesRepository = require("../repositories/wasteEntries.repository");
 const { formatDbError } = require("../utils/formatDbError");
+const { requireAuth, requireRole } = require("../middleware/auth");
 const {
   runRetrainPipeline: runForecastRetrain,
   fetchModelRegistry,
 } = require("../services/forecastModelClient");
 
 const router = Router();
+const requireAdmin = [requireAuth, requireRole("admin")];
 const VEHICLE_REGEX = /^[A-Za-z0-9]{2,3} \d{4}$/;
 
 async function runRetrainPipeline({ force = false } = {}) {
@@ -29,7 +31,7 @@ async function runRetrainPipeline({ force = false } = {}) {
 }
 
 // POST /api/waste-entries
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
   try {
     const { entry_date, vehicle_no, location_id, waste_type, weight_kg } = req.body;
 
@@ -98,7 +100,7 @@ router.post("/", async (req, res) => {
 });
 
 // GET /api/waste-entries
-router.get("/", async (req, res) => {
+router.get("/", requireAuth, async (req, res) => {
   try {
     const { page, limit, locationId, startDate, endDate } = req.query;
     const result = await WasteEntriesRepository.findAll({
@@ -117,7 +119,7 @@ router.get("/", async (req, res) => {
 });
 
 // GET /api/waste-entries/retrain-status
-router.get("/retrain-status", async (_req, res) => {
+router.get("/retrain-status", requireAuth, async (_req, res) => {
   try {
     const registryInfo = await fetchModelRegistry();
     const stats = await WasteEntriesRepository.countStats();
@@ -138,7 +140,7 @@ router.get("/retrain-status", async (_req, res) => {
 });
 
 // POST /api/waste-entries/trigger-retrain
-router.post("/trigger-retrain", async (_req, res) => {
+router.post("/trigger-retrain", requireAdmin, async (_req, res) => {
   try {
     const result = await runRetrainPipeline({ force: true });
     const registryInfo = await fetchModelRegistry();
@@ -155,7 +157,7 @@ router.post("/trigger-retrain", async (_req, res) => {
 });
 
 // PUT /api/waste-entries/:id
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { entry_date, vehicle_no, location_id, waste_type, weight_kg } = req.body;
@@ -194,7 +196,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE /api/waste-entries/:id
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await WasteEntriesRepository.delete(id);

@@ -60,6 +60,28 @@ Optional backend **`CORS_ORIGIN`**: comma-separated allowed frontend origins (em
 
 Frontend local overrides: copy [frontend/.env.example](frontend/.env.example) to **`frontend/.env.local`** (`VITE_API_URL`, `VITE_ESP32_CAPTURE_URL`).
 
+## Security setup (production)
+
+Set these on the backend before going live (details in [backend/README.md](backend/README.md)):
+
+| Variable | Why |
+|----------|-----|
+| `JWT_SECRET` | Signs admin logins. Production refuses to start without it. |
+| `ADMIN_INVITE_SECRET` | After the first admin, new accounts need this invite code. |
+| `DEVICE_API_KEY` | ESP32 boards and the bridge send it as `X-Device-Key`; put the same value in `VisionWaste/esp32-*/secrets.h` and the bridge env. |
+| `CORS_ORIGIN` | Your frontend URL, so other websites cannot call the API. |
+
+ESP32 Wi-Fi credentials live in `VisionWaste/esp32-*/secrets.h` (git-ignored); copy `secrets.example.h` to create it.
+
+## Tests
+
+```powershell
+cd backend;  npm test        # node:test, backend/test/
+cd frontend; npx vitest run
+```
+
+CI runs both (plus a Python syntax check of `services/`) on every push and PR: [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
 ## Run locally (3 terminals)
 
 Terminal 1 - Bin fill model service:

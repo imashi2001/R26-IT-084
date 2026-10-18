@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ImageCanvas from "./ImageCanvas";
 import { apiUrl, getApiBaseUrl } from "../utils/apiBase";
+import { withAuthToken } from "../utils/authTransport";
 
 const POLL_MS = 3_000;
 
@@ -58,11 +59,11 @@ export default function LiveEsp32View() {
           Array.isArray(data.latest?.predictions) ? data.latest.predictions : []
         );
         setTimestamp(data.latest?.captured_at || null);
-        setImageUrl(data.latest?.image?.url || null);
+        setImageUrl(withAuthToken(data.latest?.image?.url) || null);
       } else {
         setPredictions(Array.isArray(data.predictions) ? data.predictions : []);
         setTimestamp(data.timestamp || null);
-        setImageUrl(data.image?.url || null);
+        setImageUrl(withAuthToken(data.image?.url) || null);
       }
     } catch (e) {
       setError(e.message || "Failed to load latest capture.");

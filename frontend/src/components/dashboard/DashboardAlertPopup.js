@@ -13,6 +13,7 @@ import {
 import { alertTone } from "./dashboardTheme";
 import { apiUrl } from "../../utils/apiBase";
 import { fillLabel } from "../../utils/fillTier";
+import { withAuthToken } from "../../utils/authTransport";
 
 function formatTs(iso) {
   if (!iso) return "—";
@@ -31,7 +32,7 @@ function formatTs(iso) {
 function captureThumbUrl(captureId) {
   if (!captureId) return null;
   try {
-    return apiUrl(`/captures/${captureId}/image`);
+    return withAuthToken(apiUrl(`/captures/${captureId}/image`));
   } catch {
     return null;
   }

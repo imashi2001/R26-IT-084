@@ -68,7 +68,7 @@ The backend re-delivers the same `PLAY_AUDIO` command every poll until the ESP32
 
 1. Open `ESP32CamDirectPredict.ino` in Arduino IDE.
 2. Board: **AI Thinker ESP32-CAM**.
-3. Set `WIFI_SSID`, `WIFI_PASSWORD`, `BACKEND_BASE`, `ESP32_ID`.
+3. Copy `secrets.example.h` to `secrets.h` (git-ignored) and set `WIFI_SSID`, `WIFI_PASSWORD`, `BACKEND_BASE` and `DEVICE_API_KEY` (same value as the backend's `DEVICE_API_KEY`; leave `""` if unset). Set `ESP32_ID` in the `.ino`. Do the same in `../esp32-voice/` for the voice board.
 4. Upload; open Serial Monitor @ 115200.
 
 ### Serial Monitor test procedure

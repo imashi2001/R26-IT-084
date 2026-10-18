@@ -574,6 +574,13 @@ async function predict(req, res, next) {
       sourceType,
       bypassBridge,
     });
+    if (deviceId && sourceType === "esp32") {
+      deviceService
+        .updateDevice(deviceId, { last_seen_at: new Date() })
+        .catch((err) => {
+          console.warn("[predict] last_seen update skipped:", err.message);
+        });
+    }
 
     const imageBuffer = Buffer.from(req.file.buffer);
     const imageMimetype = req.file.mimetype || "image/jpeg";

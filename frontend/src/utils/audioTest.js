@@ -53,12 +53,6 @@ export async function runRemoteAudioTest({
     if (typeof onStatus === "function") onStatus(msg);
   };
 
-  if (cameraOnline === false) {
-    throw new Error(
-      "Camera Offline — ESP32 is not polling. Wait until Camera is Online, then try again."
-    );
-  }
-
   const trackNum = Number.isFinite(Number(track)) ? Math.trunc(Number(track)) : 1;
   const trackLabel = String(trackNum).padStart(4, "0");
   say(`Sending audio test (${trackLabel})…`);
@@ -107,15 +101,17 @@ export async function runRemoteAudioStop({ authFetch, deviceId, onStatus }) {
   });
 }
 
-/** Online if last_seen_at is within ~20s (matches backend camera_online). */
-export function isCameraOnline(device, windowMs = 20_000) {
-  if (device?.camera_online === true) return true;
-  if (device?.camera_online === false) return false;
-  const raw = device?.last_seen_at;
-  if (!raw) return false;
-  const t = new Date(raw).getTime();
-  if (!Number.isFinite(t)) return false;
-  return Date.now() - t <= windowMs;
+/** Online if the ESP32 polled or uploaded within the window. */
+export function isCameraOnline(device, windowMs = 45_000) {
+  const times = [device?.last_seen_at, device?.latest_captured_at];
+  let newest = 0;
+  for (const raw of times) {
+    if (!raw) continue;
+    const t = new Date(raw).getTime();
+    if (Number.isFinite(t) && t > newest) newest = t;
+  }
+  if (newest && Date.now() - newest <= windowMs) return true;
+  return device?.camera_online === true;
 }
 
 export function formatLastSeen(iso) {

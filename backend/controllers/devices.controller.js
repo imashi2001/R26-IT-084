@@ -18,17 +18,27 @@ const {
 } = require("../services/litterSeverityUtils");
 const litterSeverityAlertService = require("../services/litterSeverityAlertService");
 
-/** ESP32 considered Online for UI if last poll within this window. */
-const ONLINE_MS = 20_000;
+/** ESP32 considered Online if it polled or uploaded within this window. */
+const ONLINE_MS = 45_000;
 
-function withPresence(device) {
+function tsMs(value) {
+  if (!value) return 0;
+  const t = new Date(value).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+function withPresence(device, extraSeenAt = null) {
   if (!device || typeof device !== "object") return device;
-  const last = device.last_seen_at ? new Date(device.last_seen_at).getTime() : 0;
+  const last = Math.max(
+    tsMs(device.last_seen_at),
+    tsMs(device.latest_captured_at),
+    tsMs(extraSeenAt)
+  );
   const online = Boolean(last && Date.now() - last <= ONLINE_MS);
   return {
     ...device,
     camera_online: online,
-    last_seen_at: device.last_seen_at || null,
+    last_seen_at: device.last_seen_at || extraSeenAt || null,
   };
 }
 
@@ -644,7 +654,7 @@ async function latestDetail(req, res, next) {
     }
 
     return res.json({
-      device: withPresence(device),
+      device: withPresence(device, captured_at || mem?.timestamp),
       latest: {
         captured_at,
         fill_level,

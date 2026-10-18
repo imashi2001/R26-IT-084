@@ -93,8 +93,8 @@ export default function AudioTrackTestPanel({
       ) : null}
       {!camOnline ? (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          Camera Offline — ESP32 is not polling commands. Power the board and
-          wait until it shows Online, then press a track.
+          Camera looks offline. You can still press a track — the command stays
+          queued until the ESP32 polls.
         </p>
       ) : null}
 

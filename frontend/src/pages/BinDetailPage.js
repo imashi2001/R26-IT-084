@@ -127,7 +127,12 @@ export default function BinDetailPage() {
 
   const latest = data?.latest;
   const extras = latest?.extras || {};
-  const imageUrl = latest?.image?.url || null;
+  const imageUrl =
+    latest?.captured_at || latest?.image?.url
+      ? `${apiUrl(`/devices/${id}/image/latest`)}?t=${encodeURIComponent(
+          latest?.captured_at || ""
+        )}`
+      : null;
   const predictions = Array.isArray(latest?.predictions)
     ? latest.predictions
     : [];

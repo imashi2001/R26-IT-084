@@ -139,7 +139,12 @@ export default function BinDetailsModal({ bin, onClose }) {
 
   const extras = latest?.latest?.extras || {};
   const capturedAt = latest?.latest?.captured_at || bin.latest_captured_at;
-  const imageUrl = latest?.latest?.image?.url || bin.latest_image_url;
+  const imageUrl =
+    capturedAt || latest?.latest?.image?.url || bin.latest_image_url
+      ? `${apiUrl(`/devices/${bin.id}/image/latest`)}?t=${encodeURIComponent(
+          capturedAt || ""
+        )}`
+      : null;
   const fillTier =
     latest?.latest?.fill_level || bin.latest_fill_level || null;
   const fillPct =

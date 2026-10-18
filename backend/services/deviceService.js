@@ -6,6 +6,7 @@ const { Op } = require("sequelize");
 
 const db = require("../config/db");
 const modelsRegistry = require("../models");
+const { toNodeBuffer, captureHasImage } = require("../utils/imageBuffer");
 
 function ensureModels() {
   if (!db.isDbEnabled()) return null;
@@ -131,16 +132,63 @@ async function enqueueSpeakerAction(deviceId, action) {
   });
 }
 
-async function getLatestCaptureForDevice(deviceId) {
+function toPublicCaptureJson(row) {
+  if (!row) return null;
+  const has_image = captureHasImage(row);
+  const json = typeof row.toJSON === "function" ? row.toJSON() : { ...row };
+  delete json.image_buffer;
+  json.has_image = has_image;
+  return json;
+}
+
+async function findLatestCaptureRow(deviceId, { includeBuffer = false } = {}) {
   const models = ensureModels();
-  if (!models) return null;
-  const { Capture, Prediction } = models;
-  const row = await Capture.findOne({
-    where: { device_id: deviceId },
-    order: [["captured_at", "DESC"]],
-    include: [{ model: Prediction, as: "predictions" }],
-  });
-  return row ? row.toJSON() : null;
+  if (!models || deviceId == null) return null;
+  const { Capture, Prediction, Device } = models;
+
+  const query = (where) =>
+    Capture.findOne({
+      where,
+      order: [["captured_at", "DESC"]],
+      include: [{ model: Prediction, as: "predictions" }],
+      attributes: includeBuffer ? undefined : { exclude: ["image_buffer"] },
+    });
+
+  let row = await query({ device_id: deviceId });
+  if (row) return row;
+
+  const deviceCount = await Device.count();
+  if (deviceCount > 1) return null;
+
+  row = await query({ device_id: null });
+  if (row && !row.device_id) {
+    try {
+      await row.update({ device_id: deviceId });
+    } catch (err) {
+      console.warn(
+        "[devices] could not backfill capture device_id:",
+        err.message
+      );
+    }
+  }
+  return row;
+}
+
+async function getLatestCaptureForDevice(deviceId) {
+  const row = await findLatestCaptureRow(deviceId, { includeBuffer: false });
+  return toPublicCaptureJson(row);
+}
+
+async function getLatestCaptureImage(deviceId) {
+  const row = await findLatestCaptureRow(deviceId, { includeBuffer: true });
+  if (!row) return null;
+  const buffer = toNodeBuffer(row.image_buffer);
+  if (!buffer) return null;
+  return {
+    buffer,
+    mimetype: row.image_mimetype || "image/jpeg",
+    captured_at: row.captured_at,
+  };
 }
 
 async function listDevicesWithCoordinates() {
@@ -176,5 +224,8 @@ module.exports = {
   clearPendingSpeakerAction,
   enqueueSpeakerAction,
   getLatestCaptureForDevice,
+  getLatestCaptureImage,
+  captureHasImage,
+  toNodeBuffer,
   listDevicesWithCoordinates,
 };

@@ -1,5 +1,6 @@
 const captureService = require("../services/captureService");
 const db = require("../config/db");
+const { toNodeBuffer } = require("../utils/imageBuffer");
 
 function clamp(value, min, max) {
   const n = Number(value);
@@ -121,12 +122,8 @@ async function getCaptureImage(req, res, next) {
     const capture = await captureService.getCapture(id);
     if (!capture) return res.status(404).json({ error: "Capture not found." });
 
-    let buf = capture.image_buffer;
+    const buf = toNodeBuffer(capture.image_buffer);
     if (!buf) {
-      return res.status(404).json({ error: "No image stored for this capture." });
-    }
-    if (!Buffer.isBuffer(buf)) buf = Buffer.from(buf);
-    if (!buf.length) {
       return res.status(404).json({ error: "No image stored for this capture." });
     }
 

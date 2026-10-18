@@ -414,7 +414,7 @@ async function mapPins(req, res, next) {
       const capturedAt = latest.latest_captured_at;
 
       let latest_image_url = null;
-      if (latestCap?.image_buffer) {
+      if (deviceService.captureHasImage(latestCap) || latestCap?.has_image) {
         const ts = encodeURIComponent(capturedAt || "");
         latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
       } else if (mem?.timestamp) {
@@ -484,7 +484,7 @@ async function nearest(req, res, next) {
         let latest_image_url = null;
         const capturedAt = latestCap?.captured_at || mem?.timestamp || null;
 
-        if (latestCap?.image_buffer) {
+        if (deviceService.captureHasImage(latestCap) || latestCap?.has_image) {
           const ts = encodeURIComponent(capturedAt || "");
           latest_image_url = `${baseUrl}/devices/${d.id}/image/latest?t=${ts}`;
         } else if (mem?.timestamp) {
@@ -629,7 +629,9 @@ async function latestDetail(req, res, next) {
       encodeURIComponent(captured_at || mem?.timestamp || "");
 
     const imageUrl =
-      capture?.image_buffer || mem?.image?.buffer
+      capture?.has_image ||
+      deviceService.captureHasImage(capture) ||
+      mem?.image?.buffer
         ? `${baseUrl}/devices/${id}/image/latest?t=${ts}`
         : null;
 
@@ -667,18 +669,11 @@ async function latestImage(req, res, next) {
     }
 
     if (db.isDbEnabled()) {
-      const captureRow = await deviceService.getLatestCaptureForDevice(id);
-      let buf = captureRow?.image_buffer;
-      if (buf && !Buffer.isBuffer(buf)) {
-        buf = Buffer.from(buf);
-      }
-      if (buf && buf.length > 0) {
-        res.set(
-          "Content-Type",
-          captureRow.image_mimetype || "image/jpeg"
-        );
+      const image = await deviceService.getLatestCaptureImage(id);
+      if (image?.buffer?.length) {
+        res.set("Content-Type", image.mimetype || "image/jpeg");
         res.set("Cache-Control", "no-store");
-        return res.send(buf);
+        return res.send(image.buffer);
       }
     }
 

@@ -5,16 +5,16 @@ warnings.filterwarnings('ignore')
 
 ROOT_DIR = Path(os.getcwd()).parents[0]
 WASTE_FORECAST_DIR = ROOT_DIR / "waste_forecast"
-MODEL_PATH = WASTE_FORECAST_DIR / "models" / "model.json"
-FEATURE_COLUMNS_PATH = WASTE_FORECAST_DIR / "models" / "feature_columns.json"
 
 sys.path.insert(0, str(WASTE_FORECAST_DIR))
 sys.path.insert(0, str(WASTE_FORECAST_DIR / "src"))
 
 try:
+    from calendar_features import calendar_flags_for_date
     from daily_forecast import estimate_daily_waste
     from load_data import INSTITUTE_SHARES, CATEGORY_SHARES
 except ImportError:
+    from src.calendar_features import calendar_flags_for_date
     from src.daily_forecast import estimate_daily_waste
     from src.load_data import INSTITUTE_SHARES, CATEGORY_SHARES
 
@@ -62,8 +62,14 @@ seasonal_multipliers = {
 }
 
 adjusted = []
+calendar_by_date = {}
 
 for idx, row in enumerate(input_data):
+    row_date = row.get('dateStr')
+    if row_date and row_date not in calendar_by_date:
+        calendar_by_date[row_date] = calendar_flags_for_date(row_date)
+    is_poya = bool(row_date) and calendar_by_date[row_date]["isPoya"]
+
     month = row.get('Month', 9)
     date_str = f"2025-{month:02d}-15"
     daily_res = estimate_daily_waste(date_str, mode="forecast")
@@ -73,16 +79,17 @@ for idx, row in enumerate(input_data):
     cat_name = identify_category_name(row)
 
     inst_share = INSTITUTE_SHARES.get(inst_id, 0.090)
-    cat_share = CATEGORY_SHARES.get(cat_name, 0.045)
+    # C & D is excluded from CATEGORY_SHARES (see load_data.py); default to 0.0.
+    cat_share = CATEGORY_SHARES.get(cat_name, 0.0)
 
     item_base_tons = base_daily_tons * inst_share * cat_share
     val = max(0, float(item_base_tons * 1000.0))
 
-    if row.get('Is_Weekend') == 1 or row.get('Is_Long_Weekend') == 1:
-        val *= 1.5
+    # No weekend / long-weekend multiplier: day_weight in daily_profile.py already
+    # models the calendar effect on collection.
     if row.get('Month') == 12 and row.get('Institute_Moratuwa M.C.') == 1:
         val *= seasonal_multipliers['Moratuwa_December']
-    if row.get('Is_Poya_Day') == 1:
+    if is_poya:
         if row.get('Category_Unburnable') == 1:
             val *= seasonal_multipliers['Poya_Day_Unburnable']
         elif row.get('Category_SOW') == 1:

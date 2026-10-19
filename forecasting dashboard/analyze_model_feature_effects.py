@@ -10,8 +10,10 @@ from sklearn.inspection import PartialDependenceDisplay
 
 
 ROOT = Path(__file__).resolve().parent
-MODEL_PATH = ROOT / "trained_model.pkl"
-FEATURES_PATH = ROOT / "model_features.pkl"
+# Retired legacy model, archived (no training script exists; see waste_forecast/archive/README.md).
+ARCHIVE_DIR = ROOT.parent / "waste_forecast" / "archive"
+MODEL_PATH = ARCHIVE_DIR / "trained_model.pkl"
+FEATURES_PATH = ARCHIVE_DIR / "model_features.pkl"
 INPUT_PATH = ROOT / "input.json"
 OUTPUT_PLOT = ROOT / "pdp_rainfall_temp.png"
 

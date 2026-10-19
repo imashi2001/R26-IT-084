@@ -13,14 +13,6 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 const {
-  calculateLongWeekend,
-  getHolidaysForDate,
-  isHolidayDate,
-  isPoyaDay,
-  isWeekendDate,
-  shiftDate,
-} = require("../utils/dateUtils");
-const {
   calculateWasteStatus,
   getBaseline,
   STATUS_COLORS,
@@ -47,14 +39,18 @@ const CATEGORIES = [
 ];
 
 // ---------- helpers ----------
-function loadHolidayCache() {
-  try {
-    const p = path.join(__dirname, "..", "..", "forecasting dashboard", "holiday_cache.json");
-    return JSON.parse(fs.readFileSync(p, "utf8"));
-  } catch {
-    return {};
-  }
-}
+// Calendar flags come from run_model.py (calendar_features.calendar_flags_for_date),
+// the single holiday / long-weekend definition. Used only if the model run fails.
+const EMPTY_CALENDAR = {
+  isWeekend: false,
+  isHoliday: false,
+  isPoya: false,
+  holidays: [],
+  isLongWeekend: false,
+  longWeekendDays: 0,
+  longWeekendDates: [],
+  triggerHoliday: null,
+};
 
 /**
  * Classify the day type for the API response.
@@ -71,26 +67,6 @@ function classifyDayType({ isWeekend, isHoliday, isLongWeekend, isPoya }) {
 router.get("/", (req, res) => {
   // Use selected date from frontend; default to today in Asia/Colombo.
   const dateStr = req.query.date || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
-  const cache = loadHolidayCache();
-
-  const matchedHolidays = getHolidaysForDate(dateStr, cache);
-  const isHoliday = matchedHolidays.length > 0;
-  const weekend = isWeekendDate(dateStr);
-  const poyaDay = isPoyaDay(dateStr, cache);
-
-  const { isLongWeekend, longWeekendDays, longWeekendDates, triggerHoliday } =
-    calculateLongWeekend(dateStr, cache);
-
-  const effectiveLongWeekendDates = longWeekendDates && longWeekendDates.length ? longWeekendDates : [];
-
-  // Track adjustments applied (for transparency)
-  const adjustmentLog = {
-    weekendOrLongWeekend: (weekend || isLongWeekend) ? 1.5 : 1.0,
-    poya: poyaDay ? "category-specific (1.15–1.20)" : 1.0,
-    moratuwaDecember: parseInt(dateStr.slice(5, 7), 10) === 12 ? 1.25 : 1.0,
-    note: "Adjustments applied in run_model.py (Python) post-prediction",
-  };
-
   // Construct input rows for model
   const rows = [];
   const month = parseInt(dateStr.slice(5, 7), 10);
@@ -99,10 +75,6 @@ router.get("/", (req, res) => {
     for (const cat of CATEGORIES) {
       const row = {
         dateStr: dateStr,
-        Is_Weekend: weekend ? 1 : 0,
-        Is_Holiday: isHoliday ? 1 : 0,
-        Is_Long_Weekend: isLongWeekend ? 1 : 0,
-        Is_Poya_Day: poyaDay ? 1 : 0,
         Month: month,
         Month_December: month === 12 ? 1 : 0,
         Rainfall_mm: 0,
@@ -143,6 +115,7 @@ router.get("/", (req, res) => {
   let modelError = null;
   let reliability = "reliable";
   let reliabilityNote = null;
+  let calendar = EMPTY_CALENDAR;
 
   try {
     fs.writeFileSync(inputPath, JSON.stringify(rows, null, 2));
@@ -158,12 +131,23 @@ router.get("/", (req, res) => {
       predictions = parsedOutput.predictions;
       reliability = parsedOutput.reliability || "reliable";
       reliabilityNote = parsedOutput.reliabilityNote || null;
+      calendar = { ...EMPTY_CALENDAR, ...(parsedOutput.calendar || {}) };
     }
   } catch (err) {
     console.error("[waste-data] ML model execution failed:", err.message);
     modelError = err.message;
     predictions = [];
   }
+
+  const { isWeekend: weekend, isHoliday, isPoya: poyaDay, isLongWeekend } = calendar;
+
+  // Track adjustments applied (for transparency)
+  const adjustmentLog = {
+    calendarEffect: "day_weight in daily_profile.py; no post-prediction weekend/long-weekend multiplier",
+    poya: poyaDay ? "category-specific (1.15–1.20)" : 1.0,
+    moratuwaDecember: month === 12 ? 1.25 : 1.0,
+    note: "Adjustments applied in run_model.py (Python) post-prediction",
+  };
 
   // Parse predictions back to locations.
   // Model output is already in KG (conversion handled in run_model.py).
@@ -289,10 +273,10 @@ router.get("/", (req, res) => {
     isWeekend: weekend,
     isPoya: poyaDay,
     isLongWeekend,
-    longWeekendDays,
-    longWeekendDates: effectiveLongWeekendDates,
-    triggerHoliday,
-    holidays: matchedHolidays,
+    longWeekendDays: calendar.longWeekendDays,
+    longWeekendDates: calendar.longWeekendDates,
+    triggerHoliday: calendar.triggerHoliday,
+    holidays: calendar.holidays,
     summary: {
       totalPredictedWasteKg: Number(totalPredictedWasteKg.toFixed(1)),
       averagePredictedWasteKg,

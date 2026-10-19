@@ -29,15 +29,10 @@ function isWeekendDate(dateStr) {
   return day === 0 || day === 6;
 }
 
-function isHolidayDate(dateStr, cache = loadHolidayCache()) {
-  const holidays = getHolidaysForDate(dateStr, cache);
-  return holidays.some((holiday) => !/observance/i.test(holiday.primary_type || ""));
-}
-
-function isPoyaDay(dateStr, cache = loadHolidayCache()) {
-  const holidays = getHolidaysForDate(dateStr, cache);
-  return holidays.some((holiday) => /poya|full moon/i.test(holiday.name || ""));
-}
+// No holiday / Poya / long-weekend logic here on purpose. The single definition is
+// calendar_flags_for_date in waste_forecast/src/calendar_features.py ("National
+// holiday" primary_type only); routes read it from the model output. A second JS
+// implementation here previously flagged every Friday and Monday as a long weekend.
 
 function getKgThresholds(capacityKg) {
   const capacity = Number(capacityKg);
@@ -70,80 +65,11 @@ function getForecastStatus(predictedWasteKg, capacityKg) {
   return "NORMAL";
 }
 
-function calculateLongWeekend(dateStr, cache = loadHolidayCache()) {
-  const normalizedDate = String(dateStr).slice(0, 10);
-  const current = new Date(`${normalizedDate}T12:00:00`);
-  const dayOfWeek = current.getDay();
-
-  const isPublicHoliday = (candidate) => isHolidayDate(candidate, cache);
-  const isNonWorkingDay = (candidate) => isWeekendDate(candidate) || isPublicHoliday(candidate);
-
-  const dayAfter = (offset) => shiftDate(normalizedDate, offset);
-
-  // Rule 1: 3-day long weekend.
-  if (dayOfWeek === 5 && isWeekendDate(dayAfter(1)) && isWeekendDate(dayAfter(2))) {
-    return {
-      isLongWeekend: true,
-      longWeekendDays: 3,
-      longWeekendDates: [normalizedDate, dayAfter(1), dayAfter(2)],
-      triggerHoliday: getHolidaysForDate(normalizedDate, cache)[0] || null,
-    };
-  }
-
-  if (dayOfWeek === 1 && isWeekendDate(dayAfter(-1)) && isWeekendDate(dayAfter(-2))) {
-    return {
-      isLongWeekend: true,
-      longWeekendDays: 3,
-      longWeekendDates: [dayAfter(-2), dayAfter(-1), normalizedDate],
-      triggerHoliday: getHolidaysForDate(normalizedDate, cache)[0] || null,
-    };
-  }
-
-  // Rule 2: 4-day long weekend.
-  if (dayOfWeek === 4 && (isWeekendDate(dayAfter(1)) || isPublicHoliday(dayAfter(1)))) {
-    return {
-      isLongWeekend: true,
-      longWeekendDays: 4,
-      longWeekendDates: [normalizedDate, dayAfter(1), dayAfter(2), dayAfter(3)],
-      triggerHoliday: getHolidaysForDate(dayAfter(1), cache)[0] || null,
-    };
-  }
-
-  if (dayOfWeek === 1 && (isWeekendDate(dayAfter(-1)) || isPublicHoliday(dayAfter(-1)))) {
-    return {
-      isLongWeekend: true,
-      longWeekendDays: 4,
-      longWeekendDates: [dayAfter(-3), dayAfter(-2), dayAfter(-1), normalizedDate],
-      triggerHoliday: getHolidaysForDate(dayAfter(-1), cache)[0] || null,
-    };
-  }
-
-  // Rule 3: 5-day long weekend when a holiday stays inside a continuous non-working cluster.
-  for (let startOffset = -2; startOffset <= 2; startOffset += 1) {
-    const window = Array.from({ length: 5 }, (_, index) => shiftDate(normalizedDate, startOffset + index));
-    const hasHoliday = window.some((value) => isPublicHoliday(value));
-    const allNonWorking = window.every((value) => isNonWorkingDay(value));
-    if (hasHoliday && allNonWorking) {
-      return {
-        isLongWeekend: true,
-        longWeekendDays: 5,
-        longWeekendDates: window,
-        triggerHoliday: window.map((value) => getHolidaysForDate(value, cache)[0]).find(Boolean) || null,
-      };
-    }
-  }
-
-  return { isLongWeekend: false, longWeekendDays: 0, longWeekendDates: [], triggerHoliday: null };
-}
-
 module.exports = {
   loadHolidayCache,
   getHolidaysForDate,
   isWeekendDate,
-  isHolidayDate,
-  isPoyaDay,
   getKgThresholds,
   getForecastStatus,
-  calculateLongWeekend,
   shiftDate,
 };

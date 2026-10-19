@@ -123,6 +123,57 @@ def build_daily_calendar(start_date: str = "2023-01-01", end_date: str = "2025-1
     return calendar
 
 
+def calendar_flags_for_date(date_value: str | pd.Timestamp) -> dict[str, object]:
+    """Calendar flags for one date, for the API. This is the ONLY holiday /
+    long-weekend definition in the system; the backend reads it instead of
+    computing its own. A holiday is primary_type "National holiday" only
+    (QUALIFYING_HOLIDAY_TYPES), because that is the definition the model's
+    calendar features were built with: counting Observance / Hinduism / Season
+    entries would flag days off that the forecast itself does not treat as off.
+    """
+    target = pd.Timestamp(date_value).normalize()
+    # Off-day runs need context on both sides; no real run is anywhere near 14 days.
+    window = build_daily_calendar(
+        start_date=(target - pd.Timedelta(days=14)).strftime("%Y-%m-%d"),
+        end_date=(target + pd.Timedelta(days=14)).strftime("%Y-%m-%d"),
+    )
+    day = window[window["date"] == target].iloc[0]
+
+    long_weekend_dates: list[str] = []
+    trigger_holiday = None
+    if bool(day["is_long_weekend"]):
+        run = window[window["off_day_run_id"] == day["off_day_run_id"]]
+        long_weekend_dates = [d.strftime("%Y-%m-%d") for d in run["date"]]
+        run_holidays = run[run["is_holiday"]]
+        if not run_holidays.empty:
+            first = run_holidays.iloc[0]
+            trigger_holiday = {
+                "name": first["holiday_name"],
+                "date": first["date"].strftime("%Y-%m-%d"),
+                "primary_type": first["holiday_type"],
+            }
+
+    holidays = []
+    if bool(day["is_holiday"]):
+        holidays.append({
+            "name": day["holiday_name"],
+            "iso_date": target.strftime("%Y-%m-%d"),
+            "primary_type": day["holiday_type"],
+        })
+
+    return {
+        "date": target.strftime("%Y-%m-%d"),
+        "isWeekend": bool(day["is_weekend"]),
+        "isHoliday": bool(day["is_holiday"]),
+        "isPoya": "poya" in str(day["holiday_name"]).lower(),
+        "holidays": holidays,
+        "isLongWeekend": bool(day["is_long_weekend"]),
+        "longWeekendDays": int(day["long_weekend_length"]),
+        "longWeekendDates": long_weekend_dates,
+        "triggerHoliday": trigger_holiday,
+    }
+
+
 def build_monthly_calendar_features(start_date: str = "2023-01-01", end_date: str = "2025-12-31") -> pd.DataFrame:
     daily = build_daily_calendar(start_date=start_date, end_date=end_date)
 

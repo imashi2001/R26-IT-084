@@ -1,0 +1,282 @@
+{
+  "source": "waste_forecast/data/location_monthly.csv",
+  "target_location_ids": [
+    "boralesgamuwa-uc",
+    "dehiwala-mtlavinia",
+    "homagama-ps",
+    "kdu-campus",
+    "kesbewa-uc",
+    "kotte-mc",
+    "maharagama-uc",
+    "moratuwa-mc"
+  ],
+  "decay": 0.95,
+  "fixed_holdout": {
+    "train_start": "2023-01",
+    "train_end": "2025-06",
+    "test_start": "2025-07",
+    "test_end": "2025-12",
+    "training_rows": 30
+  },
+  "rolling_origin": {
+    "horizons": {
+      "1": {
+        "origin_index_start": 23,
+        "origin_index_end": 34
+      },
+      "3": {
+        "origin_index_start": 21,
+        "origin_index_end": 32
+      }
+    },
+    "target_index_start": 24,
+    "target_index_end": 35,
+    "target_start": "2025-01",
+    "target_end": "2025-12"
+  },
+  "month_effect_observations_fixed_training": {
+    "1": 3,
+    "2": 3,
+    "3": 3,
+    "4": 3,
+    "5": 3,
+    "6": 3,
+    "7": 2,
+    "8": 2,
+    "9": 2,
+    "10": 2,
+    "11": 2,
+    "12": 2
+  },
+  "ablation_interpretation": "The calendar-month effects are responsible for most of the model's accuracy, while decay weighting adds a smaller improvement concentrated in reduced bias and better longer-horizon error.",
+  "results": [
+    {
+      "protocol": "fixed_holdout",
+      "model": "weighted_trend_plus_unweighted_month_effects",
+      "n": 6,
+      "rmse": 705.2165479517097,
+      "mae": 605.7734328299557,
+      "mape_percent": 4.883877481273247,
+      "r2": 0.45214934330843115,
+      "bias_predicted_minus_actual": 10.209701510132314
+    },
+    {
+      "protocol": "fixed_holdout",
+      "model": "unweighted_trend_plus_unweighted_month_effects",
+      "n": 6,
+      "rmse": 724.3113727107074,
+      "mae": 664.353979977754,
+      "mape_percent": 5.267991315530249,
+      "r2": 0.4220798910752568,
+      "bias_predicted_minus_actual": -165.53193993326173
+    },
+    {
+      "protocol": "fixed_holdout",
+      "model": "weighted_trend_without_month_effects",
+      "n": 6,
+      "rmse": 996.0540254432851,
+      "mae": 894.6509286897211,
+      "mape_percent": 6.852896022799588,
+      "r2": -0.09290644612303445,
+      "bias_predicted_minus_actual": -331.6951822630696
+    },
+    {
+      "protocol": "fixed_holdout",
+      "model": "trend_without_decay_or_month_effects",
+      "n": 6,
+      "rmse": 1058.4587760732409,
+      "mae": 896.2781661104927,
+      "mape_percent": 6.776507098879716,
+      "r2": -0.23414189069385283,
+      "bias_predicted_minus_actual": -488.37527326659557
+    },
+    {
+      "protocol": "fixed_holdout",
+      "model": "naive",
+      "n": 6,
+      "rmse": 966.9646236203956,
+      "mae": 912.0,
+      "mape_percent": 7.067553233141755,
+      "r2": -0.030002713908665823,
+      "bias_predicted_minus_actual": -165.03333333333285
+    },
+    {
+      "protocol": "fixed_holdout",
+      "model": "seasonal_naive",
+      "n": 6,
+      "rmse": 1420.406247052816,
+      "mae": 1232.6333333333332,
+      "mape_percent": 9.541780912922135,
+      "r2": -1.2225029441762159,
+      "bias_predicted_minus_actual": -1197.1999999999996
+    },
+    {
+      "protocol": "rolling_1_month_ahead",
+      "model": "weighted_trend_plus_unweighted_month_effects",
+      "origin_index_start": 23,
+      "origin_index_end": 34,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 692.5209060072614,
+      "mae": 593.7632269166469,
+      "mape_percent": 5.01812868532309,
+      "r2": 0.6675605241057181,
+      "bias_predicted_minus_actual": -62.15189568698088
+    },
+    {
+      "protocol": "rolling_1_month_ahead",
+      "model": "unweighted_trend_plus_unweighted_month_effects",
+      "origin_index_start": 23,
+      "origin_index_end": 34,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 690.9890558315941,
+      "mae": 636.1343407144265,
+      "mape_percent": 5.264245705846313,
+      "r2": 0.669029603926023,
+      "bias_predicted_minus_actual": -226.2302738095265
+    },
+    {
+      "protocol": "rolling_1_month_ahead",
+      "model": "weighted_trend_without_month_effects",
+      "origin_index_start": 23,
+      "origin_index_end": 34,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 1134.9840325426917,
+      "mae": 933.5321200035534,
+      "mape_percent": 7.9309790819170916,
+      "r2": 0.10705169888372279,
+      "bias_predicted_minus_actual": -98.43977486019064
+    },
+    {
+      "protocol": "rolling_1_month_ahead",
+      "model": "trend_without_decay_or_month_effects",
+      "origin_index_start": 23,
+      "origin_index_end": 34,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 1123.609377924625,
+      "mae": 930.3329366188508,
+      "mape_percent": 7.8267145078883065,
+      "r2": 0.12486002446895439,
+      "bias_predicted_minus_actual": -219.16761453536324
+    },
+    {
+      "protocol": "rolling_1_month_ahead",
+      "model": "naive",
+      "origin_index_start": 23,
+      "origin_index_end": 34,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 1624.274023987332,
+      "mae": 1387.5833333333333,
+      "mape_percent": 11.715104875980982,
+      "r2": -0.8287966175804609,
+      "bias_predicted_minus_actual": -91.83333333333333
+    },
+    {
+      "protocol": "rolling_1_month_ahead",
+      "model": "seasonal_naive",
+      "origin_index_start": 23,
+      "origin_index_end": 34,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 1757.8606782582815,
+      "mae": 1600.0083333333332,
+      "mape_percent": 13.075738662741681,
+      "r2": -1.1419814964043469,
+      "bias_predicted_minus_actual": -1582.291666666666
+    },
+    {
+      "protocol": "rolling_3_month_ahead",
+      "model": "weighted_trend_plus_unweighted_month_effects",
+      "origin_index_start": 21,
+      "origin_index_end": 32,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 724.6374216185004,
+      "mae": 584.7012811983165,
+      "mape_percent": 4.791461368103947,
+      "r2": 0.63601094232141,
+      "bias_predicted_minus_actual": -162.62387572574093
+    },
+    {
+      "protocol": "rolling_3_month_ahead",
+      "model": "unweighted_trend_plus_unweighted_month_effects",
+      "origin_index_start": 21,
+      "origin_index_end": 32,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 738.9488785709106,
+      "mae": 615.1045670533209,
+      "mape_percent": 4.957756613298483,
+      "r2": 0.6214915314164432,
+      "bias_predicted_minus_actual": -322.99302266361457
+    },
+    {
+      "protocol": "rolling_3_month_ahead",
+      "model": "weighted_trend_without_month_effects",
+      "origin_index_start": 21,
+      "origin_index_end": 32,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 1110.799183160128,
+      "mae": 952.0384996471034,
+      "mape_percent": 7.968933351939795,
+      "r2": 0.14470109638801554,
+      "bias_predicted_minus_actual": -191.3764031903655
+    },
+    {
+      "protocol": "rolling_3_month_ahead",
+      "model": "trend_without_decay_or_month_effects",
+      "origin_index_start": 21,
+      "origin_index_end": 32,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 1114.281666942152,
+      "mae": 928.8684609800325,
+      "mape_percent": 7.702729209775589,
+      "r2": 0.13932976792854268,
+      "bias_predicted_minus_actual": -321.5857476494795
+    },
+    {
+      "protocol": "rolling_3_month_ahead",
+      "model": "naive",
+      "origin_index_start": 21,
+      "origin_index_end": 32,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 1635.0263219084063,
+      "mae": 1264.75,
+      "mape_percent": 10.473677739886018,
+      "r2": -0.8530891328160353,
+      "bias_predicted_minus_actual": -192.48333333333326
+    },
+    {
+      "protocol": "rolling_3_month_ahead",
+      "model": "seasonal_naive",
+      "origin_index_start": 21,
+      "origin_index_end": 32,
+      "target_index_start": 24,
+      "target_index_end": 35,
+      "n": 12,
+      "rmse": 1757.8606782582815,
+      "mae": 1600.0083333333332,
+      "mape_percent": 13.075738662741681,
+      "r2": -1.1419814964043469,
+      "bias_predicted_minus_actual": -1582.291666666666
+    }
+  ]
+}

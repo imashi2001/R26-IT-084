@@ -1,0 +1,98 @@
+{
+  "moratuwa-mc": {
+    "locationId": "moratuwa-mc",
+    "locationName": "Moratuwa M.C.",
+    "q1Kg": 47729.5,
+    "medianKg": 51244.8,
+    "q3Kg": 56826.5,
+    "p90Kg": 61150.4,
+    "sampleSize": 1096,
+    "periodStart": "2023-01-01",
+    "periodEnd": "2025-12-31",
+    "method": "location_specific_daily_weight_percentiles"
+  },
+  "boralesgamuwa-uc": {
+    "locationId": "boralesgamuwa-uc",
+    "locationName": "Boralesgamuwa U.C.",
+    "q1Kg": 24783.9,
+    "medianKg": 26609.2,
+    "q3Kg": 29507.6,
+    "p90Kg": 31752.8,
+    "sampleSize": 1096,
+    "periodStart": "2023-01-01",
+    "periodEnd": "2025-12-31",
+    "method": "location_specific_daily_weight_percentiles"
+  },
+  "kesbewa-uc": {
+    "locationId": "kesbewa-uc",
+    "locationName": "Kesbewa U.C.",
+    "q1Kg": 54196.3,
+    "medianKg": 58187.8,
+    "q3Kg": 64525.9,
+    "p90Kg": 69435.6,
+    "sampleSize": 1096,
+    "periodStart": "2023-01-01",
+    "periodEnd": "2025-12-31",
+    "method": "location_specific_daily_weight_percentiles"
+  },
+  "dehiwala-mtlavinia": {
+    "locationId": "dehiwala-mtlavinia",
+    "locationName": "Dehiwala - Mt Lavinia",
+    "q1Kg": 94408.5,
+    "medianKg": 101361.7,
+    "q3Kg": 112402.4,
+    "p90Kg": 120955.0,
+    "sampleSize": 1096,
+    "periodStart": "2023-01-01",
+    "periodEnd": "2025-12-31",
+    "method": "location_specific_daily_weight_percentiles"
+  },
+  "kotte-mc": {
+    "locationId": "kotte-mc",
+    "locationName": "Sri J,puraKotte M.C.",
+    "q1Kg": 24915.2,
+    "medianKg": 26750.2,
+    "q3Kg": 29663.9,
+    "p90Kg": 31921.0,
+    "sampleSize": 1096,
+    "periodStart": "2023-01-01",
+    "periodEnd": "2025-12-31",
+    "method": "location_specific_daily_weight_percentiles"
+  },
+  "maharagama-uc": {
+    "locationId": "maharagama-uc",
+    "locationName": "Maharagama U.C.",
+    "q1Kg": 64405.3,
+    "medianKg": 69148.7,
+    "q3Kg": 76680.7,
+    "p90Kg": 82515.2,
+    "sampleSize": 1096,
+    "periodStart": "2023-01-01",
+    "periodEnd": "2025-12-31",
+    "method": "location_specific_daily_weight_percentiles"
+  },
+  "homagama-ps": {
+    "locationId": "homagama-ps",
+    "locationName": "Homagama P.S.",
+    "q1Kg": 17365.1,
+    "medianKg": 18644.1,
+    "q3Kg": 20674.9,
+    "p90Kg": 22248.0,
+    "sampleSize": 1096,
+    "periodStart": "2023-01-01",
+    "periodEnd": "2025-12-31",
+    "method": "location_specific_daily_weight_percentiles"
+  },
+  "kdu-campus": {
+    "locationId": "kdu-campus",
+    "locationName": "Kothalawala Defence University",
+    "q1Kg": 459.6,
+    "medianKg": 493.4,
+    "q3Kg": 547.2,
+    "p90Kg": 588.8,
+    "sampleSize": 1096,
+    "periodStart": "2023-01-01",
+    "periodEnd": "2025-12-31",
+    "method": "location_specific_daily_weight_percentiles"
+  }
+}

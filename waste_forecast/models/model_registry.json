@@ -18,5 +18,35 @@
     "candidateRmse": 0.9102,
     "promoted": true,
     "outcome": "PROMOTED: Candidate RMSE (0.9102) <= Live Threshold (12273.6177)"
+  },
+  {
+    "version": "v1.3",
+    "timestamp": "2026-10-18T21:17:50.596823",
+    "liveHoldoutRmse": null,
+    "candidateHoldoutRmse": null,
+    "liveTrainingRmse": null,
+    "candidateTrainingRmse": null,
+    "holdoutStart": null,
+    "holdoutEnd": null,
+    "decay": 0.95,
+    "trainingRows": 36,
+    "eligibleCrudMonths": [],
+    "decision": "skipped",
+    "reason": "Retrain skipped: zero eligible CRUD months; no candidate was fitted, promoted, or marked processed."
+  },
+  {
+    "version": "v1.4",
+    "timestamp": "2026-10-18T21:17:57.246713",
+    "liveHoldoutRmse": null,
+    "candidateHoldoutRmse": null,
+    "liveTrainingRmse": null,
+    "candidateTrainingRmse": null,
+    "holdoutStart": null,
+    "holdoutEnd": null,
+    "decay": 0.95,
+    "trainingRows": 36,
+    "eligibleCrudMonths": [],
+    "decision": "skipped",
+    "reason": "Retrain skipped: zero eligible CRUD months; no candidate was fitted, promoted, or marked processed."
   }
 ]

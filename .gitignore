@@ -69,3 +69,6 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Forecasting dashboard secrets (was tracked until 2026-10-19; the key must be rotated)
+forecasting dashboard/.env

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Sparkles,
   KeyRound,
@@ -7,10 +7,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Volume2,
+  ImagePlus,
+  Upload,
 } from "lucide-react";
 import Card from "./Card";
 import useGeminiSettings, {
   saveGeminiSettings,
+  predictGeminiPhoto,
   VOICE_SOURCE_OPTIONS,
 } from "../../hooks/useGeminiSettings";
 import { formatTrackLabel } from "../../hooks/useAudioSettings";
@@ -94,17 +97,29 @@ export default function GeminiSettingsCard({ authFetch, isAdmin }) {
   const { settings, setSettings, loading, error, refresh } = useGeminiSettings(12_000);
 
   const [apiKeyDraft, setApiKeyDraft] = useState("");
-  const [modelDraft, setModelDraft] = useState("gemini-2.0-flash");
+  const [modelDraft, setModelDraft] = useState("gemini-3.8-flash");
   const [voiceSource, setVoiceSource] = useState("models");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
 
+  const photoRef = useRef(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [predicting, setPredicting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+
   useEffect(() => {
     if (!settings) return;
-    setModelDraft(settings.gemini_model || "gemini-2.0-flash");
+    setModelDraft(settings.gemini_model || "gemini-3.8-flash");
     setVoiceSource(settings.voice_source || "models");
   }, [settings]);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
 
   const options =
     settings?.voice_source_options?.length > 0
@@ -119,7 +134,7 @@ export default function GeminiSettingsCard({ authFetch, isAdmin }) {
     try {
       const payload = {
         voice_source: voiceSource,
-        gemini_model: modelDraft.trim() || "gemini-2.0-flash",
+        gemini_model: modelDraft.trim() || "gemini-3.8-flash",
       };
       if (apiKeyDraft.trim()) {
         payload.api_key = apiKeyDraft.trim();
@@ -152,6 +167,53 @@ export default function GeminiSettingsCard({ authFetch, isAdmin }) {
       setErr(e.message || "Could not clear key.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onPickPhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErr("Please choose a JPEG, PNG, or WebP image.");
+      return;
+    }
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setTestResult(null);
+    setErr(null);
+    setMsg(null);
+  };
+
+  const onClearPhoto = () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(null);
+    setPhotoFile(null);
+    setTestResult(null);
+    if (photoRef.current) photoRef.current.value = "";
+  };
+
+  const onRunGemini = async () => {
+    if (!isAdmin || !photoFile) return;
+    setPredicting(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const body = await predictGeminiPhoto(authFetch, photoFile);
+      setTestResult(body);
+      if (body.settings) setSettings(body.settings);
+      else refresh();
+      if (body.ok) {
+        setMsg(
+          `Gemini: ${body.gemini?.label || body.gemini?.scenario || "done"} (${formatTrackLabel(body.gemini?.track)})`
+        );
+      } else {
+        setErr(body.error || body.gemini?.error || "Gemini prediction failed.");
+      }
+    } catch (e) {
+      setErr(e.message || "Gemini prediction failed.");
+    } finally {
+      setPredicting(false);
     }
   };
 
@@ -310,13 +372,99 @@ export default function GeminiSettingsCard({ authFetch, isAdmin }) {
           </p>
         )}
 
+        <div className="rounded-2xl border border-slate-700/60 bg-slate-950/40 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ImagePlus className="h-4 w-4 text-violet-400" />
+            <h3 className="text-sm font-semibold text-slate-200">
+              Test photo → Gemini prediction
+            </h3>
+          </div>
+          <p className="mb-3 text-sm text-slate-500">
+            Upload any bin photo to see the Gemini scenario (fill, litter, animal,
+            track). Does not play on the ESP32 voice board.
+          </p>
+          <div className="grid gap-4 md:grid-cols-[200px_1fr]">
+            <div className="overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/80">
+              <div className="relative aspect-square w-full">
+                {photoPreview ? (
+                  <img
+                    src={photoPreview}
+                    alt="Test upload"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-600">
+                    No photo
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-violet-500/40 hover:text-violet-300">
+                  <Upload className="h-4 w-4" />
+                  Choose photo
+                  <input
+                    ref={photoRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={!isAdmin || predicting}
+                    onChange={onPickPhoto}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={
+                    !isAdmin ||
+                    predicting ||
+                    !photoFile ||
+                    !settings?.key_configured
+                  }
+                  onClick={onRunGemini}
+                  className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+                >
+                  {predicting ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {predicting ? "Analyzing…" : "Get Gemini prediction"}
+                </button>
+                {photoFile ? (
+                  <button
+                    type="button"
+                    onClick={onClearPhoto}
+                    className="text-sm text-slate-500 hover:text-slate-300"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+              {!settings?.key_configured ? (
+                <p className="text-xs text-amber-300">
+                  Save a Gemini API key above before running a test.
+                </p>
+              ) : null}
+              {testResult?.gemini ? (
+                <div className="max-w-md">
+                  <PredBlock title="This upload — Gemini" data={testResult.gemini} />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
         <div>
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-sm font-semibold text-slate-200">
               Latest prediction
             </h3>
             <span className="text-xs text-slate-500">
-              {last?.at ? formatTs(last.at) : "Waiting for next ESP32 capture…"}
+              {last?.at
+                ? formatTs(last.at)
+                : "Upload a test photo or wait for an ESP32 capture…"}
+              {last?.source === "settings_upload" ? " · test upload" : ""}
               {last?.voice_source ? ` · mode: ${last.voice_source}` : ""}
             </span>
           </div>

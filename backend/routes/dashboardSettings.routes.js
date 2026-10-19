@@ -26,6 +26,14 @@ router.put(
 );
 
 router.post(
+  "/settings/gemini/predict",
+  requireAuth,
+  requireRole("admin"),
+  upload.single("image"),
+  dashboardSettings.predictGeminiPhoto
+);
+
+router.post(
   "/settings/hero",
   requireAuth,
   requireRole("admin"),

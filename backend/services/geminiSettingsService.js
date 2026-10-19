@@ -10,7 +10,19 @@ const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "dashboard");
 const SETTINGS_PATH = path.join(UPLOAD_DIR, "gemini_settings.json");
 
 const VOICE_SOURCES = new Set(["models", "gemini", "both"]);
-const DEFAULT_MODEL = "gemini-2.0-flash";
+/** gemini-2.0-flash was shut down (June 2026). Prefer current flash. */
+const DEFAULT_MODEL = "gemini-3.8-flash";
+
+const RETIRED_MODELS = new Map([
+  ["gemini-2.0-flash", DEFAULT_MODEL],
+  ["gemini-2.0-flash-001", DEFAULT_MODEL],
+  ["gemini-2.0-flash-lite", "gemini-3.1-flash-lite"],
+  ["gemini-2.0-flash-lite-001", "gemini-3.1-flash-lite"],
+  ["gemini-2.0-flash-exp", DEFAULT_MODEL],
+  ["gemini-2.5-flash", DEFAULT_MODEL],
+  ["gemini-3.0-flash", DEFAULT_MODEL],
+  ["models/gemini-2.0-flash", DEFAULT_MODEL],
+]);
 
 function ensureDir() {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -44,10 +56,19 @@ function normalizeVoiceSource(value) {
 }
 
 function normalizeModel(value) {
-  const m = String(value || "")
+  let m = String(value || "")
     .trim()
+    .replace(/^models\//i, "")
     .slice(0, 80);
-  return m || DEFAULT_MODEL;
+  if (!m) return DEFAULT_MODEL;
+  const lower = m.toLowerCase();
+  if (RETIRED_MODELS.has(lower)) {
+    return RETIRED_MODELS.get(lower);
+  }
+  if (RETIRED_MODELS.has(`models/${lower}`)) {
+    return RETIRED_MODELS.get(`models/${lower}`);
+  }
+  return m;
 }
 
 function normalizeSettings(raw) {
@@ -84,7 +105,7 @@ function maskKey(apiKey) {
  * Public view for GET — never includes the full API key.
  */
 function toPublicSettings(settings) {
-  const s = settings || getSettings();
+  const s = settings ? normalizeSettings(settings) : getSettings();
   const mask = maskKey(s.api_key);
   return {
     voice_source: s.voice_source,

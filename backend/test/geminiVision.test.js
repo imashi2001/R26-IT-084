@@ -125,7 +125,7 @@ describe("geminiSettingsService public mask", () => {
     const geminiSettingsService = require("../services/geminiSettingsService");
     const publicView = geminiSettingsService.toPublicSettings({
       voice_source: "both",
-      gemini_model: "gemini-2.0-flash",
+      gemini_model: "gemini-2.5-flash",
       api_key: "AIzaSySecretKey1234",
       last_prediction: null,
       updated_at: null,
@@ -134,5 +134,18 @@ describe("geminiSettingsService public mask", () => {
     assert.equal(publicView.key_last4, "1234");
     assert.equal(publicView.api_key, undefined);
     assert.equal(publicView.voice_source, "both");
+  });
+
+  it("migrates retired gemini-2.0-flash to a current model", () => {
+    const geminiSettingsService = require("../services/geminiSettingsService");
+    const publicView = geminiSettingsService.toPublicSettings({
+      voice_source: "gemini",
+      gemini_model: "gemini-2.0-flash",
+      api_key: "",
+      last_prediction: null,
+      updated_at: null,
+    });
+    assert.notEqual(publicView.gemini_model, "gemini-2.0-flash");
+    assert.equal(publicView.gemini_model, geminiSettingsService.DEFAULT_MODEL);
   });
 });

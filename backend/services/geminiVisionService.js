@@ -204,7 +204,11 @@ async function analyzeImage({
   const started = Date.now();
   const settings = geminiSettingsService.getSettings();
   const key = String(apiKey || geminiSettingsService.resolveApiKey(settings) || "").trim();
-  const modelName = String(model || settings.gemini_model || "gemini-2.0-flash").trim();
+  const modelName = String(
+    model || settings.gemini_model || geminiSettingsService.DEFAULT_MODEL || "gemini-3.8-flash"
+  )
+    .trim()
+    .replace(/^models\//i, "");
 
   if (!key) {
     return {

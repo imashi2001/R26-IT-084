@@ -24,7 +24,7 @@ export const VOICE_SOURCE_OPTIONS = [
 export function defaultGeminiSettings() {
   return {
     voice_source: "models",
-    gemini_model: "gemini-2.0-flash",
+    gemini_model: "gemini-3.8-flash",
     key_configured: false,
     key_last4: null,
     last_prediction: null,
@@ -45,6 +45,19 @@ export async function saveGeminiSettings(authFetch, payload) {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  return body;
+}
+
+/** Upload a photo and run Gemini Vision (admin). */
+export async function predictGeminiPhoto(authFetch, file) {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await authFetch("/dashboard/settings/gemini/predict", {
+    method: "POST",
+    body: form,
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);

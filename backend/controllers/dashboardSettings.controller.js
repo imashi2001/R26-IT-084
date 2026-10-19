@@ -1,6 +1,7 @@
 const dashboardSettings = require("../services/dashboardSettingsService");
 const audioSettingsService = require("../services/audioSettingsService");
 const geminiSettingsService = require("../services/geminiSettingsService");
+const geminiVisionService = require("../services/geminiVisionService");
 const { getPublicBaseUrl } = require("../utils/publicUrl");
 
 function filePublicUrl(req, filename, updatedAt) {
@@ -145,6 +146,99 @@ function putGeminiSettings(req, res) {
   }
 }
 
+/**
+ * Admin: upload a test photo and run Gemini Vision (no ESP32 / no voice queue).
+ * Saves result into last_prediction for the Settings panel.
+ */
+async function predictGeminiPhoto(req, res) {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({
+        error: "image file is required (multipart field: image)",
+      });
+    }
+    const mime = (req.file.mimetype || "").toLowerCase();
+    if (!mime.startsWith("image/")) {
+      return res
+        .status(400)
+        .json({ error: "Upload must be an image (JPEG, PNG, or WebP)." });
+    }
+
+    const settings = geminiSettingsService.getSettings();
+    const key = geminiSettingsService.resolveApiKey(settings);
+    if (!key) {
+      return res.status(400).json({
+        error:
+          "Gemini API key not configured. Save a key in Settings first.",
+      });
+    }
+
+    const geminiResolved = await geminiVisionService.analyzeImage({
+      imageBuffer: req.file.buffer,
+      mimetype: req.file.mimetype || "image/jpeg",
+      apiKey: key,
+      model: settings.gemini_model,
+    });
+
+    const geminiOk =
+      geminiResolved?.ok !== false && Boolean(geminiResolved?.scenario_key);
+    const geminiPayload = {
+      ok: geminiOk,
+      scenario: geminiResolved?.scenario_key || null,
+      label: geminiResolved?.label || null,
+      track: geminiResolved?.track ?? null,
+      confidence: geminiResolved?.confidence ?? null,
+      fill_level: geminiResolved?.fill_level ?? null,
+      litter_on_ground: geminiResolved?.litter_on_ground ?? false,
+      animal_detected: geminiResolved?.animal_detected ?? false,
+      reason: geminiResolved?.reason || null,
+      error: geminiResolved?.error || null,
+      inference_ms: geminiResolved?.inference_ms ?? null,
+    };
+
+    const final = geminiOk
+      ? {
+          scenario: geminiResolved.scenario_key,
+          label: geminiResolved.label,
+          track: geminiResolved.track,
+          confidence: geminiResolved.confidence,
+          winner: "gemini",
+          source: "settings_test",
+          reason: geminiResolved.reason,
+        }
+      : null;
+
+    const last_prediction = {
+      at: new Date().toISOString(),
+      capture_id: null,
+      event_id: null,
+      motion_session_id: null,
+      voice_source: settings.voice_source,
+      source: "settings_upload",
+      filename: req.file.originalname || null,
+      yolo: null,
+      gemini: geminiPayload,
+      final,
+    };
+
+    geminiSettingsService.saveLastPrediction(last_prediction);
+
+    return res.json({
+      ok: geminiOk,
+      gemini: geminiPayload,
+      final,
+      last_prediction,
+      settings: geminiSettingsService.toPublicSettings(),
+      error: geminiOk ? null : geminiPayload.error || "Gemini prediction failed",
+    });
+  } catch (e) {
+    console.error("[gemini] settings photo predict failed:", e.message);
+    return res
+      .status(500)
+      .json({ error: e.message || "Gemini prediction failed." });
+  }
+}
+
 module.exports = {
   getSettings,
   uploadHero,
@@ -155,4 +249,5 @@ module.exports = {
   putAudioSettings,
   getGeminiSettings,
   putGeminiSettings,
+  predictGeminiPhoto,
 };

@@ -1,0 +1,289 @@
+year,month,category,waste_tons
+2023,1,Bulky Waste,536.67
+2023,1,Burnable,3058.74
+2023,1,C & D,0.0
+2023,1,Industrial Waste,22.78
+2023,1,SOW,3819.67
+2023,1,Sanitary Waste,6.09
+2023,1,Slaughter House Waste,84.11
+2023,1,Unburnable,1435.69
+2023,2,Bulky Waste,167.64
+2023,2,Burnable,2930.22
+2023,2,C & D,0.0
+2023,2,Industrial Waste,1.02
+2023,2,SOW,3780.65
+2023,2,Sanitary Waste,5.68
+2023,2,Slaughter House Waste,94.43
+2023,2,Unburnable,1231.16
+2023,3,Bulky Waste,209.7
+2023,3,Burnable,3866.5
+2023,3,C & D,0.0
+2023,3,Industrial Waste,0.0
+2023,3,SOW,4742.1
+2023,3,Sanitary Waste,4.9
+2023,3,Slaughter House Waste,97.1
+2023,3,Unburnable,1115.9
+2023,4,Bulky Waste,204.09
+2023,4,Burnable,1691.72
+2023,4,C & D,0.0
+2023,4,Industrial Waste,0.0
+2023,4,SOW,4338.96
+2023,4,Sanitary Waste,5.42
+2023,4,Slaughter House Waste,104.07
+2023,4,Unburnable,3245.81
+2023,5,Bulky Waste,335.48
+2023,5,Burnable,1772.86
+2023,5,C & D,0.0
+2023,5,Industrial Waste,0.0
+2023,5,SOW,5626.75
+2023,5,Sanitary Waste,5.87
+2023,5,Slaughter House Waste,99.73
+2023,5,Unburnable,3367.71
+2023,6,Bulky Waste,335.92
+2023,6,Burnable,1611.16
+2023,6,C & D,0.0
+2023,6,Industrial Waste,0.0
+2023,6,SOW,5663.0
+2023,6,Sanitary Waste,6.21
+2023,6,Slaughter House Waste,98.31
+2023,6,Unburnable,2690.16
+2023,7,Bulky Waste,392.88
+2023,7,Burnable,3419.36
+2023,7,C & D,0.0
+2023,7,Industrial Waste,0.0
+2023,7,SOW,5347.24
+2023,7,Sanitary Waste,6.59
+2023,7,Slaughter House Waste,84.67
+2023,7,Unburnable,1384.28
+2023,8,Bulky Waste,445.7
+2023,8,Burnable,3165.1
+2023,8,C & D,0.0
+2023,8,Industrial Waste,0.0
+2023,8,SOW,5531.1
+2023,8,Sanitary Waste,6.3
+2023,8,Slaughter House Waste,94.7
+2023,8,Unburnable,507.0
+2023,9,Bulky Waste,418.0
+2023,9,Burnable,3384.7
+2023,9,C & D,0.0
+2023,9,Industrial Waste,0.0
+2023,9,SOW,5402.4
+2023,9,Sanitary Waste,5.4
+2023,9,Slaughter House Waste,95.8
+2023,9,Unburnable,346.7
+2023,10,Bulky Waste,270.0
+2023,10,Burnable,3337.1
+2023,10,C & D,2418.9
+2023,10,Industrial Waste,0.0
+2023,10,SOW,6515.1
+2023,10,Sanitary Waste,5.6
+2023,10,Slaughter House Waste,98.1
+2023,10,Unburnable,142.3
+2023,11,Bulky Waste,340.8
+2023,11,Burnable,3831.2
+2023,11,C & D,2479.0
+2023,11,Industrial Waste,0.0
+2023,11,SOW,6114.2
+2023,11,Sanitary Waste,7.5
+2023,11,Slaughter House Waste,107.0
+2023,11,Unburnable,172.5
+2023,12,Bulky Waste,308.6
+2023,12,Burnable,4020.6
+2023,12,C & D,1628.7
+2023,12,Industrial Waste,0.0
+2023,12,SOW,5980.4
+2023,12,Sanitary Waste,8.8
+2023,12,Slaughter House Waste,112.9
+2023,12,Unburnable,114.1
+2024,1,Bulky Waste,369.0
+2024,1,Burnable,4258.1
+2024,1,C & D,1872.9
+2024,1,Industrial Waste,0.0
+2024,1,SOW,5684.1
+2024,1,Sanitary Waste,6.8
+2024,1,Slaughter House Waste,79.3
+2024,1,Unburnable,112.6
+2024,2,Bulky Waste,285.3
+2024,2,Burnable,2660.1
+2024,2,C & D,1986.3
+2024,2,Industrial Waste,0.0
+2024,2,SOW,4938.7
+2024,2,Sanitary Waste,8.1
+2024,2,Slaughter House Waste,98.2
+2024,2,Unburnable,103.1
+2024,3,Bulky Waste,323.0
+2024,3,Burnable,3504.5
+2024,3,C & D,2334.9
+2024,3,Industrial Waste,0.0
+2024,3,SOW,5551.8
+2024,3,Sanitary Waste,8.7
+2024,3,Slaughter House Waste,74.1
+2024,3,Unburnable,68.5
+2024,4,Bulky Waste,399.7
+2024,4,Burnable,3528.7
+2024,4,C & D,2038.6
+2024,4,Industrial Waste,0.0
+2024,4,SOW,5761.1
+2024,4,Sanitary Waste,6.3
+2024,4,Slaughter House Waste,93.6
+2024,4,Unburnable,70.2
+2024,5,Bulky Waste,400.4
+2024,5,Burnable,2931.7
+2024,5,C & D,2744.1
+2024,5,Industrial Waste,0.0
+2024,5,SOW,6566.2
+2024,5,Sanitary Waste,6.9
+2024,5,Slaughter House Waste,102.5
+2024,5,Unburnable,78.7
+2024,6,Bulky Waste,567.4
+2024,6,Burnable,3854.3
+2024,6,C & D,1914.9
+2024,6,Industrial Waste,0.0
+2024,6,SOW,5701.5
+2024,6,Sanitary Waste,6.3
+2024,6,Slaughter House Waste,87.2
+2024,6,Unburnable,74.5
+2024,7,Bulky Waste,524.4
+2024,7,Burnable,4738.6
+2024,7,C & D,1751.3
+2024,7,Industrial Waste,0.0
+2024,7,SOW,6354.8
+2024,7,Sanitary Waste,8.5
+2024,7,Slaughter House Waste,119.4
+2024,7,Unburnable,53.5
+2024,8,Bulky Waste,388.9
+2024,8,Burnable,4680.4
+2024,8,C & D,1673.7
+2024,8,Industrial Waste,0.0
+2024,8,SOW,5762.0
+2024,8,Sanitary Waste,8.7
+2024,8,Slaughter House Waste,115.7
+2024,8,Unburnable,124.4
+2024,9,Bulky Waste,219.6
+2024,9,Burnable,4426.0
+2024,9,C & D,1498.7
+2024,9,Industrial Waste,0.0
+2024,9,SOW,4894.9
+2024,9,Sanitary Waste,7.2
+2024,9,Slaughter House Waste,109.0
+2024,9,Unburnable,203.3
+2024,10,Bulky Waste,246.1
+2024,10,Burnable,5458.2
+2024,10,C & D,1513.0
+2024,10,Industrial Waste,0.0
+2024,10,SOW,5896.6
+2024,10,Sanitary Waste,7.6
+2024,10,Slaughter House Waste,127.0
+2024,10,Unburnable,297.2
+2024,11,Bulky Waste,368.5
+2024,11,Burnable,3972.9
+2024,11,C & D,1900.6
+2024,11,Industrial Waste,0.0
+2024,11,SOW,6663.7
+2024,11,Sanitary Waste,7.6
+2024,11,Slaughter House Waste,147.8
+2024,11,Unburnable,610.2
+2024,12,Bulky Waste,485.8
+2024,12,Burnable,4535.4
+2024,12,C & D,2135.8
+2024,12,Industrial Waste,0.0
+2024,12,SOW,7033.5
+2024,12,Sanitary Waste,7.2
+2024,12,Slaughter House Waste,178.6
+2024,12,Unburnable,809.8
+2025,1,Bulky Waste,399.0
+2025,1,Burnable,4278.1
+2025,1,C & D,2333.8
+2025,1,Industrial Waste,0.0
+2025,1,SOW,6334.7
+2025,1,Sanitary Waste,8.9
+2025,1,Slaughter House Waste,165.8
+2025,1,Unburnable,950.2
+2025,2,Bulky Waste,377.7
+2025,2,Burnable,3131.9
+2025,2,C & D,2601.5
+2025,2,Industrial Waste,0.0
+2025,2,SOW,5301.1
+2025,2,Sanitary Waste,7.8
+2025,2,Slaughter House Waste,130.9
+2025,2,Unburnable,377.9
+2025,3,Bulky Waste,351.4
+2025,3,Burnable,3839.2
+2025,3,C & D,2187.1
+2025,3,Industrial Waste,0.0
+2025,3,SOW,6834.9
+2025,3,Sanitary Waste,8.2
+2025,3,Slaughter House Waste,145.7
+2025,3,Unburnable,571.6
+2025,4,Bulky Waste,314.0
+2025,4,Burnable,3613.6
+2025,4,C & D,1887.87
+2025,4,Industrial Waste,0.0
+2025,4,SOW,6307.6
+2025,4,Sanitary Waste,6.7
+2025,4,Slaughter House Waste,139.5
+2025,4,Unburnable,1088.7
+2025,5,Bulky Waste,339.1
+2025,5,Burnable,3295.9
+2025,5,C & D,2563.1
+2025,5,Industrial Waste,0.0
+2025,5,SOW,6728.0
+2025,5,Sanitary Waste,9.7
+2025,5,Slaughter House Waste,154.7
+2025,5,Unburnable,2398.5
+2025,6,Bulky Waste,676.5
+2025,6,Burnable,3382.4
+2025,6,C & D,1450.3
+2025,6,Industrial Waste,0.0
+2025,6,SOW,7126.4
+2025,6,Sanitary Waste,19.6
+2025,6,Slaughter House Waste,140.0
+2025,6,Unburnable,1288.9
+2025,7,Bulky Waste,697.7
+2025,7,Burnable,4032.1
+2025,7,C & D,1490.6
+2025,7,Industrial Waste,0.0
+2025,7,SOW,7680.5
+2025,7,Sanitary Waste,63.3
+2025,7,Slaughter House Waste,157.7
+2025,7,Unburnable,1004.0
+2025,8,Bulky Waste,514.2
+2025,8,Burnable,3648.3
+2025,8,C & D,2560.2
+2025,8,Industrial Waste,0.0
+2025,8,SOW,6670.5
+2025,8,Sanitary Waste,56.7
+2025,8,Slaughter House Waste,139.6
+2025,8,Unburnable,811.9
+2025,9,Bulky Waste,250.6
+2025,9,Burnable,3543.5
+2025,9,C & D,5700.0
+2025,9,Industrial Waste,0.0
+2025,9,SOW,7280.6
+2025,9,Sanitary Waste,68.1
+2025,9,Slaughter House Waste,145.1
+2025,9,Unburnable,865.8
+2025,10,Bulky Waste,378.7
+2025,10,Burnable,4109.9
+2025,10,C & D,2780.0
+2025,10,Industrial Waste,0.0
+2025,10,SOW,7563.2
+2025,10,Sanitary Waste,74.9
+2025,10,Slaughter House Waste,141.1
+2025,10,Unburnable,1092.0
+2025,11,Bulky Waste,365.3
+2025,11,Burnable,3740.1
+2025,11,C & D,2650.2
+2025,11,Industrial Waste,0.0
+2025,11,SOW,6513.7
+2025,11,Sanitary Waste,57.3
+2025,11,Slaughter House Waste,127.7
+2025,11,Unburnable,858.3
+2025,12,Bulky Waste,439.0
+2025,12,Burnable,4717.0
+2025,12,C & D,2840.4
+2025,12,Industrial Waste,0.0
+2025,12,SOW,7717.7
+2025,12,Sanitary Waste,74.0
+2025,12,Slaughter House Waste,166.9
+2025,12,Unburnable,1047.7

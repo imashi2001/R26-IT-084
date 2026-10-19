@@ -98,7 +98,8 @@ RECREATIONAL_PARKS = {"Galle Face Green"}
 SEASONAL_PILGRIMAGE = {"Nallathanniya (Sri Pada)"}
 
 # Caches stored alongside this file (still remains a single-file app; these are runtime artifacts)
-APP_DIR = Path(__file__).resolve().parent
+# Archived in waste_forecast/archive/scripts/; caches and .env still live in forecasting dashboard/.
+APP_DIR = Path(__file__).resolve().parents[3] / "forecasting dashboard"
 GEOCODE_CACHE_PATH = APP_DIR / "geocode_cache.json"
 HOLIDAY_CACHE_PATH = APP_DIR / "holiday_cache.json"
 

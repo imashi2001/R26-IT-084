@@ -15,8 +15,8 @@ This document outlines the technical specifications, software versions, architec
   * `scikit-learn`: Used in `evaluate_model.py` and `evaluate_monthly.py` (`mean_squared_error`, `mean_absolute_error`, `r2_score`, `TimeSeriesSplit`, `permutation_importance`).
   * `scipy`: Used in `evaluate_model.py` and `compute_baselines.py` (`scipy.stats` for distributions and confidence intervals).
   * `matplotlib`: Used in `evaluate_model.py` and `evaluate_monthly.py` (with `"Agg"` backend for headless metric curve generation).
-  * `dash` (>= 2.17), `plotly` (>= 5.20), `dash-bootstrap-components` (>= 1.6): Used in early research prototype (`forecasting dashboard/app.py`).
-  * `requests` (>= 2.31), `geopy` (>= 2.4): Used in `forecasting dashboard/app.py` for geocoding landmarks and fetching Calendarific holidays.
+  * `dash` (>= 2.17), `plotly` (>= 5.20), `dash-bootstrap-components` (>= 1.6): Used only in the archived early research prototype (`app.py`; see `waste_forecast/archive/README.md`).
+  * `requests` (>= 2.31), `geopy` (>= 2.4): Used in the archived `app.py` for geocoding landmarks. The live Calendarific refresh (`refresh_holiday_cache.py`) uses the standard library only.
   * `openpyxl`: **NOT USED** (all data ingest and exports use native JSON, CSV, and in-memory structures).
   * `holidays`: **NOT USED** (holiday detection relies on the curated `holiday_cache.json` derived from Calendarific).
 
@@ -55,44 +55,11 @@ This document outlines the technical specifications, software versions, architec
 ### 2.1 Generation Mechanism
 The file [`forecasting dashboard/holiday_cache.json`](file:///c:/Reasearch/SLIIT/R26-IT-084/forecasting%20dashboard/holiday_cache.json) (mirrored in `backend/holiday_cache.json`) is populated using the **Calendarific API** for Sri Lanka (`country="LK"`).
 
-In [`forecasting dashboard/app.py:L304-L370`](file:///c:/Reasearch/SLIIT/R26-IT-084/forecasting%20dashboard/app.py#L304-L370), holidays are fetched and cached through the following implementation:
+The cache is refreshed by `waste_forecast/src/refresh_holiday_cache.py` (extracted from the archived Dash prototype `app.py`). It reads `CALENDARIFIC_API_KEY` from the environment, re-fetches the requested years, keeps the other years, and writes nothing if any year fails:
 
-```python
-def fetch_sri_lanka_holidays(years: List[int]) -> Dict[int, List[HolidayRecord]]:
-    cached = _load_json(HOLIDAY_CACHE_PATH)
-    holiday_by_year: Dict[int, List[HolidayRecord]] = {}
-    ...
-    for year in years:
-        if year in holiday_by_year and holiday_by_year[year]:
-            continue
-        try:
-            with _HOLIDAY_FETCH_LOCK:
-                resp = requests.get(
-                    CALENDARIFIC_BASE_URL,
-                    params={
-                        "api_key": api_key,
-                        "country": CALENDARIFIC_COUNTRY,
-                        "year": year,
-                    },
-                    timeout=20,
-                )
-            if resp.status_code != 200:
-                continue
-            payload = resp.json()
-            records = _parse_calendarific_holidays(payload)
-            holiday_by_year[year] = records
-            updated = True
-        except requests.RequestException as ex:
-            logger.warning("Calendarific request error for year %d: %s", year, ex)
-    ...
-    if updated:
-        serializable = {
-            str(y): [r.__dict__ for r in rs]
-            for y, rs in holiday_by_year.items()
-            if rs
-        }
-        _save_json(HOLIDAY_CACHE_PATH, serializable)
-    return holiday_by_year
+```powershell
+python waste_forecast/src/refresh_holiday_cache.py --years 2027 2028 --dry-run   # report changes only
+python waste_forecast/src/refresh_holiday_cache.py --years 2027 2028             # write the cache
 ```
 
 ### 2.2 Distinct `primary_type` Categories

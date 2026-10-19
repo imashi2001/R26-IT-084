@@ -123,7 +123,14 @@ async function shouldSkipAutoPlay(esp32IdRaw, track) {
   if (inflight > 0) {
     return true;
   }
-  return false;
+
+  const anyActive = await DeviceCommand.findOne({
+    where: {
+      esp32_id: esp32Id,
+      status: { [Op.in]: ACTIVE_STATUSES },
+    },
+  });
+  return Boolean(anyActive);
 }
 
 async function keepOnlyCommand(esp32Id, keepId, reason) {

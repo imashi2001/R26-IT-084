@@ -117,6 +117,8 @@ module.exports = {
     1000,
 
   OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY || "",
+  /** Optional fallback if Settings UI key is empty (GET/PUT /dashboard/settings/gemini). */
+  GEMINI_API_KEY: (process.env.GEMINI_API_KEY || "").trim(),
   /** Public MapTiler key for website-style tiles in the mobile app (GET /map/config). */
   MAPTILER_KEY: (process.env.MAPTILER_KEY || "").trim(),
   DEFAULT_WEATHER_LAT: parseFloatSafe(process.env.DEFAULT_WEATHER_LAT, 6.9271),

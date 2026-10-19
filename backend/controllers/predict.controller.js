@@ -35,6 +35,10 @@ const captureService = require("../services/captureService");
 const latestState = require("../services/latestState");
 const deviceService = require("../services/deviceService");
 const audioTriggerService = require("../services/audioTriggerService");
+const audioSettingsService = require("../services/audioSettingsService");
+const audioPriorityService = require("../services/audioPriorityService");
+const geminiSettingsService = require("../services/geminiSettingsService");
+const geminiVisionService = require("../services/geminiVisionService");
 const litteringAlertService = require("../services/litteringAlertService");
 const litterSeverityAlertService = require("../services/litterSeverityAlertService");
 const { litterSeverityExtras } = require("../services/litterSeverityUtils");
@@ -353,7 +357,10 @@ async function finishPredictAnalysis({
   deviceId,
   device,
   savedCapture,
+  motionSessionId,
+  eventId,
 }) {
+  const predictStarted = Date.now();
   const inferred = await runRequestedModels({
     imageBuffer,
     filename,
@@ -413,6 +420,8 @@ async function finishPredictAnalysis({
     })(),
     ...litteringExtras(littering_action),
     ...litterSeverityExtras(litter_severity),
+    motion_session_id: motionSessionId || null,
+    event_id: eventId || null,
   };
 
   const predictionsToStore = [
@@ -471,6 +480,102 @@ async function finishPredictAnalysis({
     console.error("[predict] litter severity alert skipped:", sevAlertErr.message);
   }
 
+  const audioSettings = audioSettingsService.getSettings();
+  const yoloResolved = audioPriorityService.resolveAudioScenario({
+    risk,
+    bin_fill_level,
+    fill_percentage: extras.fill_percentage,
+    animal,
+    littering_action,
+    litter_severity,
+    bin_fill,
+    waste,
+    settings: audioSettings,
+  });
+
+  const geminiSettings = geminiSettingsService.getSettings();
+  const voiceSource = geminiSettings.voice_source || "models";
+  let geminiResolved = null;
+
+  if (voiceSource === "gemini" || voiceSource === "both") {
+    try {
+      geminiResolved = await geminiVisionService.analyzeImage({
+        imageBuffer,
+        mimetype: imageMimetype,
+      });
+      if (geminiResolved?.error) {
+        console.warn(
+          `[predict] Gemini: ${geminiResolved.error} event=${eventId || "-"}`
+        );
+      }
+    } catch (gemErr) {
+      console.error("[predict] Gemini skipped:", gemErr.message);
+      geminiResolved = {
+        ok: false,
+        error: gemErr.message,
+        scenario_key: null,
+        track: null,
+        source: "gemini",
+      };
+    }
+  }
+
+  const finalResolved = geminiVisionService.pickFinalVoiceScenario(
+    voiceSource,
+    yoloResolved,
+    geminiResolved
+  );
+
+  try {
+    geminiSettingsService.saveLastPrediction({
+      at: new Date().toISOString(),
+      capture_id: savedCapture?.id || null,
+      event_id: eventId || null,
+      motion_session_id: motionSessionId || null,
+      voice_source: voiceSource,
+      yolo: yoloResolved
+        ? {
+            scenario: yoloResolved.scenario_key,
+            label: yoloResolved.label,
+            track: yoloResolved.track,
+            confidence: yoloResolved.confidence,
+            reason: yoloResolved.reason,
+          }
+        : null,
+      gemini: geminiResolved
+        ? {
+            ok: geminiResolved.ok !== false && Boolean(geminiResolved.scenario_key),
+            scenario: geminiResolved.scenario_key,
+            label: geminiResolved.label,
+            track: geminiResolved.track,
+            confidence: geminiResolved.confidence,
+            fill_level: geminiResolved.fill_level,
+            litter_on_ground: geminiResolved.litter_on_ground,
+            animal_detected: geminiResolved.animal_detected,
+            reason: geminiResolved.reason,
+            error: geminiResolved.error || null,
+            inference_ms: geminiResolved.inference_ms ?? null,
+          }
+        : null,
+      final: finalResolved
+        ? {
+            scenario: finalResolved.scenario_key,
+            label: finalResolved.label,
+            track: finalResolved.track,
+            confidence: finalResolved.confidence,
+            winner: finalResolved.winner || voiceSource,
+            source: finalResolved.source || voiceSource,
+            reason: finalResolved.reason,
+          }
+        : null,
+    });
+  } catch (savePredErr) {
+    console.warn(
+      "[predict] could not save Gemini last_prediction:",
+      savePredErr.message
+    );
+  }
+
   let audioTriggerResult = null;
   try {
     audioTriggerResult = await audioTriggerService.maybeQueueFromPredict({
@@ -484,10 +589,17 @@ async function finishPredictAnalysis({
       litter_severity,
       bin_fill,
       waste,
+      motionSessionId: extras.motion_session_id,
+      eventId: extras.event_id,
+      resolvedOverride: finalResolved,
     });
   } catch (audioErr) {
     console.error("[predict] audio trigger skipped:", audioErr.message);
   }
+
+  console.log(
+    `[predict] event=${eventId || "-"} session=${motionSessionId || "-"} fill=${bin_fill_level || "-"} voice_source=${voiceSource} winner=${finalResolved?.winner || "-"} scenario=${finalResolved?.scenario_key || audioTriggerResult?.resolved?.scenario_key || "-"} queued=${Boolean(audioTriggerResult?.command)} predict_ms=${Date.now() - predictStarted}`
+  );
 
   return {
     timestamp: new Date().toISOString(),
@@ -623,6 +735,11 @@ async function predict(req, res, next) {
       console.error("[predict] failed to set latest state:", e.message);
     }
 
+    const motionSessionId = body.motion_session_id
+      ? String(body.motion_session_id).trim()
+      : "";
+    const eventId = body.event_id ? String(body.event_id).trim() : "";
+
     const analysisInput = {
       imageBuffer,
       filename,
@@ -637,6 +754,8 @@ async function predict(req, res, next) {
       deviceId,
       device,
       savedCapture,
+      motionSessionId,
+      eventId,
     };
 
     // ESP32 only needs the JPEG stored. Models + audio continue after the reply

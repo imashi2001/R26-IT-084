@@ -184,3 +184,32 @@ describe("audioSettingsService validation", () => {
     assert.equal(result.data.custom_scenarios[0].track, 5);
   });
 });
+
+describe("session announcement suppression", () => {
+  it("suppresses the same scenario in one session and allows a change", () => {
+    const audioTriggerService = require("../services/audioTriggerService");
+    audioTriggerService.resetSessionAnnounce();
+    const sessionId = "42";
+    const litter = {
+      scenario_key: "illegal_dumping",
+      track: 1,
+    };
+    const full = {
+      scenario_key: "waste_full",
+      track: 2,
+    };
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter),
+      false
+    );
+    audioTriggerService.rememberSessionAnnounce(sessionId, litter);
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter),
+      true
+    );
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, full),
+      false
+    );
+  });
+});

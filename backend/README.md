@@ -181,6 +181,16 @@ Stop: `{ "command_id", "command": "STOP_AUDIO", "track": null }`.
 
 Track numbers are **not hardcoded**. Configure them in the dashboard (**Speaker Check → Audio track assignment**) or via **`GET/PUT /dashboard/settings/audio`**.
 
+**Gemini voice source** (dashboard **Settings** or **`GET/PUT /dashboard/settings/gemini`**):
+
+| `voice_source` | Behaviour |
+|----------------|-----------|
+| `models` | YOLO / existing pipeline only (default) |
+| `gemini` | Gemini Vision only for the voice track |
+| `both` | Run both; Gemini wins when valid, else YOLO |
+
+Latest YOLO vs Gemini vs final voice prediction is stored and shown on the Settings page.
+
 When an **ESP32** uploads a photo (`source_type=esp32`), the gateway runs **every configured model** (waste, animal, fill, littering). Auto-audio picks the scenario with the **highest confidence %** among active results and plays its mapped track.
 
 | Scenario | Typical source | Maps to track |
@@ -263,6 +273,7 @@ See `.env.example`:
 | `DB_SYNC_ALTER` | `false` | If syncing, also alter columns to match models |
 | `DB_LOGGING` | `false` | Echo SQL to stdout |
 | `OPENWEATHER_API_KEY` | (empty) | Optional real weather; stub otherwise |
+| `GEMINI_API_KEY` | (empty) | Fallback if Settings → Gemini key is empty |
 | `MAPTILER_KEY` | (empty) | Public MapTiler key for `GET /map/config` (mobile app) |
 
 ---
@@ -287,6 +298,7 @@ Start the **waste** and **animal** FastAPI services (see repo `services/waste-ap
   - `JWT_SECRET` → random secret string
   - `DB_SYNC=true` only on first deploy to create tables; turn off afterwards
   - **`OPENWEATHER_API_KEY`** (optional)
+  - **`GEMINI_API_KEY`** (optional) — or paste the key in dashboard **Settings → Gemini**
   - **`MAPTILER_KEY`** (optional) — same MapTiler key as the website; mobile app reads it from `GET /map/config`
   - `CORS_ORIGIN` → your frontend URL(s)
 - Railway auto-detects Node and runs `npm install`.

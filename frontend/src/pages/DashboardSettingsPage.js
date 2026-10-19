@@ -14,6 +14,7 @@ import {
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
 import PromoFooter from "../components/dashboard/PromoFooter";
+import GeminiSettingsCard from "../components/dashboard/GeminiSettingsCard";
 import { useAuth } from "../context/AuthContext";
 import useDashboardSettings, {
   removeDashboardHero,
@@ -147,6 +148,7 @@ function ImageUploadPanel({
 
 export default function DashboardSettingsPage() {
   const { user, authFetch } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { settings, heroUrl, promoUrl, loading, error, refresh, setSettings } =
     useDashboardSettings();
 
@@ -289,8 +291,7 @@ export default function DashboardSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Upload dashboard images — hero banner and sidebar &quot;Cleaner City,
-          Better Tomorrow&quot; card.
+          Gemini voice source, API key, dashboard images, and account.
         </p>
       </div>
 
@@ -299,6 +300,8 @@ export default function DashboardSettingsPage() {
           {error} — gradient fallbacks will show until the API is reachable.
         </div>
       ) : null}
+
+      <GeminiSettingsCard authFetch={authFetch} isAdmin={isAdmin} />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <ImageUploadPanel

@@ -1,5 +1,6 @@
 const dashboardSettings = require("../services/dashboardSettingsService");
 const audioSettingsService = require("../services/audioSettingsService");
+const geminiSettingsService = require("../services/geminiSettingsService");
 const { getPublicBaseUrl } = require("../utils/publicUrl");
 
 function filePublicUrl(req, filename, updatedAt) {
@@ -123,6 +124,27 @@ function putAudioSettings(req, res) {
   }
 }
 
+function getGeminiSettings(_req, res) {
+  return res.json(geminiSettingsService.toPublicSettings());
+}
+
+function putGeminiSettings(req, res) {
+  try {
+    const result = geminiSettingsService.saveSettings(req.body);
+    if (!result.ok) {
+      return res.status(400).json({ error: result.error });
+    }
+    return res.json({ ok: true, ...result.settings });
+  } catch (e) {
+    if (e.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    return res
+      .status(500)
+      .json({ error: e.message || "Could not save Gemini settings." });
+  }
+}
+
 module.exports = {
   getSettings,
   uploadHero,
@@ -131,4 +153,6 @@ module.exports = {
   deletePromo,
   getAudioSettings,
   putAudioSettings,
+  getGeminiSettings,
+  putGeminiSettings,
 };

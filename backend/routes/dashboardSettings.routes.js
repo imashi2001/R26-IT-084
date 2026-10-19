@@ -16,6 +16,15 @@ router.put(
   dashboardSettings.putAudioSettings
 );
 
+router.get("/settings/gemini", dashboardSettings.getGeminiSettings);
+
+router.put(
+  "/settings/gemini",
+  requireAuth,
+  requireRole("admin"),
+  dashboardSettings.putGeminiSettings
+);
+
 router.post(
   "/settings/hero",
   requireAuth,

@@ -72,3 +72,10 @@ Thumbs.db
 
 # Forecasting dashboard secrets (was tracked until 2026-10-19; the key must be rotated)
 forecasting dashboard/.env
+
+# Runtime handoff files, rewritten on every forecast request (not inputs)
+/output.json
+forecasting dashboard/input.json
+forecasting dashboard/output.json
+forecasting dashboard/input_trend.json
+forecasting dashboard/output_trend.json

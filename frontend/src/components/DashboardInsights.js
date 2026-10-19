@@ -468,9 +468,9 @@ function SeasonalInsightsCard() {
       </div>
       <div className="di-seasonal-grid">
         {/* Peak Month */}
-        <div className="di-insight-tile" style={{ borderColor: "rgba(251, 191, 36, 0.3)", background: "rgba(251, 191, 36, 0.05)" }}>
+        <div className="di-insight-tile di-tile-amber">
           <div className="di-tile-header" style={{ color: "#fbbf24" }}>
-            <Calendar size={14} />
+            <Calendar size={15} />
             <span className="di-tile-label">Peak Collection Month</span>
           </div>
           <div className="di-tile-headline">{peak?.headline || "December is the Peak Month"}</div>
@@ -478,9 +478,9 @@ function SeasonalInsightsCard() {
         </div>
 
         {/* Dominant Categories */}
-        <div className="di-insight-tile" style={{ borderColor: "rgba(103, 232, 249, 0.3)", background: "rgba(103, 232, 249, 0.05)" }}>
+        <div className="di-insight-tile di-tile-cyan">
           <div className="di-tile-header" style={{ color: "#67e8f9" }}>
-            <PieIcon size={14} />
+            <PieIcon size={15} />
             <span className="di-tile-label">Dominant Waste Categories</span>
           </div>
           <div className="di-tile-headline">{dom?.headline}</div>
@@ -488,9 +488,9 @@ function SeasonalInsightsCard() {
         </div>
 
         {/* Lowest Volume Site */}
-        <div className="di-insight-tile" style={{ borderColor: "rgba(52, 211, 153, 0.3)", background: "rgba(52, 211, 153, 0.05)" }}>
+        <div className="di-insight-tile di-tile-emerald">
           <div className="di-tile-header" style={{ color: "#34d399" }}>
-            <Award size={14} />
+            <Award size={15} />
             <span className="di-tile-label">Lowest-Volume Facility</span>
           </div>
           <div className="di-tile-headline">{low?.headline}</div>
@@ -498,9 +498,9 @@ function SeasonalInsightsCard() {
         </div>
 
         {/* December Standout */}
-        <div className="di-insight-tile" style={{ borderColor: "rgba(244, 63, 94, 0.3)", background: "rgba(244, 63, 94, 0.05)" }}>
+        <div className="di-insight-tile di-tile-rose">
           <div className="di-tile-header" style={{ color: "#f43f5e" }}>
-            <Flame size={14} />
+            <Flame size={15} />
             <span className="di-tile-label">December Standout Site</span>
           </div>
           <div className="di-tile-headline">{dec?.headline}</div>

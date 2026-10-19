@@ -53,7 +53,9 @@ This document outlines the technical specifications, software versions, architec
 ## 2. Provenance of Holiday Data
 
 ### 2.1 Generation Mechanism
-The file [`forecasting dashboard/holiday_cache.json`](file:///c:/Reasearch/SLIIT/R26-IT-084/forecasting%20dashboard/holiday_cache.json) (mirrored in `backend/holiday_cache.json`) is populated using the **Calendarific API** for Sri Lanka (`country="LK"`).
+**Authoritative copy: `forecasting dashboard/holiday_cache.json`.** It is the only copy the live forecast path reads (`waste_forecast/src/calendar_features.py:11`, via `get_holiday_cache_path()`), and the one `refresh_holiday_cache.py` writes. It is populated from the **Calendarific API** for Sri Lanka (`country="LK"`) and covers 2023-2027.
+
+Two other copies exist, and no code reads either: `backend/holiday_cache.json` (byte-identical to the authoritative file as of 2026-10-19) and `web/lib/data/holiday_cache.json` (an older subset holding only 2024 and 2026, identical to the authoritative entries for those years). Neither is updated by the refresh script.
 
 The cache is refreshed by `waste_forecast/src/refresh_holiday_cache.py` (extracted from the archived Dash prototype `app.py`). It reads `CALENDARIFIC_API_KEY` from the environment, re-fetches the requested years, keeps the other years, and writes nothing if any year fails:
 

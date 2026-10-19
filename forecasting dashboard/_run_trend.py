@@ -1,5 +1,5 @@
 
-import json, sys, os, pandas as pd, warnings, xgboost as xgb
+import json, sys, os, pandas as pd, warnings
 from pathlib import Path
 warnings.filterwarnings('ignore')
 
@@ -63,6 +63,7 @@ seasonal_multipliers = {
 
 adjusted = []
 calendar_by_date = {}
+daily_by_date = {}
 
 for idx, row in enumerate(input_data):
     row_date = row.get('dateStr')
@@ -70,10 +71,13 @@ for idx, row in enumerate(input_data):
         calendar_by_date[row_date] = calendar_flags_for_date(row_date)
     is_poya = bool(row_date) and calendar_by_date[row_date]["isPoya"]
 
-    month = row.get('Month', 9)
-    date_str = f"2025-{month:02d}-15"
-    daily_res = estimate_daily_waste(date_str, mode="forecast")
-    base_daily_tons = float(daily_res["estimated_daily_waste"])
+    # Each trend day is evaluated at its own date through the same path as the main
+    # forecast (run_model.py), so day_weight, holidays and long weekends apply per day.
+    if not row_date:
+        raise ValueError("input_trend.json row has no dateStr; cannot evaluate the trend day")
+    if row_date not in daily_by_date:
+        daily_by_date[row_date] = estimate_daily_waste(row_date, mode="auto")
+    base_daily_tons = float(daily_by_date[row_date]["estimated_daily_waste"])
 
     inst_id = identify_institute_id(row)
     cat_name = identify_category_name(row)

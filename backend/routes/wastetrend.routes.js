@@ -142,7 +142,7 @@ router.get("/", (req, res) => {
     selectedDate: dateStr,
     locationId,
     trend: trendPoints,
-    dataSource: "XGBoost model reconstruction (2023-2025 trained)",
+    dataSource: "Weighted trend model (trend_model.json) monthly totals, actuals where available, disaggregated per day",
     note: "Daily estimate derived from monthly forecast disaggregated by assumed day-type weights; not a true daily-trained model.",
   });
 });

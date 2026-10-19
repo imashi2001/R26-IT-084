@@ -58,18 +58,18 @@ export default function DashboardHero({
         )}
 
         {/* Keep greeting/stats readable; show park + bins on the right */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0b131e]/92 via-[#0b131e]/45 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b131e]/85 via-transparent to-[#0b131e]/15" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0b131e]/95 via-[#0b131e]/60 to-[#0b131e]/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b131e]/90 via-transparent to-[#0b131e]/25" />
 
         <div className="relative flex min-h-[12rem] flex-col justify-between gap-6 p-5 md:min-h-[14rem] md:p-6 lg:min-h-[16rem]">
-          <div className="max-w-xl">
+          <div className="max-w-xl [text-shadow:0_1px_12px_rgba(2,6,23,0.9)]">
             <p className="text-sm font-semibold text-brand-400">
               {greeting}, {name}!
             </p>
             <h1 className="mt-1 text-2xl font-bold leading-tight text-white sm:text-3xl">
               Let&apos;s make our city cleaner &amp; smarter.
             </h1>
-            <p className="mt-2 hidden text-sm leading-relaxed text-slate-300 md:block">
+            <p className="mt-2 hidden text-sm leading-relaxed text-slate-200 md:block">
               Real-time fill levels, risk scores, and alerts across your smart
               waste network.
             </p>

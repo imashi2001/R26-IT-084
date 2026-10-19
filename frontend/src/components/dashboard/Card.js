@@ -8,7 +8,8 @@ function Card({ children, className = "", glow = false, compact = false }) {
       className={[
         "flex h-full min-h-0 flex-col rounded-2xl border border-slate-700/50",
         "bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950/95",
-        "shadow-card backdrop-blur-sm transition-shadow",
+        "shadow-card backdrop-blur-sm transition-[border-color,box-shadow] duration-200",
+        "hover:border-slate-600/60",
         compact ? "p-4" : "p-4 md:p-5",
         glow ? "border-brand-500/25 shadow-glow-brand" : "",
         className,

@@ -22,3 +22,129 @@ body {
   color: #e2e8f0;
   min-height: 100vh;
 }
+
+/*
+ * Scoped "preflight" for the dashboard shell (.vw-dash).
+ *
+ * Global Tailwind preflight is disabled (see tailwind.config.js) to protect
+ * legacy pages, but the dashboard components were authored assuming those
+ * resets exist. Without them, browser defaults leak in: underlined nav links,
+ * list bullets in the sidebar, grey default button chrome, etc.
+ *
+ * Every selector is wrapped in :where() so specificity stays at element level
+ * (same as real preflight) and any class-based styling still wins.
+ */
+:where(.vw-dash) :where(a) {
+  color: inherit;
+  text-decoration: none;
+}
+
+:where(.vw-dash) :where(h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, pre) {
+  margin: 0;
+}
+
+:where(.vw-dash) :where(ul, ol) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:where(.vw-dash) :where(button, input, optgroup, select, textarea) {
+  font: inherit;
+  font-size: 100%;
+  line-height: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+
+:where(.vw-dash) :where(button, [type="button"], [type="submit"], [type="reset"]) {
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+  cursor: pointer;
+  -webkit-appearance: button;
+  appearance: button;
+}
+
+:where(.vw-dash) :where(table) {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+:where(.vw-dash) :where(th) {
+  text-align: inherit;
+  font-weight: inherit;
+}
+
+:where(.vw-dash) :where(hr) {
+  border: 0;
+  border-top: 1px solid #1e293b;
+}
+
+:where(.vw-dash) :where(img, svg, video, canvas) {
+  display: block;
+  vertical-align: middle;
+}
+
+/* Thin, dark scrollbars so overflow areas blend with the theme. */
+.vw-dash,
+.vw-dash * {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+/* The page itself scrolls on <html>, outside .vw-dash — darken it too
+   whenever a dashboard page is mounted. */
+html:has(.vw-dash) {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0b131e;
+}
+
+html:has(.vw-dash)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html:has(.vw-dash)::-webkit-scrollbar-track {
+  background: #0b131e;
+}
+
+html:has(.vw-dash)::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+  border: 2px solid #0b131e;
+}
+
+html:has(.vw-dash)::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.vw-dash ::-webkit-scrollbar,
+.vw-dash::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.vw-dash ::-webkit-scrollbar-track,
+.vw-dash::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vw-dash ::-webkit-scrollbar-thumb,
+.vw-dash::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+.vw-dash ::-webkit-scrollbar-thumb:hover,
+.vw-dash::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Visible keyboard focus without affecting mouse interactions. */
+.vw-dash :focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.55);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -21,9 +21,11 @@ import { apiUrl } from "../../utils/apiBase";
 import { useAuth } from "../../context/AuthContext";
 import useAlertBadgeCount from "../../hooks/useAlertBadgeCount";
 
-function StatChip({ icon: Icon, label, value, sub }) {
+function StatChip({ icon: Icon, label, value, sub, className = "" }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 px-3 py-1.5">
+    <div
+      className={`flex items-center gap-2.5 rounded-xl border border-slate-800/80 bg-slate-900/60 px-3 py-1.5 ${className}`}
+    >
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/80">
         <Icon className="h-4 w-4 text-brand-400" />
       </div>
@@ -168,9 +170,25 @@ export default function TopBar({ onToggleSidebar }) {
 
         <StatChip icon={Calendar} label="Today" value={dateText} />
         <StatChip icon={Clock} label="Time" value={timeText} />
-        <StatChip icon={Thermometer} label="Temp" value={tempText} />
-        <StatChip icon={Droplets} label="Humidity" value={humText} />
-        <StatChip icon={CloudSun} label="Weather" value={condText} sub="Colombo" />
+        <StatChip
+          icon={Thermometer}
+          label="Temp"
+          value={tempText}
+          className="hidden md:flex"
+        />
+        <StatChip
+          icon={Droplets}
+          label="Humidity"
+          value={humText}
+          className="hidden lg:flex"
+        />
+        <StatChip
+          icon={CloudSun}
+          label="Weather"
+          value={condText}
+          sub="Colombo"
+          className="hidden xl:flex"
+        />
       </div>
 
       <div className="flex items-center gap-2 pl-2">

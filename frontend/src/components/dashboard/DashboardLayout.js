@@ -26,7 +26,7 @@ export default function DashboardLayout({ children }) {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-[#0b131e] font-sans text-slate-200">
+    <div className="vw-dash flex min-h-screen bg-[#0b131e] font-sans text-slate-200">
       <div className="pointer-events-none fixed inset-0 bg-dashboard-radial" aria-hidden />
       {sidebarOpen ? <Sidebar /> : null}
       <div className="relative flex min-w-0 flex-1 flex-col">

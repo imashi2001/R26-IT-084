@@ -1,56 +1,41 @@
 # waste_forecast/archive
 
-The live model is `waste_forecast/models/trend_model.json`, a weighted OLS trend with unweighted calendar-month effects, fitted by `waste_forecast/src/fit_production_model.py`. Nothing in this archive is loaded at runtime.
+The live model is `waste_forecast/models/trend_model.json`, a weighted OLS trend with unweighted calendar-month effects, fitted by `waste_forecast/src/fit_production_model.py`. Nothing archived here is loaded at runtime.
 
-## trained_model.pkl
-- **What:** legacy `XGBRegressor` (learning_rate 0.1, max_depth 6, n_estimators 150), formerly `forecasting dashboard/trained_model.pkl`.
-- **Trained by:** training script missing from repository. It was trained on 24 features (listed in `model_features.pkl`), including `Rainfall_mm` and `Max_Temp_C`, which the current pipeline does not produce. **It cannot be regenerated.**
-- **Referenced by:** `scripts/analyze_model_feature_effects.py` (partial-dependence analysis only).
-- **Why kept:** the only copy of the original estimator; needed to reproduce the feature-effect analysis.
+## The archived artifacts were removed from the working tree
 
-## model_features.pkl
-- **What:** a Python list of the 24 column names `trained_model.pkl` expects. Not a model.
-- **Trained by:** written alongside `trained_model.pkl`; that script is missing from the repository.
-- **Referenced by:** `scripts/analyze_model_feature_effects.py`.
-- **Why kept:** `trained_model.pkl` cannot be used without it.
+**They are all still in git at commit `bacf3a3b` (`bacf3a3ba9e206008e0b78eac3a11e3efa93658b`).** That commit holds every file listed below at its archive path; each was checked byte-for-byte against the working copy before removal.
 
-## model.json.synthetic-era
-- **What:** the original monthly XGBoost model (17 features, see `feature_columns.json`), formerly `waste_forecast/models/model.json`.
-- **Trained by:** initial training script not in the repository. Later candidates came from the XGBoost version of `retrain_pipeline.py` (in git history).
-- **Referenced by:** nothing in code. `FORECASTING_AUDIT.md` describes it as the model that was live at audit time.
-- **Why kept:** dissertation before-state evidence. Its `base_score` is 29.67, showing it was trained on the deprecated ~29 t/month synthetic series (`DEFAULT_MONTHLY_WASTE` in `load_data.py`), not on the real 8,080-14,137 t/month WPWMA data (2023-2025). **It is evidence, not a usable model.**
+Restore one file (from the repo root):
 
-## model_candidate.json
-- **What:** byte-identical copy of `model.json.synthetic-era`; the last candidate written by the XGBoost retrain pipeline.
-- **Trained by:** XGBoost version of `retrain_pipeline.py` (git history).
-- **Referenced by:** nothing in code.
-- **Why kept:** record of the retired retrain loop's final state.
+```
+git restore --source=bacf3a3b -- waste_forecast/archive/trained_model.pkl
+```
 
-## feature_columns.json
-- **What:** the 17 monthly feature names of the retired XGBoost model (`lag_1..3`, rolling stats, calendar counts, `month_sin/cos`, `quarter`).
-- **Trained by:** written by the XGBoost version of `retrain_pipeline.py`; features built by `waste_forecast/src/features.py`.
-- **Referenced by:** nothing in code.
-- **Why kept:** documents the input contract of `model.json.synthetic-era`.
+Restore everything:
 
-## trained_model_daily.pkl
-- **What:** `{"model": HistGradientBoostingRegressor, "feature_columns": [17 daily features], "seed": 42}`.
-- **Trained by:** `scripts/train_daily_model.py`, on daily targets reconstructed from monthly totals × `daily_profile.json` shares. That script writes here.
-- **Referenced by:** `scripts/evaluate_model.py`; recorded in `waste_forecast/evaluation/metrics.synthetic-era-void.json`.
-- **Why kept:** it produced the old daily metrics.
+```
+git restore --source=bacf3a3b -- waste_forecast/archive
+```
 
-## trend_model.20261018T205554.json
-- **What:** pre-promotion backup of `trend_model.json` from a retrain on 2026-10-18; byte-identical to the current live model.
-- **Trained by:** `waste_forecast/src/fit_production_model.py` / `retrain_pipeline.py`.
-- **Referenced by:** nothing. `retrain_pipeline.py` writes future backups here as `trend_model.<timestamp>.json`.
-- **Why kept:** rollback point for the live model.
+(On Git older than 2.23: `git checkout bacf3a3b -- <path>`.) The scripts in `scripts/` still run once restored to their archive paths.
 
-## scripts/
+`retrain_pipeline.py` writes the outgoing live model here as `trend_model.<timestamp>.json` whenever a retrain is promoted, so new rollback backups can appear in this folder.
 
-Retired XGBoost-era scripts, moved here from `waste_forecast/src/` and `forecasting dashboard/`. They still run from this folder (they resolve the repo root and import the live modules in `waste_forecast/src/`), but nothing in the live forecast path imports or calls them.
+## What was archived
 
-- `train_daily_model.py`: trains `trained_model_daily.pkl` (HistGradientBoosting, 17 daily features) on reconstructed daily targets. Kept to show how the archived daily pickle was made.
-- `evaluate_model.py`: TimeSeriesSplit evaluation of `trained_model_daily.pkl`; wrote `evaluation/metrics.synthetic-era-void.json` and `evaluation/plots/`. Kept as the source of those void metrics.
-- `evaluate_monthly.py`: evaluation of the old monthly feature-table model; writes `evaluation/monthly/` (including `monthly_model.pkl`). Kept as the source of those outputs.
-- `monthly_dataset.py`: builds the old monthly feature table used by `evaluate_monthly.py`. Kept because `evaluate_monthly.py` imports it.
-- `analyze_model_feature_effects.py`: partial-dependence plots for `trained_model.pkl` (rainfall, temperature). Reads `forecasting dashboard/input.json`, writes `forecasting dashboard/pdp_rainfall_temp.png`. Kept as the only tool that inspects the legacy model.
-- `app.py`: early standalone Dash/Plotly prototype (landmark geocoding, Calendarific holidays, random rule-based fill levels on a map), formerly `forecasting dashboard/app.py`. Nothing in the live forecast path ran it. It was the only code that refreshed `holiday_cache.json`, so before archiving, the Calendarific fetch and cache write were extracted to `waste_forecast/src/refresh_holiday_cache.py`. Kept as a record of the prototype.
+| File (under `waste_forecast/archive/`) | What it is | Trained by / origin | Why it was kept |
+|---|---|---|---|
+| `trained_model.pkl` | Legacy `XGBRegressor` (learning_rate 0.1, max_depth 6, n_estimators 150), formerly `forecasting dashboard/trained_model.pkl` | **Training script missing from the repository.** It was trained on 24 features (in `model_features.pkl`), including `Rainfall_mm` and `Max_Temp_C`, which the current pipeline does not produce. **It cannot be regenerated.** | Only copy of the original estimator |
+| `model_features.pkl` | List of the 24 column names `trained_model.pkl` expects; not a model | Written with `trained_model.pkl` (script missing) | Needed to use `trained_model.pkl` |
+| `model.json.synthetic-era` | Original monthly XGBoost model (17 features), formerly `waste_forecast/models/model.json` | Initial script not in repository; later candidates from the XGBoost-era `retrain_pipeline.py` | **Evidence, not a usable model:** `base_score` 29.67 shows it was trained on the deprecated ~29 t/month synthetic series, not the real 8,080-14,137 t/month WPWMA data |
+| `model_candidate.json` | Byte-identical copy of `model.json.synthetic-era`; last XGBoost retrain candidate | XGBoost-era `retrain_pipeline.py` | Final state of the retired retrain loop |
+| `feature_columns.json` | 17 monthly feature names of the retired XGBoost model | XGBoost-era `retrain_pipeline.py` / `features.py` | Input contract of `model.json.synthetic-era` |
+| `trained_model_daily.pkl` | `HistGradientBoostingRegressor` on 17 daily features | `scripts/train_daily_model.py`, on daily targets reconstructed from monthly totals | Produced the old (void) daily metrics |
+| `trend_model.20261018T205554.json` | Retrain backup of `trend_model.json`, byte-identical to the live model at the time | `retrain_pipeline.py` | Rollback point |
+| `scripts/train_daily_model.py` | Trains `trained_model_daily.pkl` | — | How the daily pickle was made |
+| `scripts/evaluate_model.py` | Evaluates `trained_model_daily.pkl`; wrote `evaluation/metrics.synthetic-era-void.json` and `evaluation/plots/` | — | Source of those void metrics |
+| `scripts/evaluate_monthly.py` | Evaluates the old monthly feature-table model; writes `evaluation/monthly/` | — | Source of those outputs |
+| `scripts/monthly_dataset.py` | Builds the old monthly feature table for `evaluate_monthly.py` | — | Imported by `evaluate_monthly.py` |
+| `scripts/analyze_model_feature_effects.py` | Partial-dependence plots for `trained_model.pkl` (rainfall, temperature) | — | Only tool that inspects the legacy model |
+| `scripts/app.py` | Standalone Dash/Plotly prototype (geocoding, Calendarific holidays, random rule-based fill levels), formerly `forecasting dashboard/app.py`; never run by the live path | — | Prototype record. Its Calendarific fetch and cache write were extracted to `waste_forecast/src/refresh_holiday_cache.py` before it was archived |

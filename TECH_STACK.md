@@ -11,7 +11,7 @@ This document outlines the technical specifications, software versions, architec
 * **Package Specifications (Imported by `waste_forecast/src/*.py`, `run_model.py`, and `forecasting dashboard/`):**
   * `pandas`: Used across all feature pipelines (`calendar_features.py`, `daily_forecast.py`, `features.py`, `load_data.py`, `retrain_pipeline.py`).
   * `numpy`: Used for rolling mean/std calculation, cyclical sine/cosine transforms, and RMSE metrics.
-  * `xgboost`: **Not used in the live forecast path.** Needed only to unpickle the archived legacy model in `waste_forecast/archive/` (`archive/scripts/analyze_model_feature_effects.py`). The live model is `waste_forecast/models/trend_model.json`, a weighted OLS trend with unweighted calendar-month effects (`trend_model.py`, fitted by `fit_production_model.py`).
+  * `xgboost`: **Not used in the live forecast path.** Needed only to unpickle the archived legacy model (removed from the working tree; kept in git at `bacf3a3b`, see `waste_forecast/archive/README.md`). The live model is `waste_forecast/models/trend_model.json`, a weighted OLS trend with unweighted calendar-month effects (`trend_model.py`, fitted by `fit_production_model.py`).
   * `scikit-learn`: Used in `evaluate_model.py` and `evaluate_monthly.py` (`mean_squared_error`, `mean_absolute_error`, `r2_score`, `TimeSeriesSplit`, `permutation_importance`).
   * `scipy`: Used in `evaluate_model.py` and `compute_baselines.py` (`scipy.stats` for distributions and confidence intervals).
   * `matplotlib`: Used in `evaluate_model.py` and `evaluate_monthly.py` (with `"Agg"` backend for headless metric curve generation).
@@ -170,7 +170,7 @@ In `POST /api/waste-entries`, validation is strictly enforced as follows:
 ### 4.3 Model Loading Post-Retrain
 * When the candidate trend model passes the validation gate (candidate holdout RMSE lower than the live model's), `retrain_pipeline.py` backs up the outgoing model to `waste_forecast/archive/trend_model.<timestamp>.json` and saves the candidate to:
   `waste_forecast/models/trend_model.json`
-* Both `run_model.py` and `_run_trend.py` reach `trend_model.json` through `daily_forecast.py`, which loads it on every request. Therefore, subsequent prediction requests immediately evaluate against the newly promoted model without requiring a server reboot. (`waste_forecast/archive/model.json.synthetic-era`, the former `model.json`, is archived synthetic-era evidence and is not loaded.)
+* Both `run_model.py` and `_run_trend.py` reach `trend_model.json` through `daily_forecast.py`, which loads it on every request. Therefore, subsequent prediction requests immediately evaluate against the newly promoted model without requiring a server reboot. (The former `model.json` is archived synthetic-era evidence and is not loaded (removed from the working tree; kept in git at `bacf3a3b`, see `waste_forecast/archive/README.md`).)
 
 ---
 

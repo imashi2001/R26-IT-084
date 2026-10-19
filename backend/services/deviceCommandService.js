@@ -81,7 +81,8 @@ const AUTO_PLAY_MAX_PER_WINDOW = 2;
 
 /**
  * Same track may play at most twice in AUDIO_TRIGGER_COOLDOWN_MS (default 60s).
- * Extra PIR bursts are dropped and leftover queued commands are cancelled.
+ * Extra PIR spam is dropped. In-flight PLAY_AUDIO is not a hard skip when under
+ * the cap — createPlayAudioCommand replaces it (needed for the 30s session replay).
  */
 async function shouldSkipAutoPlay(esp32IdRaw, track) {
   const models = ensureModels();
@@ -120,17 +121,8 @@ async function shouldSkipAutoPlay(esp32IdRaw, track) {
     );
     return true;
   }
-  if (inflight > 0) {
-    return true;
-  }
 
-  const anyActive = await DeviceCommand.findOne({
-    where: {
-      esp32_id: esp32Id,
-      status: { [Op.in]: ACTIVE_STATUSES },
-    },
-  });
-  return Boolean(anyActive);
+  return false;
 }
 
 async function keepOnlyCommand(esp32Id, keepId, reason) {

@@ -6,6 +6,12 @@
  *
  * When `resolvedOverride` is provided (e.g. Gemini / both-mode winner),
  * YOLO scenario resolution is skipped for the voice queue.
+ *
+ * Motion-session voice policy (per motion_session_id):
+ *  1) First analyzed photo → play immediately
+ *  2) If motion continues, allow one more play after 30s (suitable track)
+ *  3) After 60s from first play → treat further shots as spam (no play)
+ * Scenario changes before the spam window still get a suitable voice.
  */
 
 const { AUTO_AUDIO_ON_PREDICT } = require("../config/env");
@@ -13,28 +19,74 @@ const deviceCommandService = require("./deviceCommandService");
 const audioSettingsService = require("./audioSettingsService");
 const audioPriorityService = require("./audioPriorityService");
 
-/** Same scenario+track in one motion session is announced once. */
+/** First replay of same/suitable voice while motion continues. */
+const SESSION_REPLAY_AFTER_MS = 30_000;
+/** After this from first play, further session shots are spam. */
+const SESSION_SPAM_AFTER_MS = 60_000;
+/** Max auto plays for one motion session (first + one reminder). */
+const SESSION_MAX_PLAYS = 2;
+
+/** @type {Map<string, { firstPlayAt: number, playCount: number, scenario: string, track: number }>} */
 const sessionAnnounce = new Map();
 const SESSION_ANNOUNCE_MAX = 40;
 
-function rememberSessionAnnounce(sessionId, resolved) {
+function rememberSessionAnnounce(sessionId, resolved, at = Date.now()) {
   if (!sessionId || !resolved) return;
-  sessionAnnounce.set(String(sessionId), {
-    scenario: resolved.scenario_key,
-    track: resolved.track,
-    at: Date.now(),
-  });
+  const key = String(sessionId);
+  const prev = sessionAnnounce.get(key);
+  const now = Number(at) || Date.now();
+  if (!prev) {
+    sessionAnnounce.set(key, {
+      firstPlayAt: now,
+      playCount: 1,
+      scenario: resolved.scenario_key,
+      track: resolved.track,
+    });
+  } else {
+    sessionAnnounce.set(key, {
+      firstPlayAt: prev.firstPlayAt,
+      playCount: (prev.playCount || 1) + 1,
+      scenario: resolved.scenario_key,
+      track: resolved.track,
+    });
+  }
   if (sessionAnnounce.size > SESSION_ANNOUNCE_MAX) {
     const oldest = sessionAnnounce.keys().next().value;
     sessionAnnounce.delete(oldest);
   }
 }
 
-function suppressSameSessionAnnounce(sessionId, resolved) {
+/**
+ * @returns {false | { reason: string }} — false = allow play
+ */
+function sessionVoiceDecision(sessionId, resolved, now = Date.now()) {
   if (!sessionId || !resolved) return false;
   const prev = sessionAnnounce.get(String(sessionId));
-  if (!prev) return false;
-  return prev.scenario === resolved.scenario_key && prev.track === resolved.track;
+  if (!prev) return false; // first photo of session
+
+  const age = now - prev.firstPlayAt;
+  if (age >= SESSION_SPAM_AFTER_MS) {
+    return { reason: "session_spam_after_60s" };
+  }
+  if ((prev.playCount || 0) >= SESSION_MAX_PLAYS) {
+    return { reason: "session_max_plays" };
+  }
+
+  const same =
+    prev.scenario === resolved.scenario_key && prev.track === resolved.track;
+  if (!same) {
+    // New situation before spam window — allow suitable voice.
+    return false;
+  }
+  if (age < SESSION_REPLAY_AFTER_MS) {
+    return { reason: "same_scenario_wait_30s" };
+  }
+  // Same or updated suitable track after 30s, still under 60s / max plays.
+  return false;
+}
+
+function suppressSameSessionAnnounce(sessionId, resolved, now = Date.now()) {
+  return Boolean(sessionVoiceDecision(sessionId, resolved, now));
 }
 
 function resetSessionAnnounce() {
@@ -105,9 +157,10 @@ async function maybeQueueFromPredict(input) {
     : "";
   const eventId = input.eventId ? String(input.eventId).trim() : "";
 
-  if (suppressSameSessionAnnounce(sessionId, resolved)) {
+  const decision = sessionVoiceDecision(sessionId, resolved);
+  if (decision) {
     console.log(
-      `[audioTrigger] suppress same announcement session=${sessionId} event=${eventId} scenario=${resolved.scenario_key} track=${resolved.track}`
+      `[audioTrigger] suppress ${decision.reason} session=${sessionId} event=${eventId} scenario=${resolved.scenario_key} track=${resolved.track}`
     );
     return { command: null, resolved };
   }
@@ -118,7 +171,7 @@ async function maybeQueueFromPredict(input) {
   );
   if (skip) {
     console.log(
-      `[audioTrigger] skip track=${resolved.track} for ${esp32Id} (in-flight or recent play)`
+      `[audioTrigger] skip track=${resolved.track} for ${esp32Id} (max plays in cooldown window)`
     );
     return { command: null, resolved };
   }
@@ -144,4 +197,8 @@ module.exports = {
   suppressSameSessionAnnounce,
   rememberSessionAnnounce,
   resetSessionAnnounce,
+  sessionVoiceDecision,
+  SESSION_REPLAY_AFTER_MS,
+  SESSION_SPAM_AFTER_MS,
+  SESSION_MAX_PLAYS,
 };

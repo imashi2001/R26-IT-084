@@ -186,7 +186,7 @@ describe("audioSettingsService validation", () => {
 });
 
 describe("session announcement suppression", () => {
-  it("suppresses the same scenario in one session and allows a change", () => {
+  it("first play, wait 30s for same, allow scenario change, spam after 60s", () => {
     const audioTriggerService = require("../services/audioTriggerService");
     audioTriggerService.resetSessionAnnounce();
     const sessionId = "42";
@@ -198,18 +198,45 @@ describe("session announcement suppression", () => {
       scenario_key: "waste_full",
       track: 2,
     };
+    const t0 = 1_000_000;
+
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter),
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0),
       false
     );
-    audioTriggerService.rememberSessionAnnounce(sessionId, litter);
+    audioTriggerService.rememberSessionAnnounce(sessionId, litter, t0);
+
+    // Same scenario immediately → wait for 30s
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter),
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0 + 5_000),
       true
     );
+
+    // Scenario change before spam window → allow
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, full),
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, full, t0 + 10_000),
       false
+    );
+
+    // Same scenario after 30s → allow second play
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0 + 30_000),
+      false
+    );
+    audioTriggerService.rememberSessionAnnounce(sessionId, litter, t0 + 30_000);
+
+    // Third attempt → max plays
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0 + 35_000),
+      true
+    );
+
+    // Fresh session past 60s from first play → spam
+    audioTriggerService.resetSessionAnnounce();
+    audioTriggerService.rememberSessionAnnounce(sessionId, litter, t0);
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0 + 60_000),
+      true
     );
   });
 });

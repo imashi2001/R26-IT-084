@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -27,9 +28,22 @@ RELIABLE_HORIZON_START = "2023-01-01"
 RELIABLE_HORIZON_END = "2026-12-31"
 
 
+def _model_stamp() -> int:
+    """Changes whenever model.json is replaced (e.g. after /retrain), invalidating caches."""
+    try:
+        return MODEL_PATH.stat().st_mtime_ns
+    except OSError:
+        return 0
+
+
 def _load_feature_columns() -> list[str]:
+    return list(_cached_feature_columns(_model_stamp()))
+
+
+@lru_cache(maxsize=2)
+def _cached_feature_columns(_stamp: int) -> tuple[str, ...]:
     with open(FEATURE_COLUMNS_PATH, "r", encoding="utf-8") as fh:
-        return json.load(fh)
+        return tuple(json.load(fh))
 
 
 def _load_daily_profile() -> list[dict[str, object]]:
@@ -42,17 +56,30 @@ def _load_daily_profile() -> list[dict[str, object]]:
     return records
 
 
-def _monthly_actual_total_for_date(target_date: pd.Timestamp) -> float | None:
+@lru_cache(maxsize=2)
+def _cached_profile_lookup(_stamp: int) -> dict[str, dict[str, object]]:
+    return {r["date"]: r for r in _load_daily_profile()}
+
+
+@lru_cache(maxsize=1)
+def _actual_monthly_totals() -> dict[tuple[int, int], float]:
     _, total_history = load_waste_data(WORKSPACE_ROOT)
-    match = total_history[
-        (total_history["year"] == target_date.year) & (total_history["month"] == target_date.month)
-    ]
-    if not match.empty:
-        return float(match.iloc[0]["waste_tons"])
-    return None
+    return {
+        (int(row["year"]), int(row["month"])): float(row["waste_tons"])
+        for _, row in total_history.iterrows()
+    }
+
+
+def _monthly_actual_total_for_date(target_date: pd.Timestamp) -> float | None:
+    return _actual_monthly_totals().get((int(target_date.year), int(target_date.month)))
 
 
 def _get_monthly_features_dict(target_year: int, target_month: int) -> dict[str, object]:
+    return dict(_cached_monthly_features(int(target_year), int(target_month)))
+
+
+@lru_cache(maxsize=128)
+def _cached_monthly_features(target_year: int, target_month: int) -> dict[str, object]:
     month_calendar = build_daily_calendar(start_date=f"{target_year}-01-01", end_date=f"{target_year}-12-31")
     month_row = month_calendar[(month_calendar["year"] == target_year) & (month_calendar["month"] == target_month)].reset_index(drop=True)
 
@@ -71,6 +98,11 @@ def _get_monthly_features_dict(target_year: int, target_month: int) -> dict[str,
 
 
 def _load_booster() -> xgb.Booster:
+    return _cached_booster(_model_stamp())
+
+
+@lru_cache(maxsize=2)
+def _cached_booster(_stamp: int) -> xgb.Booster:
     """Load XGBoost model via native Booster API (no scikit-learn required)."""
     booster = xgb.Booster()
     booster.load_model(str(MODEL_PATH))
@@ -86,10 +118,16 @@ def _predict_feature_row(
 
 
 def _forecast_monthly_total_for_date(target_date: pd.Timestamp) -> float:
+    return _cached_monthly_forecast(int(target_date.year), int(target_date.month), _model_stamp())
+
+
+@lru_cache(maxsize=256)
+def _cached_monthly_forecast(target_year: int, target_month: int, _stamp: int) -> float:
     """Walk-forward forecast month-by-month from last historical point (2025-12) to target_date.
 
     Lag features (lag_1, lag_2, lag_3) chain forward dynamically from previous actual/predicted totals.
     """
+    target_date = pd.Timestamp(year=target_year, month=target_month, day=1)
     month_total = _monthly_actual_total_for_date(target_date)
     if month_total is not None:
         return month_total
@@ -206,8 +244,7 @@ def estimate_daily_waste(date_value: str | pd.Timestamp, mode: str = "auto", ove
         monthly_total_tons = _forecast_monthly_total_for_date(eval_date)
         source = "model_walkforward_forecast"
 
-    profile_records = _load_daily_profile()
-    profile_lookup = {r["date"]: r for r in profile_records}
+    profile_lookup = _cached_profile_lookup(_model_stamp())
 
     rec = profile_lookup.get(eval_date_str)
     if rec is None:

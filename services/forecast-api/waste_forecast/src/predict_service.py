@@ -84,13 +84,17 @@ def predict_rows(rows: list[dict], *, mode: str = "auto") -> dict[str, Any]:
 
     if mode == "trend":
         predictions: list[float] = []
+        # Rows repeat each date once per category; estimate each date only once.
+        daily_by_date: dict[str, float] = {}
         for row in rows:
             date_str = row.get("dateStr")
             if not date_str:
                 month = int(row.get("Month") or 1)
                 date_str = f"2025-{month:02d}-15"
-            daily_res = estimate_daily_waste(date_str, mode="forecast")
-            base_daily_tons = float(daily_res["estimated_daily_waste"])
+            if date_str not in daily_by_date:
+                daily_res = estimate_daily_waste(date_str, mode="forecast")
+                daily_by_date[date_str] = float(daily_res["estimated_daily_waste"])
+            base_daily_tons = daily_by_date[date_str]
             inst_id = identify_institute_id(row)
             cat_name = identify_category_name(row)
             inst_share = INSTITUTE_SHARES.get(inst_id, 0.090)

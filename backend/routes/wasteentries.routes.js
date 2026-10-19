@@ -121,8 +121,14 @@ router.get("/", requireAuth, async (req, res) => {
 // GET /api/waste-entries/retrain-status
 router.get("/retrain-status", requireAuth, async (_req, res) => {
   try {
+    // Registry call is soft-fail inside forecastModelClient (forecast-api cold/down).
     const registryInfo = await fetchModelRegistry();
-    const stats = await WasteEntriesRepository.countStats();
+    let stats = { totalEntries: 0, unprocessedEntries: 0 };
+    try {
+      stats = await WasteEntriesRepository.countStats();
+    } catch (statsErr) {
+      console.warn("[waste-entries] countStats:", statsErr.message);
+    }
 
     return res.json({
       currentVersion: registryInfo.currentVersion || "v1.0",

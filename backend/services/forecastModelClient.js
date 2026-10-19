@@ -216,22 +216,34 @@ async function runRetrainPipeline(opts = {}) {
  * @returns {Promise<{ currentVersion: string, latestRun: object|null, registryHistory: object[] }>}
  */
 async function fetchModelRegistry() {
+  const empty = { currentVersion: "v1.0", latestRun: null, registryHistory: [] };
+
   if (isRemoteEnabled()) {
     const base = String(MODEL_FORECAST_URL).replace(/\/+$/, "");
-    const res = await axios.get(`${base}/registry`, {
-      timeout: FORECAST_TIMEOUT_MS,
-      validateStatus: () => true,
-    });
-    if (res.status >= 200 && res.status < 300) {
-      return res.data;
+    try {
+      const res = await axios.get(`${base}/registry`, {
+        timeout: Math.min(FORECAST_TIMEOUT_MS, 15000),
+        validateStatus: () => true,
+      });
+      if (res.status >= 200 && res.status < 300 && res.data) {
+        return res.data;
+      }
+      console.warn(
+        "[forecastModelClient] /registry unavailable:",
+        res.data?.detail || res.data?.error || `HTTP ${res.status}`
+      );
+      return empty;
+    } catch (err) {
+      // Do not 500 waste-entries UI when forecast-api is cold/down/misconfigured.
+      console.warn("[forecastModelClient] /registry error:", err.message);
+      return empty;
     }
-    throw new Error(res.data?.detail || `HTTP ${res.status}`);
   }
 
   const repoRoot = getRepoRoot();
   const registryPath = path.join(repoRoot, "waste_forecast", "models", "model_registry.json");
   if (!fs.existsSync(registryPath)) {
-    return { currentVersion: "v1.0", latestRun: null, registryHistory: [] };
+    return empty;
   }
   const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
   const latestRun = registry.length > 0 ? registry[registry.length - 1] : null;

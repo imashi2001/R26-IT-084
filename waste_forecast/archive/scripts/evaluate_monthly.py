@@ -20,7 +20,7 @@ try:
 except ImportError:  # pragma: no cover
     from src.monthly_dataset import build_monthly_dataset
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]  # archive/scripts -> repo root
 OUTPUT_DIR = ROOT / "waste_forecast" / "evaluation" / "monthly"
 SEED = 42
 BOOTSTRAP_ITERATIONS = 500

@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+
+# Archived script: live modules it imports are in waste_forecast/src/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
 import pandas as pd
@@ -14,7 +18,7 @@ except ImportError:  # pragma: no cover
     from src.calendar_features import build_monthly_calendar_features
     from src.load_data import load_waste_data
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]  # archive/scripts -> repo root
 OUTPUT_PATH = ROOT / "waste_forecast" / "evaluation" / "monthly" / "monthly_dataset.csv"
 
 

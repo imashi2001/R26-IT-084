@@ -9,9 +9,11 @@ import pandas as pd
 from sklearn.inspection import PartialDependenceDisplay
 
 
-ROOT = Path(__file__).resolve().parent
+# Archived script in waste_forecast/archive/scripts/; reads input and writes the plot
+# in forecasting dashboard/ as it did before it was archived.
+ROOT = Path(__file__).resolve().parents[3] / "forecasting dashboard"
 # Retired legacy model, archived (no training script exists; see waste_forecast/archive/README.md).
-ARCHIVE_DIR = ROOT.parent / "waste_forecast" / "archive"
+ARCHIVE_DIR = Path(__file__).resolve().parents[1]
 MODEL_PATH = ARCHIVE_DIR / "trained_model.pkl"
 FEATURES_PATH = ARCHIVE_DIR / "model_features.pkl"
 INPUT_PATH = ROOT / "input.json"

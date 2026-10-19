@@ -23,7 +23,7 @@ try:
 except ImportError:  # pragma: no cover
     from src.train_daily_model import build_daily_dataset
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]  # archive/scripts -> repo root
 FORECAST_ROOT = ROOT / "waste_forecast"
 EVALUATION_DIR = FORECAST_ROOT / "evaluation"
 PLOTS_DIR = EVALUATION_DIR / "plots"

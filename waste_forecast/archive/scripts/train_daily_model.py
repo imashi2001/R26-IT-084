@@ -12,6 +12,10 @@ import argparse
 import json
 import pickle
 from pathlib import Path
+import sys
+
+# Archived script: live modules it imports are in waste_forecast/src/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
 import pandas as pd
@@ -24,7 +28,7 @@ except ImportError:  # pragma: no cover
     from src.calendar_features import build_daily_calendar
     from src.load_data import load_waste_data
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]  # archive/scripts -> repo root
 FORECAST_ROOT = ROOT / "waste_forecast"
 # Retired daily model; written to archive/ so models/ holds only the live trend model.
 MODEL_PATH = FORECAST_ROOT / "archive" / "trained_model_daily.pkl"

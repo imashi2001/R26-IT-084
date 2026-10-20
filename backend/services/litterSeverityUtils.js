@@ -1,9 +1,15 @@
 /**
  * Litter severity (LSI) helpers — streak detection and capture extras.
+ *
+ * Small pure functions (no database) shared by the alert services, the
+ * devices API and the tests. The frontend has a mirror copy in
+ * frontend/src/utils/litterSeverity.js — keep the two in step.
  */
 
+/** HIGH readings in a row (or littering events in a row) before "Add a new bin" is suggested. */
 const ADD_BIN_STREAK = 3;
 
+/** " high " / "High" / null → "HIGH" / "" so comparisons never fail on case or spaces. */
 function normalizeSeverity(sev) {
   return (sev || "").toString().trim().toUpperCase();
 }
@@ -12,6 +18,11 @@ function isHighSeverity(sev) {
   return normalizeSeverity(sev) === "HIGH";
 }
 
+/**
+ * Convert the litter service reply into the columns saved on a capture row:
+ * litter_severity, litter_lsi, litter_detection_count and a JSON summary.
+ * If the litter service failed, everything is null (the capture is still saved).
+ */
 function litterSeverityExtras(litterPayload) {
   if (!litterPayload || litterPayload.error) {
     return {
@@ -71,6 +82,7 @@ function detectLitterRise(points, current, { delta = 20 } = {}) {
 
 /**
  * Count trailing consecutive captures matching a predicate (newest first).
+ * Example: [HIGH, HIGH, LOW, HIGH] → 2 (stops at the first LOW).
  */
 function trailingStreak(captures, predicate, max = ADD_BIN_STREAK) {
   let n = 0;
@@ -82,10 +94,12 @@ function trailingStreak(captures, predicate, max = ADD_BIN_STREAK) {
   return n;
 }
 
+/** How many of the newest captures in a row had HIGH litter. */
 function trailingHighLitterStreak(captures) {
   return trailingStreak(captures, (c) => isHighSeverity(c.litter_severity));
 }
 
+/** How many of the newest captures in a row caught littering (≥ 50% confidence). */
 function trailingLitteringEventStreak(captures) {
   return trailingStreak(
     captures,
@@ -95,6 +109,11 @@ function trailingLitteringEventStreak(captures) {
   );
 }
 
+/**
+ * "Add a new bin here" rule: the last 3 captures were all HIGH litter, or all
+ * caught littering. One bad photo is not enough — it must keep happening.
+ * @param {object[]} captures one bin's captures, newest first
+ */
 function qualifiesForAddBinAlert(captures) {
   return (
     trailingHighLitterStreak(captures) >= ADD_BIN_STREAK ||
@@ -102,6 +121,7 @@ function qualifiesForAddBinAlert(captures) {
   );
 }
 
+/** Device id 3 → "BIN-03" (the label staff see on the dashboard). */
 function formatBinCode(deviceId) {
   if (deviceId == null) return "BIN—";
   const num = Number(deviceId);

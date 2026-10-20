@@ -1,6 +1,14 @@
 /**
  * Littering-event alerts with per-device cooldown (does not affect risk engine).
  *
+ * Runs after every analysed photo. In short:
+ *   1. Did the littering model see dumping on this photo (≥ LITTERING_ALERT_CONFIDENCE)?
+ *   2. Look at this bin's other littering photos from the last few minutes and
+ *      group them into "episodes" (one incident = photos close together in time).
+ *   3. Only raise "Littering event detected" once the episode is CONFIRMED:
+ *      2+ photos within the window, or one photo ≥ LITTERING_STRONG_CONFIDENCE.
+ *   4. At most one littering alert per bin per LITTERING_ALERT_COOLDOWN.
+ *
  * Alerts are raised only for confirmed episodes (see litteringConfirmation.js).
  * The alert is attached to the frame that confirmed the episode so the live
  * path and GET /alerts sync never create two alerts for the same episode.
@@ -21,6 +29,7 @@ const {
   confirmationOptions,
 } = require("./litteringConfirmation");
 
+/** How far back to load earlier littering photos so a whole episode is visible. */
 const EPISODE_LOOKBACK_MS = Math.max(10 * 60 * 1000, LITTERING_CONFIRM_WINDOW_MS * 10);
 
 function ensureModels() {
@@ -28,6 +37,7 @@ function ensureModels() {
   return modelsRegistry.getModels() || modelsRegistry.init();
 }
 
+/** This bin's recent photos where the littering model fired. */
 async function recentLitteringFrames(Capture, deviceId) {
   if (!deviceId) return [];
   const rows = await Capture.findAll({
@@ -49,6 +59,7 @@ async function recentLitteringFrames(Capture, deviceId) {
   return rows.map((r) => r.toJSON());
 }
 
+/** Alert text that says how it was confirmed, e.g. "… confirmed on 2 frames within 30s." */
 function confirmationSummary(rec, count, maxConf) {
   const pct = (maxConf * 100).toFixed(0);
   const windowS = Math.round(confirmationOptions().windowMs / 1000);
@@ -60,7 +71,9 @@ function confirmationSummary(rec, count, maxConf) {
 }
 
 /**
+ * Entry point, called once per analysed photo.
  * @param {{ captureId: number|null, deviceId: number|null, litteringAction: object|null }} input
+ *   litteringAction = reply from littering-action-api for this photo
  */
 async function maybeCreateLitteringAlert({
   captureId,
@@ -70,12 +83,14 @@ async function maybeCreateLitteringAlert({
   const models = ensureModels();
   if (!models || !litteringAction || litteringAction.error) return null;
 
+  // Step 1: ignore photos where the model saw nothing (or was not sure enough).
   if (!litteringAction.event_detected) return null;
   const maxConf = Number(litteringAction.max_confidence) || 0;
   if (maxConf < LITTERING_ALERT_CONFIDENCE) return null;
 
   const { Alert, Capture } = models;
 
+  // Step 2: this photo + the bin's recent littering photos, grouped into episodes.
   const currentFrame = {
     id: captureId ?? "current",
     device_id: deviceId,
@@ -90,6 +105,7 @@ async function maybeCreateLitteringAlert({
   if (stored?.captured_at) currentFrame.captured_at = stored.captured_at;
   frames.push(currentFrame);
 
+  // Step 3: not confirmed yet → wait for the next photo instead of alerting.
   const rec = annotateLitteringEpisodes(frames).get(currentFrame.id);
   if (!rec?.episode_confirmed) {
     console.log(
@@ -98,6 +114,7 @@ async function maybeCreateLitteringAlert({
     return null;
   }
 
+  // Attach the alert to the photo that confirmed the episode (may be an earlier one).
   const alertCaptureId =
     rec.first_confirming_id === "current" ? captureId : rec.first_confirming_id;
 
@@ -108,6 +125,7 @@ async function maybeCreateLitteringAlert({
     if (existingForCapture) return existingForCapture.toJSON();
   }
 
+  // Step 4: cooldown — one littering alert per bin per LITTERING_ALERT_COOLDOWN.
   if (deviceId) {
     const since = new Date(Date.now() - LITTERING_ALERT_COOLDOWN_MS);
     const recent = await Alert.findOne({

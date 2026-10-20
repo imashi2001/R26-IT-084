@@ -1,5 +1,16 @@
 /**
  * Litter severity alerts: HIGH LSI and continuous add-bin recommendation.
+ *
+ * Runs after every analysed photo (called from predict.controller.js) and
+ * creates at most ONE alert per photo, checked in this order:
+ *
+ *   1. "Add a new bin at this location" — last 3 captures HIGH litter (or 3
+ *      littering events in a row). Max once per bin per LITTER_ADD_BIN_COOLDOWN.
+ *   2. If this photo is NOT HIGH: "Litter building up" — it is MEDIUM and LSI
+ *      jumped by LITTER_RISE_DELTA within LITTER_RISE_WINDOW (early warning).
+ *   3. If this photo IS HIGH: "High litter severity". Max once per bin per cooldown.
+ *
+ * Cooldowns stop the same bin from flooding the Alerts page.
  */
 
 const { Op } = require("sequelize");
@@ -28,6 +39,7 @@ function ensureModels() {
   return modelsRegistry.getModels() || modelsRegistry.init();
 }
 
+/** The bin's newest captures (only the litter columns), newest first — used for streak checks. */
 async function recentCapturesForDevice(deviceId, limit = ADD_BIN_STREAK) {
   const models = ensureModels();
   if (!models || !deviceId) return [];
@@ -52,6 +64,7 @@ async function recentCapturesForDevice(deviceId, limit = ADD_BIN_STREAK) {
   return rows.map((r) => r.toJSON());
 }
 
+/** Alert text, e.g. "BIN-03 · Market Rd · HIGH litter around the bin on 3 captures in a row. …" */
 function buildAddBinSummary(device, captures) {
   const binCode = formatBinCode(device?.id);
   const location =
@@ -73,6 +86,11 @@ function buildAddBinSummary(device, captures) {
   return `${binCode} · ${location} · ${detail}. Capacity here is not enough — register another bin.`;
 }
 
+/**
+ * Early warning: compare this MEDIUM reading with the lowest LSI from the same
+ * bin in the last few hours. A big jump means litter is piling up fast, so
+ * staff can clean before it becomes HIGH.
+ */
 async function maybeCreateRisingAlert({
   models,
   captureId,
@@ -82,6 +100,7 @@ async function maybeCreateRisingAlert({
 }) {
   const { Alert, Capture } = models;
   const now = Date.now();
+  // Earlier LSI readings from this bin inside the window (this photo excluded).
   const earlier = await Capture.findAll({
     where: {
       device_id: deviceId,
@@ -100,6 +119,7 @@ async function maybeCreateRisingAlert({
   );
   if (!rise) return null;
 
+  // Cooldown: one "building up" alert per bin per LITTER_RISE_COOLDOWN.
   const recent = await Alert.findOne({
     where: {
       device_id: deviceId,
@@ -128,7 +148,9 @@ async function maybeCreateRisingAlert({
 }
 
 /**
+ * Entry point, called once per analysed photo.
  * @param {{ captureId: number|null, deviceId: number|null, device: object|null, litterPayload: object|null, litteringAction: object|null }} input
+ *   litterPayload = reply from litter-severity-api for this photo
  */
 async function maybeCreateLitterSeverityAlerts({
   captureId,
@@ -144,6 +166,8 @@ async function maybeCreateLitterSeverityAlerts({
   const severity = (litterPayload?.severity || "").toString().trim().toUpperCase();
   const hasHigh = isHighSeverity(severity);
 
+  // A photo can own only one alert (alerts.capture_id is unique), e.g. the
+  // littering alert may already have used it.
   if (captureId) {
     const existingForCapture = await Alert.findOne({
       where: { capture_id: captureId },
@@ -151,8 +175,10 @@ async function maybeCreateLitterSeverityAlerts({
     if (existingForCapture) return existingForCapture.toJSON();
   }
 
+  // Manual uploads with no bin cannot have streaks or cooldowns.
   if (!deviceId) return null;
 
+  // --- 1. Add a new bin (strongest signal, checked first) ---------------------
   const recent = await recentCapturesForDevice(deviceId, ADD_BIN_STREAK);
   const addBinQualifies = qualifiesForAddBinAlert(recent);
 
@@ -180,6 +206,7 @@ async function maybeCreateLitterSeverityAlerts({
     }
   }
 
+  // --- 2. Not HIGH → maybe an early "building up" warning ---------------------
   if (!hasHigh) {
     return maybeCreateRisingAlert({
       models,
@@ -190,6 +217,7 @@ async function maybeCreateLitterSeverityAlerts({
     });
   }
 
+  // --- 3. HIGH litter on this photo (respecting the per-bin cooldown) --------
   const sinceHigh = new Date(Date.now() - LITTERING_ALERT_COOLDOWN_MS);
   const recentHigh = await Alert.findOne({
     where: {

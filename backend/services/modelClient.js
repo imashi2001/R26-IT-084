@@ -244,7 +244,11 @@ function isLitteringActionConfigured() {
   return Boolean(MODEL_LITTERING_ACTION_URL_RAW.trim());
 }
 
-/** Normalize littering-action microservice payload for gateway + persistence. */
+/**
+ * Normalize littering-action microservice payload for gateway + persistence.
+ * The service returns boxes as { bbox: { x1, y1, x2, y2 } }; the rest of the
+ * backend expects box: [x1, y1, x2, y2] and a label, so both forms are filled in.
+ */
 function normalizeLitteringActionPayload(raw) {
   if (!raw || typeof raw !== "object" || raw.error) return raw;
   const detections = Array.isArray(raw.detections)

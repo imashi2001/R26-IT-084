@@ -24,6 +24,15 @@ import {
 import { analyzeLitteringAction } from "../utils/apiBase";
 import { summarizeLitteringAction } from "../utils/litteringAction";
 
+/*
+ * Littering Detection page — manual test of the littering-action model.
+ *
+ * Staff upload a camera frame → POST /littering-action → the page shows whether
+ * someone is dumping rubbish, the confidence and the boxes drawn on the photo.
+ * Nothing is saved; live bin photos are checked automatically via /predict,
+ * where alerts also need multi-frame confirmation.
+ */
+
 function Banner({ tone, icon: Icon, title, body, action }) {
   return (
     <div

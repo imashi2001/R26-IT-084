@@ -2,6 +2,10 @@
  * POST /litter-severity — proxy to litter microservice (YOLO + LSI).
  * Multipart field: image (same as /predict).
  * Optional field device_id: apply that bin's saved outline (inside-bin litter ignored).
+ *
+ * Used by the "Litter Severity" dashboard page for manual tests: the photo is
+ * analysed and the result returned straight away. Nothing is saved and no
+ * alerts are created (live bin photos go through POST /predict instead).
  */
 
 const modelClient = require("../services/modelClient");
@@ -15,6 +19,7 @@ async function analyze(req, res) {
       });
     }
 
+    // No bin chosen (or no outline saved) → null → all litter is counted.
     const binPolygon = await litterBinOutlineService.polygonForDevice(
       req.body?.device_id
     );

@@ -28,7 +28,20 @@ import { analyzeLitterSeverity, apiUrl } from "../utils/apiBase";
 import { formatLsi } from "../utils/litterSeverity";
 import { formatBinCode } from "../utils/dashboardBins";
 
+/*
+ * Litter Severity page — manual test of the litter model.
+ *
+ * Staff upload a photo → POST /litter-severity → the page shows the LSI score,
+ * severity (LOW / MEDIUM / HIGH), litter boxes and the score breakdown.
+ * Nothing is saved; live bin photos are scored automatically via /predict.
+ *
+ * The page remembers the last few results in this browser session so it can
+ * show "Add a new bin" / signage hints after repeated MEDIUM or HIGH results.
+ */
+
+/** How many recent results this session keeps for the streak hints. */
 const SEVERITY_HISTORY_CAP = 8;
+/** Results in a row (MEDIUM/HIGH, or HIGH for add-bin) before a hint banner appears. */
 const ELEVATED_STREAK_FOR_SIGNAGE = 3;
 
 function severityClass(sev) {
@@ -43,6 +56,7 @@ function isElevatedSeverity(sev) {
   return s === "HIGH" || s === "MEDIUM";
 }
 
+/** Session history is oldest → newest, so count backwards from the latest result. */
 function trailingElevatedStreak(severities) {
   let n = 0;
   for (let i = severities.length - 1; i >= 0; i -= 1) {

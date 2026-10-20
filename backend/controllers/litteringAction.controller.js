@@ -1,6 +1,10 @@
 /**
  * POST /littering-action — proxy to littering-event microservice (YOLO11).
  * Multipart field: image (same as /predict).
+ *
+ * Used by the "Littering Detection" dashboard page for manual tests: returns
+ * whether someone is dumping rubbish, with boxes and confidence. Nothing is
+ * saved and no alerts are created (live bin photos go through POST /predict).
  */
 
 const modelClient = require("../services/modelClient");
@@ -25,6 +29,7 @@ async function analyze(req, res) {
       mimetype: req.file.mimetype,
     });
 
+    // inferLitteringAction never throws; failures come back as { error }.
     if (data?.error) {
       const status = data.status && data.status >= 400 ? data.status : 502;
       return res.status(status).json({ error: data.error });

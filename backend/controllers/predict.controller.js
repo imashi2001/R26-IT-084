@@ -185,6 +185,7 @@ function litteringActionForResponse(litteringPayload) {
   };
 }
 
+/** Littering-action reply → capture columns (littering_event_detected, count, max confidence). */
 function litteringExtras(litteringPayload) {
   if (!litteringPayload || litteringPayload.error) {
     return {
@@ -292,6 +293,7 @@ async function runRequestedModels({
       fileBuffer: imageBuffer,
       filename,
       mimetype: imageMimetype,
+      // This bin's outline (if drawn) so litter inside the bin is not counted.
       litterBinPolygon: await litterBinOutlineService.polygonForDevice(deviceId),
       includeAnimal,
     });
@@ -469,6 +471,8 @@ async function finishPredictAnalysis({
     }
   }
 
+  // Litter component alerts: littering first (multi-frame confirmed), then
+  // litter severity (add-bin / building up / HIGH). Failures never break /predict.
   try {
     await litteringAlertService.maybeCreateLitteringAlert({
       captureId: savedCapture?.id || null,

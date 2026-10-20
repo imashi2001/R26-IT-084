@@ -1,5 +1,9 @@
 /**
  * Normalize littering-action API payload for UI.
+ *
+ * Turns the raw /littering-action reply into the few fields the Littering
+ * Detection page shows: was dumping seen, how many boxes, highest confidence
+ * (0–1) and the boxes to draw. Missing numbers become 0 so the UI never shows NaN.
  */
 export function summarizeLitteringAction(data) {
   if (!data || data.error) {

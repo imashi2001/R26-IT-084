@@ -1,12 +1,23 @@
 """Litter Severity micro-service (Railway).
 
-YOLO litter detections + Litter Severity Index (LSI). Same contract style as
-animal-api: GET /health, POST /predict (multipart ``file``).
+What this service does, in plain words
+--------------------------------------
+1. Receives one photo of the area around a bin.
+2. A YOLO model draws a box around every piece of litter it can see.
+3. Those boxes are turned into one score, the Litter Severity Index (LSI, 0–100):
+   more pieces, more ground covered and litter spread wider = higher score.
+4. The score is labelled LOW (≤ 30), MEDIUM or HIGH (thresholds in lsi_config.yaml).
+5. Sends back the score, the boxes and a preview image with everything drawn on it.
+
+Only the Express backend calls this service (POST /litter-severity and /predict).
+
+Endpoints: GET /health, POST /predict (multipart ``file``).
 
 Optional multipart field ``bin_polygon``: JSON list of [x, y] points outlining
 the bin in this camera view. Values in 0–1 are treated as fractions of the
 image size, larger values as pixels. Litter whose box centre falls inside the
-outline is ignored for the LSI. Falls back to ``bin_polygon`` in lsi_config.yaml.
+outline is ignored for the LSI (that is rubbish *in* the bin, not litter).
+Falls back to ``bin_polygon`` in lsi_config.yaml.
 """
 
 from __future__ import annotations
@@ -28,11 +39,13 @@ from ultralytics import YOLO
 import calculate_lsi
 
 ROOT = Path(__file__).resolve().parent
+# Trained YOLO weights (one class: "litter") and the LSI tuning file.
 MODEL_PATH = Path(os.environ.get("LITTER_MODEL_PATH", str(ROOT / "model" / "best.pt")))
 CONFIG_PATH = Path(os.environ.get("LITTER_CONFIG_PATH", str(ROOT / "lsi_config.yaml")))
 
 
 def load_yaml_cfg() -> Dict[str, Any]:
+    """Read lsi_config.yaml on every request, so tuning changes apply without a restart."""
     if not CONFIG_PATH.is_file():
         return {}
     with CONFIG_PATH.open("r", encoding="utf-8") as f:
@@ -41,6 +54,7 @@ def load_yaml_cfg() -> Dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def _load_model() -> YOLO:
+    """Load the YOLO model once and reuse it (loading takes seconds)."""
     if not MODEL_PATH.is_file():
         raise FileNotFoundError(
             f"Litter model not found at '{MODEL_PATH}'. "
@@ -70,6 +84,7 @@ def draw_detections_bgr(
     class_ids: np.ndarray,
     names: Dict[int, str],
 ) -> np.ndarray:
+    """Draw an orange box and "litter 0.87" caption for each detection (preview image only)."""
     out = image_bgr.copy()
     color = (0, 165, 255)
     for i in range(boxes_xyxy.shape[0]):
@@ -95,7 +110,12 @@ def draw_detections_bgr(
 
 
 def parse_bin_polygon(raw: Any, width: int, height: int) -> Optional[np.ndarray]:
-    """Return a (K, 2) pixel polygon or None when ``raw`` is missing/invalid."""
+    """Turn the bin outline into pixel points for this image.
+
+    The dashboard saves outlines as fractions (0.5 = middle of the image) so they
+    still fit if the camera resolution changes; here they are scaled to pixels.
+    Returns None when no outline was given, so all litter is counted as before.
+    """
     if raw is None:
         return None
     pts = raw
@@ -123,7 +143,10 @@ def parse_bin_polygon(raw: Any, width: int, height: int) -> Optional[np.ndarray]
 def split_boxes_by_polygon(
     boxes_xyxy: np.ndarray, polygon: Optional[np.ndarray]
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Boolean mask of boxes to keep (centre outside polygon) and to ignore."""
+    """Decide which litter boxes count: keep a box when its centre is OUTSIDE the bin outline.
+
+    Returns two True/False lists: (keep, ignored). With no outline, everything is kept.
+    """
     n = boxes_xyxy.shape[0]
     keep = np.ones((n,), dtype=bool)
     if polygon is None or n == 0:
@@ -139,6 +162,7 @@ def split_boxes_by_polygon(
 
 
 def draw_bin_polygon_bgr(image_bgr: np.ndarray, polygon: np.ndarray) -> np.ndarray:
+    """Shade the bin outline light blue on the preview so staff can see what was ignored."""
     out = image_bgr.copy()
     pts = polygon.astype(np.int32).reshape(-1, 1, 2)
     overlay = out.copy()
@@ -153,6 +177,7 @@ def draw_lsi_panel_bgr(
     metrics: calculate_lsi.LSIMetrics,
     lsi_weights: tuple[float, float, float],
 ) -> np.ndarray:
+    """Dark panel in the top-left corner showing the LSI score and how it was made."""
     out = image_bgr.copy()
     h, w = out.shape[:2]
     overlay = out.copy()
@@ -184,6 +209,7 @@ def draw_lsi_panel_bgr(
 
 @app.on_event("startup")
 def _warmup() -> None:
+    """Load the model at boot so the first real photo is not slow. A missing model is reported by /health."""
     try:
         _load_model()
     except Exception:
@@ -201,6 +227,7 @@ def root() -> dict[str, Any]:
 
 @app.get("/health")
 def health() -> dict[str, Any]:
+    """Used by the backend's system status: ok=True when the model file loaded."""
     ok = False
     err: Optional[str] = None
     try:
@@ -216,6 +243,8 @@ async def predict(
     file: UploadFile = File(...),
     bin_polygon: Optional[str] = Form(None),
 ) -> dict[str, Any]:
+    """Main endpoint: photo in → litter boxes, LSI score, severity and preview image out."""
+    # --- Step 1: check and decode the uploaded image ---------------------------
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(400, "Upload an image (JPEG/PNG/WebP).")
 
@@ -228,6 +257,9 @@ async def predict(
     if bgr is None:
         raise HTTPException(400, "Could not decode image.")
 
+    # --- Step 2: read settings from lsi_config.yaml ----------------------------
+    # conf = minimum confidence for a box to count, iou = how much boxes may
+    # overlap before duplicates are merged, imgsz = size the model resizes to.
     H, W = bgr.shape[:2]
     cfg = load_yaml_cfg()
     inf = cfg.get("inference", {})
@@ -237,6 +269,9 @@ async def predict(
     lsi_kw = calculate_lsi.load_lsi_config_dict(cfg)
     w_count, w_area, w_spread = lsi_kw["w_count"], lsi_kw["w_area"], lsi_kw["w_spread"]
 
+    # --- Step 3: which bin outline to use --------------------------------------
+    # The bin's own outline (sent by the backend) wins; otherwise the optional
+    # global one in lsi_config.yaml; otherwise none (count all litter).
     poly_np = parse_bin_polygon(bin_polygon, W, H)
     polygon_source = "request" if poly_np is not None else None
     if poly_np is None:
@@ -249,6 +284,9 @@ async def predict(
     except FileNotFoundError as e:
         raise HTTPException(503, str(e)) from e
 
+    # --- Step 4: run YOLO to find litter ---------------------------------------
+    # xyxy = box corners [x1, y1, x2, y2] in pixels, confs = 0–1 confidence,
+    # clss = class number (always "litter" for this one-class model).
     res_list = model.predict(
         source=bgr,
         conf=conf,
@@ -267,13 +305,18 @@ async def predict(
         confs = boxes.conf.cpu().numpy()
         clss = boxes.cls.cpu().numpy().astype(np.int64)
 
+    # --- Step 5: drop litter that is inside the bin ----------------------------
     raw_count = int(xyxy.shape[0])
     keep, _ignored = split_boxes_by_polygon(xyxy, poly_np)
     xyxy, confs, clss = xyxy[keep], confs[keep], clss[keep]
 
+    # --- Step 6: turn the remaining boxes into the LSI score -------------------
+    # LSI = w_count × CountScore + w_area × AreaScore + w_spread × SpreadScore
+    # (see calculate_lsi.py). Outline filtering already happened above.
     metrics = calculate_lsi.compute_lsi(xyxy, W, H, bin_polygon=None, **lsi_kw)
     names = res.names if isinstance(res.names, dict) else {i: str(v) for i, v in enumerate(res.names)}
 
+    # --- Step 7: build the preview image (outline + boxes + score panel) -------
     vis = bgr
     if poly_np is not None:
         vis = draw_bin_polygon_bgr(vis, poly_np)
@@ -284,6 +327,9 @@ async def predict(
         raise HTTPException(500, "Failed to encode preview.")
     img_b64 = base64.standard_b64encode(buf.tobytes()).decode("ascii")
 
+    # --- Step 8: reply to the backend -----------------------------------------
+    # The backend stores severity, lsi and detection_count on the capture row,
+    # and the boxes in the predictions table.
     detections: list[dict[str, Any]] = []
     for i in range(xyxy.shape[0]):
         detections.append(

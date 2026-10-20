@@ -15,6 +15,13 @@ Severity bands:
   LOW    : 0–30
   MEDIUM : 31–60
   HIGH   : 61–100
+(The live service overrides these with lsi_config.yaml — currently HIGH is LSI > 53.)
+
+Worked example (default weights, count_cap = 25)
+  10 litter pieces            → CountScore  = 10 / 25 × 100 = 40
+  boxes cover 20% of image    → AreaScore   = 0.20 × 100    = 20
+  pieces spread fairly wide   → SpreadScore ≈ 50
+  LSI = 0.5×40 + 0.3×20 + 0.2×50 = 20 + 6 + 10 = 36  → MEDIUM
 
 This module has **no** Ultralytics dependency so you can unit-test scores quickly.
 """

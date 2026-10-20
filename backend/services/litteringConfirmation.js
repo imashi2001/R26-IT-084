@@ -5,6 +5,16 @@
  * from the same bin that are close in time are grouped into one "episode";
  * the episode is confirmed once it has LITTERING_CONFIRM_MIN_FRAMES littering
  * frames, or any single frame reaches LITTERING_STRONG_CONFIDENCE.
+ *
+ * Example with the defaults (2 frames, 30 s window, strong = 80%):
+ *   10:00:00  littering 60%   → episode A, 1 frame  → not confirmed yet
+ *   10:00:10  littering 65%   → episode A, 2 frames → CONFIRMED (alert here)
+ *   10:00:20  littering 55%   → episode A, 3 frames → already confirmed, no new alert
+ *   10:05:00  littering 90%   → gap > 30 s → episode B, strong frame → CONFIRMED
+ *   10:09:00  littering 55%   → episode C, 1 frame  → never confirmed (likely false alarm)
+ *
+ * The ESP32 shoots every 10 s during motion, so a 30 s window tolerates one
+ * missed photo. The frontend copy lives in frontend/src/utils/litteringConfirmation.js.
  */
 
 const {

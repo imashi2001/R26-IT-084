@@ -1,7 +1,19 @@
 """Littering-event detection micro-service (Ultralytics YOLO11).
 
-Frame-level detector for a person/action visually identified as throwing or
-leaving garbage around a bin. Not the litter-severity / LSI object detector.
+What this service does, in plain words
+--------------------------------------
+Looks at one camera photo and answers: "Is someone throwing or leaving
+rubbish near the bin right now?" The YOLO11 model draws a box around each
+person/action that looks like littering.
+
+This is different from litter-severity-api:
+  * littering-action-api  → detects the ACTION (a person dumping rubbish)
+  * litter-severity-api   → measures the RESULT (how much litter is on the ground)
+
+The backend uses this answer to raise "Littering event detected" alerts,
+open the illegal-dumping dashboard popup and play the illegal-dumping voice
+on the bin speaker. One photo alone is not trusted for alerts — the backend
+confirms across several photos (backend/services/litteringConfirmation.js).
 
 Endpoints:
   GET  /health
@@ -24,6 +36,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 
 ROOT = Path(__file__).resolve().parent
+# Settings come from environment variables (Railway → Variables):
+#   LITTERING_CONFIDENCE  minimum confidence for a box to count (0.50 = 50%)
+#   LITTERING_IOU         overlap allowed before duplicate boxes are merged
+#   LITTERING_DEVICE      "cpu", or "cuda" when a GPU is available
 MODEL_PATH = Path(
     os.environ.get("LITTERING_MODEL_PATH", str(ROOT / "weights" / "best.pt"))
 )
@@ -38,6 +54,7 @@ ALLOWED_MIME_PREFIX = "image/"
 
 
 def _resolve_device(requested: Optional[str]) -> str:
+    """Use the GPU only when asked for and actually present; otherwise run on CPU."""
     raw = (requested or DEFAULT_DEVICE or "cpu").strip().lower()
     if raw in ("cuda", "gpu", "0"):
         try:
@@ -52,6 +69,7 @@ def _resolve_device(requested: Optional[str]) -> str:
 
 
 def _class_names(model: YOLO) -> Dict[int, str]:
+    """Class number → name (e.g. 0 → "littering"), whichever format the model stores."""
     names = model.names
     if isinstance(names, dict):
         return {int(k): str(v) for k, v in names.items()}
@@ -62,6 +80,7 @@ def _class_names(model: YOLO) -> Dict[int, str]:
 
 @lru_cache(maxsize=1)
 def _load_model() -> YOLO:
+    """Load the YOLO11 weights once and reuse them for every request."""
     if not MODEL_PATH.is_file():
         raise FileNotFoundError(
             f"Littering model not found at '{MODEL_PATH}'. "
@@ -103,6 +122,7 @@ def root() -> dict[str, Any]:
 
 @app.get("/health")
 def health() -> dict[str, Any]:
+    """Status for the dashboard's System Status footer: is the model loaded, which classes, CPU or GPU."""
     model_loaded = False
     err: Optional[str] = None
     task: Optional[str] = None
@@ -132,6 +152,7 @@ def health() -> dict[str, Any]:
 
 
 def _validate_upload(file: UploadFile, raw: bytes) -> None:
+    """Reject empty, too-large or non-image uploads with a clear 400 message."""
     if not raw:
         raise HTTPException(400, "Empty image upload.")
     if len(raw) > MAX_UPLOAD_BYTES:
@@ -147,6 +168,7 @@ def _validate_upload(file: UploadFile, raw: bytes) -> None:
 
 
 def _encode_annotated_jpeg(bgr: np.ndarray, boxes, confs, clss, names: Dict[int, str]) -> str:
+    """Draw the littering boxes on a copy of the photo and return it as base64 JPEG."""
     out = bgr.copy()
     color = (0, 140, 255)
     for i in range(boxes.shape[0]):
@@ -183,6 +205,12 @@ async def predict(
     capture_id: Optional[str] = Form(None),
     include_annotated_image: Optional[str] = Form(None),
 ) -> dict[str, Any]:
+    """Main endpoint: photo in → "was there littering?" plus boxes and confidence out.
+
+    Optional form fields: confidence / iou override the defaults for this call,
+    include_annotated_image=true also returns the photo with boxes drawn.
+    """
+    # --- Step 1: check and decode the uploaded image ---------------------------
     if file is None:
         raise HTTPException(400, "Missing image file. Send multipart field `file`.")
 
@@ -198,6 +226,7 @@ async def predict(
     if H < 1 or W < 1:
         raise HTTPException(400, "Invalid image dimensions.")
 
+    # --- Step 2: run YOLO11 (timed, so the dashboard can show inference speed) -
     conf_thr = float(confidence) if confidence is not None else DEFAULT_CONF
     iou_thr = float(iou) if iou is not None else DEFAULT_IOU
     device = _resolve_device(None)
@@ -233,6 +262,9 @@ async def predict(
         confs = boxes.conf.cpu().numpy()
         clss = boxes.cls.cpu().numpy().astype(np.int64)
 
+    # --- Step 3: describe each box -------------------------------------------
+    # bbox = pixel corners; bbox_normalized = the same as fractions of the
+    # image (0–1), handy for drawing on a resized photo in the browser.
     detections: List[dict[str, Any]] = []
     for i in range(xyxy.shape[0]):
         x1, y1, x2, y2 = [float(v) for v in xyxy[i].tolist()]
@@ -251,6 +283,9 @@ async def predict(
             }
         )
 
+    # --- Step 4: reply ---------------------------------------------------------
+    # event_detected = at least one littering box above the confidence threshold.
+    # max_confidence is what the backend compares against its alert thresholds.
     max_conf = float(np.max(confs)) if confs.size else 0.0
     want_annotated = str(include_annotated_image or "").strip().lower() in (
         "1",

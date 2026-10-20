@@ -58,6 +58,7 @@ export function defaultAudioSettings() {
     },
     custom_scenarios: [],
     voice_policy: "classic",
+    enable_animal_on_predict: false,
     updated_at: null,
   };
 }

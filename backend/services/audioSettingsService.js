@@ -56,11 +56,23 @@ function normalizeTrack(value, fallback) {
   return t;
 }
 
+function normalizeBool(value, fallback) {
+  if (value === true || value === "true" || value === 1 || value === "1") {
+    return true;
+  }
+  if (value === false || value === "false" || value === 0 || value === "0") {
+    return false;
+  }
+  return Boolean(fallback);
+}
+
 function defaultSettings() {
   return {
     tracks: { ...DEFAULT_TRACKS },
     custom_scenarios: [],
     voice_policy: DEFAULT_VOICE_POLICY,
+    /** When false, ESP32 /predict (all models) skips animal microservice. Manual model=animal still works. */
+    enable_animal_on_predict: false,
     updated_at: null,
   };
 }
@@ -109,6 +121,10 @@ function normalizeSettings(raw) {
     tracks,
     custom_scenarios,
     voice_policy: normalizeVoicePolicy(raw.voice_policy),
+    enable_animal_on_predict: normalizeBool(
+      raw.enable_animal_on_predict,
+      base.enable_animal_on_predict
+    ),
     updated_at: raw.updated_at || null,
   };
 }
@@ -126,11 +142,15 @@ function validateForSave(body) {
   const hasTracks = body.tracks && typeof body.tracks === "object";
   const hasCustom = Array.isArray(body.custom_scenarios);
   const hasPolicy = body.voice_policy !== undefined && body.voice_policy !== null;
+  const hasAnimalFlag =
+    body.enable_animal_on_predict !== undefined &&
+    body.enable_animal_on_predict !== null;
 
-  if (!hasTracks && !hasCustom && !hasPolicy) {
+  if (!hasTracks && !hasCustom && !hasPolicy && !hasAnimalFlag) {
     return {
       ok: false,
-      error: "Provide tracks, custom_scenarios, and/or voice_policy.",
+      error:
+        "Provide tracks, custom_scenarios, voice_policy, and/or enable_animal_on_predict.",
     };
   }
 
@@ -209,7 +229,14 @@ function validateForSave(body) {
     ? normalizeVoicePolicy(body.voice_policy)
     : current.voice_policy;
 
-  return { ok: true, data: { tracks, custom_scenarios, voice_policy } };
+  const enable_animal_on_predict = hasAnimalFlag
+    ? normalizeBool(body.enable_animal_on_predict, false)
+    : current.enable_animal_on_predict;
+
+  return {
+    ok: true,
+    data: { tracks, custom_scenarios, voice_policy, enable_animal_on_predict },
+  };
 }
 
 function saveSettings(body) {
@@ -227,6 +254,7 @@ function saveSettings(body) {
     tracks: validated.data.tracks,
     custom_scenarios: validated.data.custom_scenarios,
     voice_policy: validated.data.voice_policy,
+    enable_animal_on_predict: validated.data.enable_animal_on_predict,
     updated_at,
   };
   ensureDir();

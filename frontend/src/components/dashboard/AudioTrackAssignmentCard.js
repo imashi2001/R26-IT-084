@@ -83,8 +83,9 @@ export default function AudioTrackAssignmentCard({
           track: Number(row.track),
           auto_condition: row.auto_condition || "manual_only",
         })),
-        // Preserve active voice method when saving tracks only.
+        // Preserve active voice method / animal flag when saving tracks only.
         voice_policy: settings?.voice_policy || "classic",
+        enable_animal_on_predict: Boolean(settings?.enable_animal_on_predict),
       };
       const saved = await saveAudioSettings(authFetch, payload);
       setSaveMsg("Audio track mapping saved.");

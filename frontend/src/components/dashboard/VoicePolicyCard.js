@@ -40,6 +40,9 @@ export default function VoicePolicyCard({
     try {
       const saved = await saveAudioSettings(authFetch, {
         voice_policy: policy,
+        enable_animal_on_predict: Boolean(
+          settings?.enable_animal_on_predict
+        ),
       });
       setMsg(
         policy === "quality"

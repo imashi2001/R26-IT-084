@@ -17,6 +17,7 @@ import PromoFooter from "../components/dashboard/PromoFooter";
 import GeminiSettingsCard from "../components/dashboard/GeminiSettingsCard";
 import CapturesCleanupCard from "../components/dashboard/CapturesCleanupCard";
 import VoicePolicyCard from "../components/dashboard/VoicePolicyCard";
+import AnimalAutoPredictCard from "../components/dashboard/AnimalAutoPredictCard";
 import { useAuth } from "../context/AuthContext";
 import useDashboardSettings, {
   removeDashboardHero,
@@ -313,6 +314,16 @@ export default function DashboardSettingsPage() {
 
       <GeminiSettingsCard authFetch={authFetch} isAdmin={isAdmin} />
       <VoicePolicyCard
+        authFetch={authFetch}
+        isAdmin={isAdmin}
+        settings={audioSettings}
+        loading={audioLoading}
+        onSaved={(saved) => {
+          setAudioSettings(saved);
+          refreshAudio();
+        }}
+      />
+      <AnimalAutoPredictCard
         authFetch={authFetch}
         isAdmin={isAdmin}
         settings={audioSettings}

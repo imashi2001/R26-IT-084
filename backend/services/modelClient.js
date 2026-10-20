@@ -380,13 +380,34 @@ async function pingLitteringActionHealth() {
  * If one service is down, the other still produces its result; the failing
  * one comes back with `{ error: "..." }` so the caller can degrade gracefully.
  */
-async function inferAll({ fileBuffer, filename, mimetype, litterBinPolygon = null }) {
+/** Empty animal result when auto animal is disabled (no boxes, count 0). */
+function emptyAnimalPayload(reason = "disabled_in_settings") {
+  return {
+    model: "animal_detection",
+    detections: [],
+    detection_count: 0,
+    annotated_image_base64: null,
+    skipped: true,
+    reason,
+  };
+}
+
+async function inferAll({
+  fileBuffer,
+  filename,
+  mimetype,
+  litterBinPolygon = null,
+  includeAnimal = true,
+} = {}) {
   const hasFill = Boolean(getModelUrl("fill"));
   const hasLitter = Boolean(getModelUrl("litter"));
   const hasLitteringAction = isLitteringActionConfigured();
+  const runAnimal = includeAnimal !== false;
   const settled = await Promise.allSettled([
     inferWaste({ fileBuffer, filename, mimetype }),
-    inferAnimal({ fileBuffer, filename, mimetype }),
+    runAnimal
+      ? inferAnimal({ fileBuffer, filename, mimetype })
+      : Promise.resolve(emptyAnimalPayload()),
     hasFill
       ? inferBinFill({ fileBuffer, filename, mimetype })
       : Promise.resolve(null),
@@ -466,6 +487,7 @@ module.exports = {
   pingAllModels,
   pingLitteringActionHealth,
   isLitteringActionConfigured,
+  emptyAnimalPayload,
   inferWaste,
   inferAnimal,
   inferLitter,

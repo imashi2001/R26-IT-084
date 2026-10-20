@@ -1,13 +1,36 @@
 /*
- * VisionWaste ESP32-CAM — motion-session capture (PIR + camera only).
+ * =============================================================================
+ *  VisionWaste — ESP32-CAM  (photo board only)
+ * =============================================================================
  *
- * LOW -> HIGH starts a session.
- * First photo ~3s later if PIR is still HIGH.
- * Then one photo every 10s while motion stays active.
- * PIR LOW cancels pending shots and ends the session.
- * Uploads run on a worker task so PIR is still monitored.
+ * ROLE IN THE SYSTEM
+ *   This board is the "eyes" of a smart bin. It watches a PIR motion sensor,
+ *   takes JPEG photos during a motion session, and uploads them to Railway
+ *   POST /predict. It does NOT play sound. Voice is handled by a second board:
+ *     VisionWaste/esp32-voice/ESP32VoicePlayer.ino  (esp-voice-1 + DFPlayer)
  *
- * Voice playback is on VisionWaste/esp32-voice/ESP32VoicePlayer.ino
+ *   Backend links them via Device.audio_esp32_id (camera esp32_id → voice id).
+ *
+ * MOTION-SESSION TIMELINE
+ *   1) Boot → ST_WARMUP (~60s) so the PIR settles (avoids false triggers).
+ *   2) ST_IDLE — waiting for PIR LOW→HIGH.
+ *   3) Rising edge → ST_SESSION, new motion_session_id.
+ *   4) First photo ~3s later IF PIR is still HIGH (person still present).
+ *   5) While PIR stays HIGH → one photo every ~10s (same session id).
+ *   6) PIR HIGH→LOW → session ends; no more scheduled shots.
+ *
+ * WHY A FREE-RTOS UPLOAD WORKER?
+ *   HTTP to Railway can take seconds. PIR must keep being sampled during upload,
+ *   so capture JPEG is copied to RAM/PSRAM and handed to a queue; a second core
+ *   task performs the multipart POST. Loop() only runs checkMotion().
+ *
+ * MULTIPART FIELDS SENT TO /predict
+ *   source_type=esp32, esp32_id, motion_session_id, event_id, image=JPEG
+ *   Backend replies quickly {accepted, analyzing:true} then runs models + voice.
+ *
+ * BOARD / PIN NOTES
+ *   AI-Thinker ESP32-CAM pin map below (OV2640). PIR signal → GPIO14.
+ * =============================================================================
  */
 
 #include <Arduino.h>
@@ -19,39 +42,51 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 
+/* -----------------------------------------------------------------------------
+ * Network / identity — must match a Device row on the backend (esp32_id).
+ * Prefer moving secrets to secrets.h (like the voice board) before sharing.
+ * --------------------------------------------------------------------------- */
 const char* WIFI_SSID = "Charukas_galaxy";
 const char* WIFI_PASSWORD = "11111111";
 const char* BACKEND_BASE = "https://r26-it-084-production-2220.up.railway.app";
-const char* DEVICE_API_KEY = "";
-const char* ESP32_ID = "espcam 1";
+const char* DEVICE_API_KEY = "";   // Optional; set if backend requires X-Device-Key
+const char* ESP32_ID = "espcam 1"; // Must match Device.esp32_id in the dashboard
 
+/* PIR motion input (digital HIGH = motion). */
 #define PIR_PIN 14
 
-const unsigned long PIR_WARMUP_TIME_MS = 60000;
-const unsigned long FIRST_CAPTURE_DELAY_MS = 3000;
-const unsigned long REPEAT_CAPTURE_INTERVAL_MS = 10000;
-const unsigned long HTTP_TIMEOUT_MS = 120000;
+/* Timing knobs (milliseconds). Adjust for demo vs production. */
+const unsigned long PIR_WARMUP_TIME_MS = 60000;        // Ignore PIR after boot
+const unsigned long FIRST_CAPTURE_DELAY_MS = 3000;     // Debounce before first shot
+const unsigned long REPEAT_CAPTURE_INTERVAL_MS = 10000; // Spacing while session active
+const unsigned long HTTP_TIMEOUT_MS = 120000;          // Long: Railway + cold starts
 const int MAX_UPLOAD_RETRIES = 2;
-const UBaseType_t UPLOAD_TASK_STACK = 16384;
+const UBaseType_t UPLOAD_TASK_STACK = 16384;           // HTTPS needs a large stack
 
+/* Finite-state machine for motion. */
 enum MotionState {
-  ST_WARMUP,
-  ST_IDLE,
-  ST_SESSION
+  ST_WARMUP,  // PIR stabilizing after power-on
+  ST_IDLE,    // Armed; waiting for rising edge
+  ST_SESSION  // Motion active; capturing on a schedule
 };
 
 MotionState motionState = ST_WARMUP;
 unsigned long warmupStartedAt = 0;
 unsigned long sessionStartedAt = 0;
-unsigned long nextCaptureAt = 0;
+unsigned long nextCaptureAt = 0;       // Absolute millis() when next shot is due
 unsigned long lastCaptureStartAt = 0;
-uint32_t sessionSeq = 0;
-uint16_t sessionShotIndex = 0;
+uint32_t sessionSeq = 0;               // Monotonic counter → motion_session_id
+uint16_t sessionShotIndex = 0;         // 1-based shot index within the session
 uint32_t currentSessionId = 0;
-bool lastPirHigh = false;
-bool captureInProgress = false;
-uint16_t missedDeadlines = 0;
+bool lastPirHigh = false;              // Edge detection vs previous sample
+bool captureInProgress = false;        // Camera grab in progress on this core
+uint16_t missedDeadlines = 0;          // Stats when camera/upload was busy
 
+/**
+ * One JPEG upload job. Ownership of `data`:
+ *   - Allocated by enqueueSessionCapture (ps_malloc/malloc)
+ *   - Freed by performPredictUpload after success or final failure
+ */
 struct UploadJob {
   uint8_t* data;
   size_t len;
@@ -62,8 +97,9 @@ struct UploadJob {
 
 QueueHandle_t uploadQueue = nullptr;
 TaskHandle_t uploadTaskHandle = nullptr;
-volatile bool uploadWorkerBusy = false;
+volatile bool uploadWorkerBusy = false; // True while a job is queued or uploading
 
+/* AI-Thinker ESP32-CAM (OV2640) SCCB / parallel camera pins — do not remount casually. */
 #define PWDN_GPIO_NUM     32
 #define RESET_GPIO_NUM    -1
 #define XCLK_GPIO_NUM      0
@@ -81,11 +117,17 @@ volatile bool uploadWorkerBusy = false;
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
+/** Millis wrap-safe: true when `now` has reached or passed `due`. */
 bool timeReached(unsigned long now, unsigned long due)
 {
   return (long)(now - due) >= 0;
 }
 
+/**
+ * Initialize OV2640 JPEG capture.
+ * Prefers PSRAM double-buffer + GRAB_LATEST so we always get a fresh frame
+ * when motion fires (stale buffered frames would confuse ML).
+ */
 bool startCamera()
 {
   Serial.println();
@@ -112,8 +154,8 @@ bool startCamera()
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  config.frame_size = FRAMESIZE_SVGA;
-  config.jpeg_quality = 12;
+  config.frame_size = FRAMESIZE_SVGA;   // Balance quality vs upload size / RAM
+  config.jpeg_quality = 12;            // Lower number = higher quality
   config.grab_mode = CAMERA_GRAB_LATEST;
 
   if (psramFound()) {
@@ -140,6 +182,7 @@ bool startCamera()
   return true;
 }
 
+/** Station mode Wi-Fi; sleep disabled for more reliable HTTPS. */
 bool connectWiFi()
 {
   Serial.println();
@@ -166,6 +209,11 @@ bool connectWiFi()
   return true;
 }
 
+/**
+ * Build multipart/form-data and POST to BACKEND_BASE/predict.
+ * Uses TLS with setInsecure() (typical for hobby/Railway demos; pin certs for prod).
+ * On success frees jpeg buffer and returns; on failure retries then frees.
+ */
 void performPredictUpload(const UploadJob& job)
 {
   if (!job.data || job.len < 4) {
@@ -202,6 +250,7 @@ void performPredictUpload(const UploadJob& job)
 
     http.setTimeout(HTTP_TIMEOUT_MS);
 
+    /* Multipart body: metadata fields first, then raw JPEG bytes, then closing boundary. */
     String boundary = "----ESP32CAMBoundary7A91";
     String bodyStart =
       "--" + boundary + "\r\n"
@@ -269,6 +318,7 @@ void performPredictUpload(const UploadJob& job)
   free(jpegData);
 }
 
+/** FreeRTOS worker: blocks on queue, uploads one job at a time, clears busy flag. */
 void uploadWorkerTask(void* param)
 {
   (void)param;
@@ -281,6 +331,12 @@ void uploadWorkerTask(void* param)
   }
 }
 
+/**
+ * Grab one JPEG, validate SOI/EOI markers, copy off the camera frame buffer,
+ * and enqueue for background upload. Returns false if Wi-Fi/camera/queue busy.
+ *
+ * event_id encoding: sessionId * 100 + shotIndex (unique within a short window).
+ */
 bool enqueueSessionCapture(const char* reason)
 {
   const unsigned long captureStart = millis();
@@ -313,6 +369,7 @@ bool enqueueSessionCapture(const char* reason)
     return false;
   }
 
+  /* Basic JPEG sanity: starts with FF D8, ends with FF D9. */
   if (fb->len < 4 || fb->buf[0] != 0xFF || fb->buf[1] != 0xD8 ||
       fb->buf[fb->len - 2] != 0xFF || fb->buf[fb->len - 1] != 0xD9) {
     Serial.println("[CAMERA] invalid JPEG");
@@ -337,7 +394,7 @@ bool enqueueSessionCapture(const char* reason)
 
   memcpy(copy, fb->buf, fb->len);
   size_t len = fb->len;
-  esp_camera_fb_return(fb);
+  esp_camera_fb_return(fb);  // Return DMA buffer ASAP so the sensor can continue
   captureInProgress = false;
 
   UploadJob job;
@@ -361,6 +418,7 @@ bool enqueueSessionCapture(const char* reason)
   return true;
 }
 
+/** PIR rising edge: open a new motion session and schedule the first photo. */
 void beginSession(unsigned long now)
 {
   sessionSeq++;
@@ -373,6 +431,7 @@ void beginSession(unsigned long now)
                 (unsigned long)currentSessionId, FIRST_CAPTURE_DELAY_MS);
 }
 
+/** PIR fallen (or cleared before shot): stop scheduling captures. */
 void endSession(const char* why)
 {
   if (motionState != ST_SESSION) return;
@@ -386,6 +445,10 @@ void endSession(const char* why)
   nextCaptureAt = 0;
 }
 
+/**
+ * Sample PIR, drive the state machine, and fire captures on schedule.
+ * Called frequently from loop(); keep this non-blocking (no HTTP here).
+ */
 void checkMotion()
 {
   const unsigned long now = millis();
@@ -397,6 +460,7 @@ void checkMotion()
   if (rising) Serial.println("[PIR] LOW -> HIGH");
   if (falling) Serial.println("[PIR] HIGH -> LOW");
 
+  /* --- Warm-up: discard early PIR chatter after power-on --- */
   if (motionState == ST_WARMUP) {
     if (!timeReached(now, warmupStartedAt + PIR_WARMUP_TIME_MS)) return;
     Serial.println("[PIR] warm-up done — waiting for motion");
@@ -404,16 +468,19 @@ void checkMotion()
     return;
   }
 
+  /* --- End session as soon as motion clears --- */
   if (falling && motionState == ST_SESSION) {
     endSession("pir-low");
     return;
   }
 
+  /* --- Idle → start session on rising edge --- */
   if (motionState == ST_IDLE) {
     if (rising) beginSession(now);
     return;
   }
 
+  /* --- Session: wait until nextCaptureAt --- */
   if (!timeReached(now, nextCaptureAt)) return;
 
   if (!pirHigh) {
@@ -424,8 +491,10 @@ void checkMotion()
   const bool first = (sessionShotIndex == 0);
   const bool ok = enqueueSessionCapture(first ? "first" : "repeat");
   if (ok) {
+    /* Schedule relative to when this shot started (stable 10s cadence). */
     nextCaptureAt = lastCaptureStartAt + REPEAT_CAPTURE_INTERVAL_MS;
   } else {
+    /* Camera/upload busy — try again after one interval. */
     nextCaptureAt = now + REPEAT_CAPTURE_INTERVAL_MS;
     Serial.printf("[CAPTURE] reschedule in %lu ms\n", REPEAT_CAPTURE_INTERVAL_MS);
   }
@@ -442,6 +511,7 @@ void setup()
   Serial.printf("Timing: first=%lums repeat=%lums\n",
                 FIRST_CAPTURE_DELAY_MS, REPEAT_CAPTURE_INTERVAL_MS);
 
+  /* Depth-1 queue: at most one pending upload (drops rather than stacking voices/photos). */
   uploadQueue = xQueueCreate(1, sizeof(UploadJob));
   xTaskCreatePinnedToCore(
     uploadWorkerTask, "vw_upload", UPLOAD_TASK_STACK, nullptr, 1, &uploadTaskHandle, 1
@@ -462,6 +532,7 @@ void setup()
     return;
   }
 
+  /* Restart warm-up clock after camera init (sensor power can upset PIR). */
   delay(1000);
   warmupStartedAt = millis();
   motionState = ST_WARMUP;
@@ -471,6 +542,7 @@ void setup()
 
 void loop()
 {
+  /* Background Wi-Fi reconnect; skip while an upload holds the radio busy. */
   if (WiFi.status() != WL_CONNECTED) {
     static unsigned long lastWiFiRetry = 0;
     if (timeReached(millis(), lastWiFiRetry + 10000)) {
@@ -481,6 +553,7 @@ void loop()
 
   checkMotion();
 
+  /* Heartbeat every 5s — useful when Serial Monitor is open during viva demos. */
   static unsigned long lastDiag = 0;
   if (timeReached(millis(), lastDiag + 5000)) {
     lastDiag = millis();

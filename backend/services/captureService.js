@@ -264,9 +264,108 @@ async function updateCaptureAnalysis(
   });
 }
 
+async function countCaptures({ deviceId = null } = {}) {
+  const models = ensureModels();
+  if (!models) return 0;
+  const { Capture } = models;
+  const where = {};
+  if (deviceId != null && Number.isFinite(Number(deviceId))) {
+    where.device_id = Number(deviceId);
+  }
+  return Capture.count({ where });
+}
+
+/**
+ * Delete capture rows (and related predictions + alerts) by filter.
+ * @param {{ olderThanDays?: number|null, deviceId?: number|null, keepLatest?: number|null }} opts
+ * @returns {Promise<{ deleted: number, remaining: number }>}
+ */
+async function deleteCaptures({
+  olderThanDays = null,
+  deviceId = null,
+  keepLatest = null,
+} = {}) {
+  const models = ensureModels();
+  if (!models) {
+    const err = new Error("Database is not configured.");
+    err.status = 503;
+    throw err;
+  }
+
+  const { sequelize, Capture, Prediction, Alert } = models;
+  const where = {};
+
+  if (deviceId != null && Number.isFinite(Number(deviceId))) {
+    where.device_id = Number(deviceId);
+  }
+
+  if (olderThanDays != null && Number.isFinite(Number(olderThanDays))) {
+    const days = Math.max(0, Math.trunc(Number(olderThanDays)));
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    where.captured_at = { [Op.lt]: cutoff };
+  }
+
+  return sequelize.transaction(async (t) => {
+    let ids;
+
+    if (keepLatest != null && Number.isFinite(Number(keepLatest))) {
+      const keep = Math.max(0, Math.trunc(Number(keepLatest)));
+      const keepWhere = {};
+      if (where.device_id != null) keepWhere.device_id = where.device_id;
+      const newest = await Capture.findAll({
+        attributes: ["id"],
+        where: keepWhere,
+        order: [["captured_at", "DESC"]],
+        limit: keep,
+        transaction: t,
+      });
+      const keepIds = newest.map((r) => r.id);
+      const deleteWhere = { ...where };
+      if (keepIds.length > 0) {
+        deleteWhere.id = { [Op.notIn]: keepIds };
+      }
+      const doomed = await Capture.findAll({
+        attributes: ["id"],
+        where: deleteWhere,
+        transaction: t,
+      });
+      ids = doomed.map((r) => r.id);
+    } else {
+      const doomed = await Capture.findAll({
+        attributes: ["id"],
+        where,
+        transaction: t,
+      });
+      ids = doomed.map((r) => r.id);
+    }
+
+    if (ids.length === 0) {
+      const remaining = await Capture.count({ transaction: t });
+      return { deleted: 0, remaining };
+    }
+
+    await Prediction.destroy({
+      where: { capture_id: { [Op.in]: ids } },
+      transaction: t,
+    });
+    await Alert.destroy({
+      where: { capture_id: { [Op.in]: ids } },
+      transaction: t,
+    });
+    const deleted = await Capture.destroy({
+      where: { id: { [Op.in]: ids } },
+      transaction: t,
+    });
+    const remaining = await Capture.count({ transaction: t });
+    return { deleted, remaining };
+  });
+}
+
 module.exports = {
   saveCaptureWithPredictions,
   updateCaptureAnalysis,
   listCaptures,
   getCapture,
+  countCaptures,
+  deleteCaptures,
 };

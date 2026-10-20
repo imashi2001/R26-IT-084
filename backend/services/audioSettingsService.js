@@ -33,8 +33,19 @@ const AUTO_CONDITIONS = new Set([
   "risk_medium",
 ]);
 
+/** classic = viva-safe timed policy; quality = change-based + thank-you. */
+const VOICE_POLICIES = new Set(["classic", "quality"]);
+const DEFAULT_VOICE_POLICY = "classic";
+
 function ensureDir() {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+function normalizeVoicePolicy(value) {
+  const v = String(value || DEFAULT_VOICE_POLICY)
+    .trim()
+    .toLowerCase();
+  return VOICE_POLICIES.has(v) ? v : DEFAULT_VOICE_POLICY;
 }
 
 function normalizeTrack(value, fallback) {
@@ -45,10 +56,23 @@ function normalizeTrack(value, fallback) {
   return t;
 }
 
+function normalizeBool(value, fallback) {
+  if (value === true || value === "true" || value === 1 || value === "1") {
+    return true;
+  }
+  if (value === false || value === "false" || value === 0 || value === "0") {
+    return false;
+  }
+  return Boolean(fallback);
+}
+
 function defaultSettings() {
   return {
     tracks: { ...DEFAULT_TRACKS },
     custom_scenarios: [],
+    voice_policy: DEFAULT_VOICE_POLICY,
+    /** When false, ESP32 /predict (all models) skips animal microservice. Manual model=animal still works. */
+    enable_animal_on_predict: false,
     updated_at: null,
   };
 }
@@ -96,6 +120,11 @@ function normalizeSettings(raw) {
   return {
     tracks,
     custom_scenarios,
+    voice_policy: normalizeVoicePolicy(raw.voice_policy),
+    enable_animal_on_predict: normalizeBool(
+      raw.enable_animal_on_predict,
+      base.enable_animal_on_predict
+    ),
     updated_at: raw.updated_at || null,
   };
 }
@@ -109,68 +138,105 @@ function validateForSave(body) {
     return { ok: false, error: "Request body must be a JSON object." };
   }
 
-  const tracksIn = body.tracks;
-  if (!tracksIn || typeof tracksIn !== "object") {
-    return { ok: false, error: "tracks object is required." };
+  const current = getSettings();
+  const hasTracks = body.tracks && typeof body.tracks === "object";
+  const hasCustom = Array.isArray(body.custom_scenarios);
+  const hasPolicy = body.voice_policy !== undefined && body.voice_policy !== null;
+  const hasAnimalFlag =
+    body.enable_animal_on_predict !== undefined &&
+    body.enable_animal_on_predict !== null;
+
+  if (!hasTracks && !hasCustom && !hasPolicy && !hasAnimalFlag) {
+    return {
+      ok: false,
+      error:
+        "Provide tracks, custom_scenarios, voice_policy, and/or enable_animal_on_predict.",
+    };
   }
 
-  const tracks = {};
-  for (const key of BUILTIN_KEYS) {
-    if (tracksIn[key] === undefined || tracksIn[key] === "") {
-      return { ok: false, error: `tracks.${key} is required.` };
-    }
-    const t = normalizeTrack(tracksIn[key], null);
-    if (t == null) {
+  if (hasPolicy) {
+    const raw = String(body.voice_policy).trim().toLowerCase();
+    if (!VOICE_POLICIES.has(raw)) {
       return {
         ok: false,
-        error: `tracks.${key} must be an integer from 1 to 9999.`,
+        error: `voice_policy must be one of: ${[...VOICE_POLICIES].join(", ")}.`,
       };
     }
-    tracks[key] = t;
   }
 
-  const customIn = Array.isArray(body.custom_scenarios)
-    ? body.custom_scenarios
-    : [];
-  if (customIn.length > 20) {
-    return { ok: false, error: "At most 20 custom scenarios allowed." };
+  let tracks = { ...current.tracks };
+  if (hasTracks) {
+    const tracksIn = body.tracks;
+    tracks = {};
+    for (const key of BUILTIN_KEYS) {
+      if (tracksIn[key] === undefined || tracksIn[key] === "") {
+        return { ok: false, error: `tracks.${key} is required.` };
+      }
+      const t = normalizeTrack(tracksIn[key], null);
+      if (t == null) {
+        return {
+          ok: false,
+          error: `tracks.${key} must be an integer from 1 to 9999.`,
+        };
+      }
+      tracks[key] = t;
+    }
   }
 
-  const custom_scenarios = customIn.map((row, i) => {
-    const label = String(row?.label || "").trim();
-    if (!label) {
-      const err = new Error(`custom_scenarios[${i}].label is required.`);
-      err.status = 400;
-      throw err;
+  let custom_scenarios = current.custom_scenarios || [];
+  if (hasCustom) {
+    const customIn = body.custom_scenarios;
+    if (customIn.length > 20) {
+      return { ok: false, error: "At most 20 custom scenarios allowed." };
     }
-    const track = normalizeTrack(row?.track, null);
-    if (track == null) {
-      const err = new Error(
-        `custom_scenarios[${i}].track must be an integer from 1 to 9999.`
-      );
-      err.status = 400;
-      throw err;
-    }
-    const auto_condition = String(row?.auto_condition || "manual_only");
-    if (!AUTO_CONDITIONS.has(auto_condition)) {
-      const err = new Error(
-        `custom_scenarios[${i}].auto_condition must be one of: ${[...AUTO_CONDITIONS].join(", ")}.`
-      );
-      err.status = 400;
-      throw err;
-    }
-    return normalizeCustomScenario(
-      {
-        id: row?.id,
-        label,
-        track,
-        auto_condition,
-      },
-      i
-    );
-  });
 
-  return { ok: true, data: { tracks, custom_scenarios } };
+    custom_scenarios = customIn.map((row, i) => {
+      const label = String(row?.label || "").trim();
+      if (!label) {
+        const err = new Error(`custom_scenarios[${i}].label is required.`);
+        err.status = 400;
+        throw err;
+      }
+      const track = normalizeTrack(row?.track, null);
+      if (track == null) {
+        const err = new Error(
+          `custom_scenarios[${i}].track must be an integer from 1 to 9999.`
+        );
+        err.status = 400;
+        throw err;
+      }
+      const auto_condition = String(row?.auto_condition || "manual_only");
+      if (!AUTO_CONDITIONS.has(auto_condition)) {
+        const err = new Error(
+          `custom_scenarios[${i}].auto_condition must be one of: ${[...AUTO_CONDITIONS].join(", ")}.`
+        );
+        err.status = 400;
+        throw err;
+      }
+      return normalizeCustomScenario(
+        {
+          id: row?.id,
+          label,
+          track,
+          auto_condition,
+        },
+        i
+      );
+    });
+  }
+
+  const voice_policy = hasPolicy
+    ? normalizeVoicePolicy(body.voice_policy)
+    : current.voice_policy;
+
+  const enable_animal_on_predict = hasAnimalFlag
+    ? normalizeBool(body.enable_animal_on_predict, false)
+    : current.enable_animal_on_predict;
+
+  return {
+    ok: true,
+    data: { tracks, custom_scenarios, voice_policy, enable_animal_on_predict },
+  };
 }
 
 function saveSettings(body) {
@@ -187,6 +253,8 @@ function saveSettings(body) {
   const next = {
     tracks: validated.data.tracks,
     custom_scenarios: validated.data.custom_scenarios,
+    voice_policy: validated.data.voice_policy,
+    enable_animal_on_predict: validated.data.enable_animal_on_predict,
     updated_at,
   };
   ensureDir();
@@ -226,6 +294,9 @@ module.exports = {
   BUILTIN_LABELS,
   DEFAULT_TRACKS,
   AUTO_CONDITIONS,
+  VOICE_POLICIES,
+  DEFAULT_VOICE_POLICY,
+  normalizeVoicePolicy,
   getSettings,
   saveSettings,
   validateForSave,

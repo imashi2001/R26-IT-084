@@ -122,4 +122,132 @@ async function getCaptureImage(req, res, next) {
   }
 }
 
-module.exports = { listCaptures, getCapture, getCaptureImage };
+async function getCaptureStats(req, res, next) {
+  try {
+    if (!db.isDbEnabled()) {
+      return res.status(503).json({
+        error: "Captures unavailable: DATABASE_URL not set.",
+      });
+    }
+    const deviceIdRaw = req.query.device_id;
+    const deviceId =
+      deviceIdRaw !== undefined && deviceIdRaw !== "" && deviceIdRaw !== null
+        ? parseInt(deviceIdRaw, 10)
+        : null;
+    if (
+      deviceIdRaw !== undefined &&
+      deviceIdRaw !== "" &&
+      !Number.isFinite(deviceId)
+    ) {
+      return res.status(400).json({ error: "device_id must be a number" });
+    }
+    const total = await captureService.countCaptures({
+      deviceId: Number.isFinite(deviceId) ? deviceId : null,
+    });
+    res.json({ total });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /captures
+ * Admin-only bulk delete of bin photos (capture rows + related predictions/alerts).
+ *
+ * Query/body:
+ *   older_than_days — delete captures older than N days (omit + all=1 → delete all)
+ *   keep_latest     — keep the N newest captures
+ *   device_id       — limit to one device
+ *   all=1           — required when deleting everything (safety)
+ */
+async function deleteCaptures(req, res, next) {
+  try {
+    if (!db.isDbEnabled()) {
+      return res.status(503).json({
+        error: "Captures unavailable: DATABASE_URL not set.",
+      });
+    }
+
+    const q = { ...req.query, ...(req.body || {}) };
+    const olderRaw = q.older_than_days;
+    const keepRaw = q.keep_latest;
+    const deviceIdRaw = q.device_id;
+    const deleteAll =
+      q.all === true ||
+      q.all === "1" ||
+      String(q.all || "").toLowerCase() === "true";
+
+    const olderThanDays =
+      olderRaw !== undefined && olderRaw !== null && olderRaw !== ""
+        ? Number(olderRaw)
+        : null;
+    const keepLatest =
+      keepRaw !== undefined && keepRaw !== null && keepRaw !== ""
+        ? Number(keepRaw)
+        : null;
+    const deviceId =
+      deviceIdRaw !== undefined && deviceIdRaw !== null && deviceIdRaw !== ""
+        ? parseInt(deviceIdRaw, 10)
+        : null;
+
+    if (olderThanDays != null && !Number.isFinite(olderThanDays)) {
+      return res.status(400).json({ error: "older_than_days must be a number" });
+    }
+    if (keepLatest != null && !Number.isFinite(keepLatest)) {
+      return res.status(400).json({ error: "keep_latest must be a number" });
+    }
+    if (
+      deviceIdRaw !== undefined &&
+      deviceIdRaw !== "" &&
+      !Number.isFinite(deviceId)
+    ) {
+      return res.status(400).json({ error: "device_id must be a number" });
+    }
+
+    const hasFilter =
+      olderThanDays != null || keepLatest != null || Number.isFinite(deviceId);
+    if (!deleteAll && !hasFilter) {
+      return res.status(400).json({
+        error:
+          "Specify older_than_days, keep_latest, and/or all=1 to delete captures.",
+      });
+    }
+    if (deleteAll && olderThanDays == null && keepLatest == null) {
+      // full wipe — ok
+    }
+
+    const result = await captureService.deleteCaptures({
+      olderThanDays: olderThanDays != null ? olderThanDays : null,
+      deviceId: Number.isFinite(deviceId) ? deviceId : null,
+      keepLatest: keepLatest != null ? keepLatest : null,
+      // When all=1 with no olderThan/keepLatest, where is empty → delete all matching device filter
+    });
+
+    // If caller asked all=1 but also older_than, deleteCaptures already applied older filter.
+    // If neither older nor keep and not all — already rejected above.
+    // Edge: all=1 with keep_latest uses keep path; all=1 alone deletes everything.
+
+    console.log(
+      `[captures] deleted=${result.deleted} remaining=${result.remaining} by user=${req.user?.id || "?"}`
+    );
+
+    res.json({
+      message:
+        result.deleted === 0
+          ? "No captures matched the filter."
+          : `Deleted ${result.deleted} capture(s).`,
+      deleted: result.deleted,
+      remaining: result.remaining,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  listCaptures,
+  getCapture,
+  getCaptureImage,
+  getCaptureStats,
+  deleteCaptures,
+};

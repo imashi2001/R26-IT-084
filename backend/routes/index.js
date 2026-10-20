@@ -35,7 +35,8 @@ router.get("/", (_req, res) => {
       "GET /forecast?lat=&lon=&hours=24, GET /forecast/:deviceId?hours=24",
     weather:
       "GET /weather?lat=&lng= (or ?device_id=) — current temp/humidity/condition",
-    captures: "GET /captures, GET /captures/:id, GET /captures/:id/image",
+    captures:
+      "GET /captures, GET /captures/stats, DELETE /captures (admin), GET /captures/:id, GET /captures/:id/image",
     alerts: "GET /alerts?status=open|acknowledged|actioned|rejected|dismissed|all, PATCH /alerts/:id (admin)",
     devices:
       "GET /devices, GET /devices/map, GET /devices/nearest, GET /devices/:id/latest, GET /devices/:id/captures, POST /devices/:id/speaker-test (admin, laptop bridge), POST /devices/:id/audio-test (admin, ESP32 DFPlayer queue), POST /devices/:id/audio-stop (admin, stop DFPlayer), GET /devices/commands?esp32_id=, POST /devices/commands/:command_id/ack, GET /devices/commands/:command_id (admin)",

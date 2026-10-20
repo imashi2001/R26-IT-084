@@ -10,6 +10,8 @@ import EmptyState from "../components/dashboard/EmptyState";
 import PageSkeleton from "../components/dashboard/PageSkeleton";
 import AudioTrackAssignmentCard from "../components/dashboard/AudioTrackAssignmentCard";
 import AudioTrackTestPanel from "../components/dashboard/AudioTrackTestPanel";
+import VoicePolicyCard from "../components/dashboard/VoicePolicyCard";
+import AnimalAutoPredictCard from "../components/dashboard/AnimalAutoPredictCard";
 import useDevicesOverview from "../hooks/useDevicesOverview";
 import useAudioSettings from "../hooks/useAudioSettings";
 import { useAuth } from "../context/AuthContext";
@@ -99,6 +101,22 @@ export default function SpeakerCheckPage() {
                 Refresh
               </button>
             }
+          />
+
+          <AnimalAutoPredictCard
+            authFetch={authFetch}
+            isAdmin={isAdmin}
+            settings={audioSettings}
+            loading={audioLoading}
+            onSaved={(saved) => setAudioSettings(saved)}
+          />
+
+          <VoicePolicyCard
+            authFetch={authFetch}
+            isAdmin={isAdmin}
+            settings={audioSettings}
+            loading={audioLoading}
+            onSaved={(saved) => setAudioSettings(saved)}
           />
 
           <AudioTrackAssignmentCard

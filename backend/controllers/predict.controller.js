@@ -278,6 +278,7 @@ async function runRequestedModels({
   runAllModels,
   binFillOnly,
   deviceId,
+  includeAnimal = true,
 }) {
   const warnings = [];
   let waste = null;
@@ -292,9 +293,13 @@ async function runRequestedModels({
       filename,
       mimetype: imageMimetype,
       litterBinPolygon: await litterBinOutlineService.polygonForDevice(deviceId),
+      includeAnimal,
     });
     waste = all.waste;
     animal = all.animal;
+    if (!includeAnimal) {
+      animal = modelClient.emptyAnimalPayload("disabled_in_settings");
+    }
     bin_fill = all.bin_fill;
     littering_action = all.littering_action;
     litter_severity = all.litter_severity;
@@ -362,6 +367,7 @@ async function finishPredictAnalysis({
   savedCapture,
   motionSessionId,
   eventId,
+  includeAnimal = true,
 }) {
   const predictStarted = Date.now();
   const inferred = await runRequestedModels({
@@ -372,6 +378,7 @@ async function finishPredictAnalysis({
     runAllModels,
     binFillOnly,
     deviceId,
+    includeAnimal,
   });
   const { waste, animal, bin_fill } = inferred;
   let { littering_action, litter_severity, warnings } = inferred;
@@ -744,6 +751,13 @@ async function predict(req, res, next) {
       : "";
     const eventId = body.event_id ? String(body.event_id).trim() : "";
 
+    // Manual Animal Detection tab uses model=animal — always allowed.
+    // ESP32 / "all" auto path respects Settings → enable_animal_on_predict.
+    const audioSettings = audioSettingsService.getSettings();
+    const includeAnimal =
+      requestedModel === "animal" ||
+      Boolean(audioSettings.enable_animal_on_predict);
+
     const analysisInput = {
       imageBuffer,
       filename,
@@ -760,6 +774,7 @@ async function predict(req, res, next) {
       savedCapture,
       motionSessionId,
       eventId,
+      includeAnimal,
     };
 
     // ESP32 only needs the JPEG stored. Models + audio continue after the reply

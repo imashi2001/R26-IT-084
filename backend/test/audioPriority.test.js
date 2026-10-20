@@ -186,57 +186,150 @@ describe("audioSettingsService validation", () => {
 });
 
 describe("session announcement suppression", () => {
-  it("first play, wait 30s for same, allow scenario change, spam after 60s", () => {
+  it("classic: first play, wait 30s for same, allow scenario change, spam after 60s", () => {
     const audioTriggerService = require("../services/audioTriggerService");
     audioTriggerService.resetSessionAnnounce();
     const sessionId = "42";
     const litter = {
       scenario_key: "illegal_dumping",
       track: 1,
+      confidence: 0.9,
     };
     const full = {
       scenario_key: "waste_full",
       track: 2,
+      confidence: 0.9,
     };
     const t0 = 1_000_000;
+    const policy = "classic";
 
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0),
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0, policy),
       false
     );
     audioTriggerService.rememberSessionAnnounce(sessionId, litter, t0);
 
-    // Same scenario immediately → wait for 30s
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0 + 5_000),
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        litter,
+        t0 + 5_000,
+        policy
+      ),
       true
     );
 
-    // Scenario change before spam window → allow
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, full, t0 + 10_000),
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        full,
+        t0 + 10_000,
+        policy
+      ),
       false
     );
 
-    // Same scenario after 30s → allow second play
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0 + 30_000),
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        litter,
+        t0 + 30_000,
+        policy
+      ),
       false
     );
     audioTriggerService.rememberSessionAnnounce(sessionId, litter, t0 + 30_000);
 
-    // Third attempt → max plays
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0 + 35_000),
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        litter,
+        t0 + 35_000,
+        policy
+      ),
       true
     );
 
-    // Fresh session past 60s from first play → spam
     audioTriggerService.resetSessionAnnounce();
     audioTriggerService.rememberSessionAnnounce(sessionId, litter, t0);
     assert.equal(
-      audioTriggerService.suppressSameSessionAnnounce(sessionId, litter, t0 + 60_000),
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        litter,
+        t0 + 60_000,
+        policy
+      ),
       true
+    );
+  });
+
+  it("quality: thank-you once, play on change, after 60s only if different", () => {
+    const audioTriggerService = require("../services/audioTriggerService");
+    audioTriggerService.resetSessionAnnounce();
+    const sessionId = "99";
+    const thanks = {
+      scenario_key: "correct_dumping",
+      track: 4,
+      confidence: 0.8,
+    };
+    const illegal = {
+      scenario_key: "illegal_dumping",
+      track: 1,
+      confidence: 0.85,
+    };
+    const t0 = 2_000_000;
+    const policy = "quality";
+
+    // First motion → thank you
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(sessionId, thanks, t0, policy),
+      false
+    );
+    audioTriggerService.rememberSessionAnnounce(sessionId, thanks, t0);
+
+    // Same correct dump again → spam
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        thanks,
+        t0 + 10_000,
+        policy
+      ),
+      true
+    );
+
+    // Illegal dumping → suitable play
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        illegal,
+        t0 + 15_000,
+        policy
+      ),
+      false
+    );
+    audioTriggerService.rememberSessionAnnounce(sessionId, illegal, t0 + 15_000);
+
+    // After 60s same illegal → spam
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        illegal,
+        t0 + 70_000,
+        policy
+      ),
+      true
+    );
+
+    // After 60s different (back to thank you) → play
+    assert.equal(
+      audioTriggerService.suppressSameSessionAnnounce(
+        sessionId,
+        thanks,
+        t0 + 70_000,
+        policy
+      ),
+      false
     );
   });
 });

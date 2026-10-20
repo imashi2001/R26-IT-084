@@ -33,6 +33,21 @@ export function mp3Path(track) {
   return `/MP3/${formatTrackLabel(track)}.mp3`;
 }
 
+export const VOICE_POLICY_OPTIONS = [
+  {
+    id: "classic",
+    label: "Classic (timed)",
+    summary:
+      "First photo plays, same track may replay after 30s, mute after 60s (max 2). Safe for demos / viva.",
+  },
+  {
+    id: "quality",
+    label: "Quality (change-based)",
+    summary:
+      "Plays when the prediction changes (correct vs illegal, full, animal). Same scene is spam; after 60s only a different result plays. Thank-you once, no spam.",
+  },
+];
+
 export function defaultAudioSettings() {
   return {
     tracks: {
@@ -42,6 +57,8 @@ export function defaultAudioSettings() {
       correct_dumping: 4,
     },
     custom_scenarios: [],
+    voice_policy: "classic",
+    enable_animal_on_predict: false,
     updated_at: null,
   };
 }

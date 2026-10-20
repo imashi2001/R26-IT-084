@@ -15,6 +15,9 @@ import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Card from "../components/dashboard/Card";
 import PromoFooter from "../components/dashboard/PromoFooter";
 import GeminiSettingsCard from "../components/dashboard/GeminiSettingsCard";
+import CapturesCleanupCard from "../components/dashboard/CapturesCleanupCard";
+import VoicePolicyCard from "../components/dashboard/VoicePolicyCard";
+import AnimalAutoPredictCard from "../components/dashboard/AnimalAutoPredictCard";
 import { useAuth } from "../context/AuthContext";
 import useDashboardSettings, {
   removeDashboardHero,
@@ -22,6 +25,7 @@ import useDashboardSettings, {
   uploadDashboardHero,
   uploadDashboardPromo,
 } from "../hooks/useDashboardSettings";
+import useAudioSettings from "../hooks/useAudioSettings";
 
 function ImageUploadPanel({
   title,
@@ -151,6 +155,12 @@ export default function DashboardSettingsPage() {
   const isAdmin = user?.role === "admin";
   const { settings, heroUrl, promoUrl, loading, error, refresh, setSettings } =
     useDashboardSettings();
+  const {
+    settings: audioSettings,
+    loading: audioLoading,
+    refresh: refreshAudio,
+    setSettings: setAudioSettings,
+  } = useAudioSettings();
 
   const heroFileRef = useRef(null);
   const promoFileRef = useRef(null);
@@ -291,7 +301,8 @@ export default function DashboardSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Gemini voice source, API key, dashboard images, and account.
+          Animal auto-detect, voice method, capture cleanup, Gemini, dashboard
+          images, and account.
         </p>
       </div>
 
@@ -300,6 +311,29 @@ export default function DashboardSettingsPage() {
           {error} — gradient fallbacks will show until the API is reachable.
         </div>
       ) : null}
+
+      {/* Pipeline toggles first so they are not buried under the long Gemini card. */}
+      <AnimalAutoPredictCard
+        authFetch={authFetch}
+        isAdmin={isAdmin}
+        settings={audioSettings}
+        loading={audioLoading}
+        onSaved={(saved) => {
+          setAudioSettings(saved);
+          refreshAudio();
+        }}
+      />
+      <VoicePolicyCard
+        authFetch={authFetch}
+        isAdmin={isAdmin}
+        settings={audioSettings}
+        loading={audioLoading}
+        onSaved={(saved) => {
+          setAudioSettings(saved);
+          refreshAudio();
+        }}
+      />
+      <CapturesCleanupCard authFetch={authFetch} isAdmin={isAdmin} />
 
       <GeminiSettingsCard authFetch={authFetch} isAdmin={isAdmin} />
 

@@ -570,26 +570,12 @@ async function listCapturesForDevice(req, res, next) {
       offset,
     });
 
-    const sanitized = rows.map((c) => {
-      const buf = c.image_buffer;
-      const has_image = Boolean(
-        buf &&
-          (Buffer.isBuffer(buf)
-            ? buf.length > 0
-            : typeof buf === "string"
-              ? buf.length > 0
-              : ArrayBuffer.isView(buf) && buf.byteLength > 0)
-      );
-      const { image_buffer: _ib, ...rest } = c;
-      return { ...rest, has_image };
-    });
-
     return res.json({
       device_id: id,
-      count: sanitized.length,
+      count: rows.length,
       limit,
       offset,
-      captures: sanitized,
+      captures: rows,
     });
   } catch (e) {
     return next(e);

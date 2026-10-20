@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import axios from "axios";
 import { apiUrl } from "../utils/apiBase";
 
@@ -18,6 +18,7 @@ import { apiUrl } from "../utils/apiBase";
  *     last7d:   Capture[],          // ASC
  *     loading,  error,              // strings
  *     dbDisabled,                   // true when /captures returned 503
+ *     lastUpdated,                  // ms timestamp of last successful fetch (null until then)
  *     refresh,
  *   }
  *
@@ -40,8 +41,12 @@ export default function useCaptureHistory(intervalMs = 2 * 60 * 1000) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dbDisabled, setDbDisabled] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const inFlight = useRef(false);
 
   const fetchOnce = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
       const { data } = await axios.get(apiUrl("/captures"), {
         params: { limit: 100 },
@@ -52,6 +57,7 @@ export default function useCaptureHistory(intervalMs = 2 * 60 * 1000) {
       setCaptures(list);
       setError(null);
       setDbDisabled(false);
+      setLastUpdated(Date.now());
     } catch (e) {
       const status = e?.response?.status;
       if (status === 503) {
@@ -62,6 +68,7 @@ export default function useCaptureHistory(intervalMs = 2 * 60 * 1000) {
         setError(e?.message || "Failed to fetch /captures");
       }
     } finally {
+      inFlight.current = false;
       setLoading(false);
     }
   }, []);
@@ -69,7 +76,15 @@ export default function useCaptureHistory(intervalMs = 2 * 60 * 1000) {
   useEffect(() => {
     fetchOnce();
     const t = setInterval(fetchOnce, intervalMs);
-    return () => clearInterval(t);
+    // Browsers throttle timers in hidden tabs; catch up as soon as the user is back.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchOnce();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchOnce, intervalMs]);
 
   const slices = useMemo(() => {
@@ -93,6 +108,7 @@ export default function useCaptureHistory(intervalMs = 2 * 60 * 1000) {
     loading,
     error,
     dbDisabled,
+    lastUpdated,
     refresh: fetchOnce,
   };
 }

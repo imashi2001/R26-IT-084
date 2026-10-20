@@ -4,7 +4,7 @@ import { buildAlerts } from "../components/dashboard/cards/RecentAlertsCard";
 
 /** Count actionable alerts (high/warn) from recent captures for nav badges. */
 export default function useAlertBadgeCount() {
-  const { captures, dbDisabled } = useCaptureHistory();
+  const { captures, dbDisabled } = useCaptureHistory(30_000);
   return useMemo(() => {
     if (dbDisabled) return 0;
     return buildAlerts(captures).filter(

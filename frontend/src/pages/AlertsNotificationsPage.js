@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Bell,
@@ -45,6 +45,8 @@ import { withAuthToken } from "../utils/authTransport";
  * /alerts/:id to move items through the workflow: open → acknowledged →
  * actioned / rejected / dismissed, plus an optional admin note.
  */
+
+const ALERTS_POLL_MS = 15_000;
 
 const STATUS_TABS = [
   { id: "all", label: "All" },
@@ -142,8 +144,8 @@ export default function AlertsNotificationsPage() {
   const [draftById, setDraftById] = useState({});
   const [savingId, setSavingId] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     setError(null);
     setDbDisabled(false);
     try {
@@ -166,27 +168,47 @@ export default function AlertsNotificationsPage() {
       setStatusCounts(body.status_counts || {});
     } catch (e) {
       setError(e.message || "Could not load alerts.");
-      setAlerts([]);
+      if (!silent) setAlerts([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [authFetch, tab]);
 
   useEffect(() => {
     load();
+    const t = setInterval(() => load({ silent: true }), ALERTS_POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load({ silent: true });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
 
   const openCount = statusCounts.open ?? 0;
 
+  const serverValuesRef = useRef({});
+
   useEffect(() => {
+    const prevServer = serverValuesRef.current;
+    const nextServer = {};
+    for (const a of alerts) {
+      nextServer[a.id] = { status: a.status, admin_note: a.admin_note || "" };
+    }
+    serverValuesRef.current = nextServer;
+
     setDraftById((prev) => {
-      const next = { ...prev };
+      const next = {};
       for (const a of alerts) {
-        next[a.id] = { status: a.status, admin_note: a.admin_note || "" };
-      }
-      const ids = new Set(alerts.map((a) => a.id));
-      for (const k of Object.keys(next)) {
-        if (!ids.has(Number(k))) delete next[k];
+        const draft = prev[a.id];
+        const old = prevServer[a.id];
+        const edited =
+          draft &&
+          old &&
+          (draft.status !== old.status || draft.admin_note !== old.admin_note);
+        next[a.id] = edited ? draft : nextServer[a.id];
       }
       return next;
     });

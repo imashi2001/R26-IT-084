@@ -11,20 +11,30 @@ import {
   showDashboardBrowserNotification,
 } from "../utils/alertSound";
 
+/** Alerts newer than this on first load still pop up instead of being marked seen. */
+const BOOTSTRAP_RECENT_MS = 2 * 60 * 1000;
+
 /** Poll captures and surface new illegal-dumping / animal alerts as a popup queue. */
-export default function useDashboardAlertPopup(pollMs = 30_000) {
-  const { captures, dbDisabled } = useCaptureHistory(pollMs);
+export default function useDashboardAlertPopup(pollMs = 10_000) {
+  const { captures, dbDisabled, lastUpdated } = useCaptureHistory(pollMs);
   const [queue, setQueue] = useState([]);
   const [current, setCurrent] = useState(null);
   const bootstrapped = useRef(false);
 
   useEffect(() => {
     try {
+      // Wait for the first real fetch: bootstrapping on the initial empty list
+      // would treat every historical capture as new and queue them ahead of live alerts.
+      if (lastUpdated == null) return;
       const popupAlerts = buildDashboardPopupAlerts(captures);
       if (!bootstrapped.current) {
-        markAllPopupSeen(popupAlerts.map((a) => a.id));
         bootstrapped.current = true;
-        return;
+        const cutoff = Date.now() - BOOTSTRAP_RECENT_MS;
+        markAllPopupSeen(
+          popupAlerts
+            .filter((a) => new Date(a.ts).getTime() < cutoff)
+            .map((a) => a.id)
+        );
       }
       if (dbDisabled || !popupAlerts.length) return;
 
@@ -34,16 +44,13 @@ export default function useDashboardAlertPopup(pollMs = 30_000) {
 
       setQueue((prev) => {
         const existing = new Set(prev.map((a) => a.id));
-        const merged = [...prev];
-        for (const alert of fresh) {
-          if (!existing.has(alert.id)) merged.push(alert);
-        }
-        return merged;
+        const added = fresh.filter((a) => !existing.has(a.id));
+        return added.length ? [...added, ...prev] : prev;
       });
     } catch (e) {
       console.warn("[useDashboardAlertPopup]", e);
     }
-  }, [captures, dbDisabled]);
+  }, [captures, dbDisabled, lastUpdated]);
 
   useEffect(() => {
     if (!current && queue.length > 0) {

@@ -171,7 +171,7 @@ async function listCaptures({
   const models = ensureModels();
   if (!models) return [];
 
-  const { Capture, Prediction } = models;
+  const { Capture, Prediction, sequelize } = models;
 
   const where = {};
   if (userId !== null) where.user_id = userId;
@@ -190,15 +190,29 @@ async function listCaptures({
     where.captured_at = range;
   }
 
+  // Image blobs are served by /captures/:id/image; loading them here made every
+  // dashboard poll pull ~100 JPEGs from the database.
   const rows = await Capture.findAll({
     where,
     order: [["captured_at", "DESC"]],
     limit,
     offset,
+    attributes: {
+      exclude: ["image_buffer"],
+      include: [
+        [
+          sequelize.fn("OCTET_LENGTH", sequelize.col("Capture.image_buffer")),
+          "image_bytes",
+        ],
+      ],
+    },
     include: [{ model: Prediction, as: "predictions" }],
   });
 
-  return rows.map((c) => c.toJSON());
+  return rows.map((row) => {
+    const { image_bytes: imageBytes, ...rest } = row.toJSON();
+    return { ...rest, has_image: Number(imageBytes) > 0 };
+  });
 }
 
 async function getCapture(id) {

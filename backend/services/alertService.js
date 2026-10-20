@@ -155,31 +155,36 @@ async function syncAlertsFromCaptures({ lookbackDays = 30, scanLimit = 400 } = {
   const captures = rows.map((row) => row.toJSON());
   const episodes = annotateLitteringEpisodes(captures);
 
-  let created = 0;
+  const candidates = [];
   for (const c of captures) {
     const episode = episodes.get(c.id);
     if (episode) c._littering_confirmed = episode.first_confirming;
     const classified = classifyCaptureForAlert(c);
-    if (!classified) continue;
+    if (classified) candidates.push({ capture: c, classified });
+  }
+  if (!candidates.length) return { created: 0 };
 
-    const existing = await Alert.findOne({
-      where: { capture_id: c.id },
-    });
-    if (existing) continue;
+  const existingRows = await Alert.findAll({
+    where: { capture_id: { [Op.in]: candidates.map((x) => x.capture.id) } },
+    attributes: ["capture_id"],
+    raw: true,
+  });
+  const existingIds = new Set(existingRows.map((r) => r.capture_id));
 
-    await Alert.create({
-      capture_id: c.id,
-      device_id: c.device_id,
+  const toCreate = candidates
+    .filter((x) => !existingIds.has(x.capture.id))
+    .map(({ capture, classified }) => ({
+      capture_id: capture.id,
+      device_id: capture.device_id,
       alert_type: classified.alert_type,
       severity: classified.severity,
       title: classified.title,
       summary: classified.summary,
       status: "open",
-    });
-    created += 1;
-  }
+    }));
+  if (toCreate.length) await Alert.bulkCreate(toCreate);
 
-  return { created };
+  return { created: toCreate.length };
 }
 
 async function listAlerts({ status = null, limit = 100, offset = 0 } = {}) {

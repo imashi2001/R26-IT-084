@@ -54,24 +54,11 @@ async function listCaptures(req, res, next) {
       since,
       until,
     });
-    const sanitized = captures.map((c) => {
-      const buf = c.image_buffer;
-      const has_image = Boolean(
-        buf &&
-          (Buffer.isBuffer(buf)
-            ? buf.length > 0
-            : typeof buf === "string"
-              ? buf.length > 0
-              : ArrayBuffer.isView(buf) && buf.byteLength > 0)
-      );
-      const { image_buffer: _ib, ...rest } = c;
-      return { ...rest, has_image };
-    });
     res.json({
-      count: sanitized.length,
+      count: captures.length,
       limit,
       offset,
-      captures: sanitized,
+      captures,
     });
   } catch (err) {
     next(err);

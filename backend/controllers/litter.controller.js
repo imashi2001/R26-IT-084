@@ -1,9 +1,11 @@
 /**
  * POST /litter-severity — proxy to litter microservice (YOLO + LSI).
  * Multipart field: image (same as /predict).
+ * Optional field device_id: apply that bin's saved outline (inside-bin litter ignored).
  */
 
 const modelClient = require("../services/modelClient");
+const litterBinOutlineService = require("../services/litterBinOutlineService");
 
 async function analyze(req, res) {
   try {
@@ -13,10 +15,15 @@ async function analyze(req, res) {
       });
     }
 
+    const binPolygon = await litterBinOutlineService.polygonForDevice(
+      req.body?.device_id
+    );
+
     const data = await modelClient.inferLitter({
       fileBuffer: req.file.buffer,
       filename: req.file.originalname,
       mimetype: req.file.mimetype,
+      binPolygon,
     });
 
     return res.json(data);

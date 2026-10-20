@@ -43,6 +43,7 @@ export default defineConfig({
       "/alerts": apiWithSpaBypass,
       "/litter-severity": apiWithSpaBypass,
       "/littering-action": BACKEND,
+      "/litter-insights": apiWithSpaBypass,
       "/dashboard": apiWithSpaBypass,
       "/collection": BACKEND,
       "/uploads": BACKEND,

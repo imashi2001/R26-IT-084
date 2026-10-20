@@ -20,9 +20,13 @@ import {
   btnGhost,
   bannerTone,
   riskBadgeClass,
+  selectClass,
+  labelClass,
 } from "../components/dashboard/dashboardUi";
-import { analyzeLitterSeverity } from "../utils/apiBase";
+import axios from "axios";
+import { analyzeLitterSeverity, apiUrl } from "../utils/apiBase";
 import { formatLsi } from "../utils/litterSeverity";
+import { formatBinCode } from "../utils/dashboardBins";
 
 const SEVERITY_HISTORY_CAP = 8;
 const ELEVATED_STREAK_FOR_SIGNAGE = 3;
@@ -81,12 +85,27 @@ export default function LitterSeverityPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [severityHistory, setSeverityHistory] = useState([]);
+  const [bins, setBins] = useState([]);
+  const [outlineBinId, setOutlineBinId] = useState("");
 
   useEffect(() => {
     return () => {
       if (imageUrl) URL.revokeObjectURL(imageUrl);
     };
   }, [imageUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get(apiUrl("/devices"))
+      .then(({ data }) => {
+        if (!cancelled) setBins(data?.devices || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const pickFile = useCallback((next) => {
     setFile(next);
@@ -114,7 +133,9 @@ export default function LitterSeverityPage() {
     setError("");
     setResult(null);
     try {
-      const data = await analyzeLitterSeverity(file);
+      const data = await analyzeLitterSeverity(file, {
+        deviceId: outlineBinId || null,
+      });
       setResult(data);
       const sev = (data.severity || "").toString().trim();
       if (sev) {
@@ -130,7 +151,7 @@ export default function LitterSeverityPage() {
     } finally {
       setLoading(false);
     }
-  }, [file]);
+  }, [file, outlineBinId]);
 
   const elevatedStreak =
     result && !result.error ? trailingElevatedStreak(severityHistory) : 0;
@@ -289,7 +310,30 @@ export default function LitterSeverityPage() {
               onRun={run}
               onReset={reset}
               previewExtra={previewExtra}
-            />
+            >
+              <label className="block max-w-sm">
+                <span className={labelClass}>Apply bin outline (optional)</span>
+                <select
+                  className={selectClass}
+                  value={outlineBinId}
+                  onChange={(e) => setOutlineBinId(e.target.value)}
+                >
+                  <option value="">None — count all detected litter</option>
+                  {bins.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {formatBinCode(b.id)} · {b.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Uses the outline saved in{" "}
+                  <Link to="/litter-insights" className="text-brand-400 hover:underline">
+                    Litter Insights
+                  </Link>{" "}
+                  so rubbish inside the bin is ignored.
+                </span>
+              </label>
+            </LitterModelWorkspace>
 
             {result && !result.error ? (
               <Card>
@@ -326,6 +370,13 @@ export default function LitterSeverityPage() {
                       />
                     </div>
                   </div>
+
+                  {result.bin_polygon_applied ? (
+                    <p className="mt-3 text-xs text-sky-300">
+                      Bin outline applied · {result.ignored_inside_bin ?? 0} object(s)
+                      inside the bin ignored.
+                    </p>
+                  ) : null}
 
                   {Array.isArray(result.detections) &&
                   result.detections.length > 0 ? (

@@ -31,6 +31,7 @@ const ReportsPage = lazyWithRetry(() => import("./pages/ReportsPage"));
 const HistoryPage = lazyWithRetry(() => import("./pages/HistoryPage"));
 const LitterSeverityPage = lazyWithRetry(() => import("./pages/LitterSeverityPage"));
 const LitteringEventPage = lazyWithRetry(() => import("./pages/LitteringEventPage"));
+const LitterInsightsPage = lazyWithRetry(() => import("./pages/LitterInsightsPage"));
 const SpeakerCheckPage = lazyWithRetry(() => import("./pages/SpeakerCheckPage"));
 
 const protectedShell = (el) => (
@@ -105,6 +106,10 @@ export default function App() {
           <Route
             path="/littering-event"
             element={protectedShell(<LitteringEventPage />)}
+          />
+          <Route
+            path="/litter-insights"
+            element={protectedShell(<LitterInsightsPage />)}
           />
           <Route
             path="/forecast"

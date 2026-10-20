@@ -19,6 +19,7 @@ import {
   Volume2,
   CircleCheck,
   CircleAlert,
+  BarChart3,
 } from "lucide-react";
 import axios from "axios";
 import { apiUrl } from "../../utils/apiBase";
@@ -36,6 +37,7 @@ export const NAV_ITEMS = [
   { to: "/animals", icon: PawPrint, label: "Animal Detection" },
   { to: "/littering-event", icon: UserRoundX, label: "Littering Detection" },
   { to: "/litter-severity", icon: ScanSearch, label: "Litter Severity" },
+  { to: "/litter-insights", icon: BarChart3, label: "Litter Insights" },
   { to: "/forecast", icon: TrendingUp, label: "Forecasting" },
   { to: "/waste-update", icon: Database, label: "Waste Update" },
   { to: "/alerts", icon: Bell, label: "Alerts & Notifications", badge: true },

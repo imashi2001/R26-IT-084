@@ -41,6 +41,7 @@ const geminiSettingsService = require("../services/geminiSettingsService");
 const geminiVisionService = require("../services/geminiVisionService");
 const litteringAlertService = require("../services/litteringAlertService");
 const litterSeverityAlertService = require("../services/litterSeverityAlertService");
+const litterBinOutlineService = require("../services/litterBinOutlineService");
 const { litterSeverityExtras } = require("../services/litterSeverityUtils");
 const weatherService = require("../services/weatherService");
 const { computeRisk } = require("../services/riskEngine");
@@ -276,6 +277,7 @@ async function runRequestedModels({
   requestedModel,
   runAllModels,
   binFillOnly,
+  deviceId,
 }) {
   const warnings = [];
   let waste = null;
@@ -289,6 +291,7 @@ async function runRequestedModels({
       fileBuffer: imageBuffer,
       filename,
       mimetype: imageMimetype,
+      litterBinPolygon: await litterBinOutlineService.polygonForDevice(deviceId),
     });
     waste = all.waste;
     animal = all.animal;
@@ -368,6 +371,7 @@ async function finishPredictAnalysis({
     requestedModel,
     runAllModels,
     binFillOnly,
+    deviceId,
   });
   const { waste, animal, bin_fill } = inferred;
   let { littering_action, litter_severity, warnings } = inferred;
@@ -805,6 +809,11 @@ async function predict(req, res, next) {
               lsi: analyzed.litter_severity.lsi,
               detection_count: analyzed.litter_severity.detection_count,
               metrics: analyzed.litter_severity.metrics,
+              bin_polygon_applied: Boolean(
+                analyzed.litter_severity.bin_polygon_applied
+              ),
+              ignored_inside_bin:
+                Number(analyzed.litter_severity.ignored_inside_bin) || 0,
             }
           : null,
       audio_trigger: analyzed.audioTriggerResult?.resolved

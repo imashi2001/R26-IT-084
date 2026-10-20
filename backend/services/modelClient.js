@@ -76,12 +76,15 @@ async function pingAllModels() {
   return result;
 }
 
-function buildForm(fileBuffer, filename, mimetype) {
+function buildForm(fileBuffer, filename, mimetype, fields = null) {
   const form = new FormData();
   form.append("file", fileBuffer, {
     filename: filename || "upload.jpg",
     contentType: mimetype || "image/jpeg",
   });
+  for (const [key, value] of Object.entries(fields || {})) {
+    if (value != null) form.append(key, String(value));
+  }
   return form;
 }
 
@@ -145,7 +148,7 @@ function normalizeBinFillPayload(raw) {
   };
 }
 
-async function postToService(modelName, fileBuffer, filename, mimetype) {
+async function postToService(modelName, fileBuffer, filename, mimetype, fields = null) {
   const base = getModelUrl(modelName);
   if (!base) {
     const err = new Error(
@@ -155,7 +158,7 @@ async function postToService(modelName, fileBuffer, filename, mimetype) {
     throw err;
   }
 
-  const form = buildForm(fileBuffer, filename, mimetype);
+  const form = buildForm(fileBuffer, filename, mimetype, fields);
   const targetUrl = `${base}/predict`;
 
   try {
@@ -219,15 +222,22 @@ async function inferAnimal({ fileBuffer, filename, mimetype }) {
   return normalizeAnimalPayload(data);
 }
 
-/** Litter severity microservice (YOLO + LSI). Requires MODEL_LITTER_URL. */
-async function inferLitter({ fileBuffer, filename, mimetype }) {
+/**
+ * Litter severity microservice (YOLO + LSI). Requires MODEL_LITTER_URL.
+ * binPolygon: optional bin outline ([[x, y], ...] fractions) — litter inside it is ignored.
+ */
+async function inferLitter({ fileBuffer, filename, mimetype, binPolygon = null }) {
   const base = getModelUrl("litter");
   if (!base) {
     const err = new Error("MODEL_LITTER_URL is not set on the backend.");
     err.status = 503;
     throw err;
   }
-  return postToService("litter", fileBuffer, filename, mimetype);
+  const fields =
+    Array.isArray(binPolygon) && binPolygon.length >= 3
+      ? { bin_polygon: JSON.stringify(binPolygon) }
+      : null;
+  return postToService("litter", fileBuffer, filename, mimetype, fields);
 }
 
 function isLitteringActionConfigured() {
@@ -370,7 +380,7 @@ async function pingLitteringActionHealth() {
  * If one service is down, the other still produces its result; the failing
  * one comes back with `{ error: "..." }` so the caller can degrade gracefully.
  */
-async function inferAll({ fileBuffer, filename, mimetype }) {
+async function inferAll({ fileBuffer, filename, mimetype, litterBinPolygon = null }) {
   const hasFill = Boolean(getModelUrl("fill"));
   const hasLitter = Boolean(getModelUrl("litter"));
   const hasLitteringAction = isLitteringActionConfigured();
@@ -381,7 +391,12 @@ async function inferAll({ fileBuffer, filename, mimetype }) {
       ? inferBinFill({ fileBuffer, filename, mimetype })
       : Promise.resolve(null),
     hasLitter
-      ? inferLitter({ fileBuffer, filename, mimetype })
+      ? inferLitter({
+          fileBuffer,
+          filename,
+          mimetype,
+          binPolygon: litterBinPolygon,
+        })
       : Promise.resolve(null),
     hasLitteringAction
       ? inferLitteringAction({ fileBuffer, filename, mimetype })

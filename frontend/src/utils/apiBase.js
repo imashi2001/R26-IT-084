@@ -203,10 +203,12 @@ export async function predictAnimal(file, binId) {
 
 /**
  * Litter severity (YOLO + LSI) via Express proxy → litter microservice.
+ * opts.deviceId: apply that bin's saved outline (inside-bin litter ignored).
  */
-export async function analyzeLitterSeverity(file) {
+export async function analyzeLitterSeverity(file, opts = {}) {
   const form = new FormData();
   form.append("image", file);
+  if (opts.deviceId) form.append("device_id", String(opts.deviceId));
   const { data } = await axios.post(apiUrl("/litter-severity"), form, {
     headers: { "Content-Type": "multipart/form-data" },
   });

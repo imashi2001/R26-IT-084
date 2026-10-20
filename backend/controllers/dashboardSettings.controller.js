@@ -102,6 +102,20 @@ function getAudioSettings(_req, res) {
     ...settings,
     builtin_labels: audioSettingsService.BUILTIN_LABELS,
     test_tracks: audioSettingsService.allTestTracks(settings),
+    voice_policy_options: [
+      {
+        id: "classic",
+        label: "Classic (timed)",
+        summary:
+          "First photo plays, same track may replay after 30s, mute after 60s (max 2). Safe for demos.",
+      },
+      {
+        id: "quality",
+        label: "Quality (change-based)",
+        summary:
+          "Plays when the prediction changes (correct vs illegal, etc.). Same scene is spam; after 60s only a different result plays. Thank-you without spam.",
+      },
+    ],
   });
 }
 
@@ -116,6 +130,20 @@ function putAudioSettings(req, res) {
       ...result.settings,
       builtin_labels: audioSettingsService.BUILTIN_LABELS,
       test_tracks: audioSettingsService.allTestTracks(result.settings),
+      voice_policy_options: [
+        {
+          id: "classic",
+          label: "Classic (timed)",
+          summary:
+            "First photo plays, same track may replay after 30s, mute after 60s (max 2). Safe for demos.",
+        },
+        {
+          id: "quality",
+          label: "Quality (change-based)",
+          summary:
+            "Plays when the prediction changes (correct vs illegal, etc.). Same scene is spam; after 60s only a different result plays. Thank-you without spam.",
+        },
+      ],
     });
   } catch (e) {
     if (e.status) {

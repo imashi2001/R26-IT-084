@@ -7,11 +7,13 @@
  * When `resolvedOverride` is provided (e.g. Gemini / both-mode winner),
  * YOLO scenario resolution is skipped for the voice queue.
  *
- * Motion-session voice policy (per motion_session_id):
- *  1) First analyzed photo → play immediately
- *  2) If motion continues, allow one more play after 30s (suitable track)
- *  3) After 60s from first play → treat further shots as spam (no play)
- * Scenario changes before the spam window still get a suitable voice.
+ * Voice policies (Settings → Voice command method):
+ *  - classic (default, viva-safe): first play, same scenario again after 30s,
+ *    mute all after 60s, max 2 plays; scenario change allowed before mute.
+ *  - quality: play on first confident result and whenever the scenario
+ *    meaningfully changes (correct dump / illegal / full / animal). Same
+ *    scenario is spam. After 60s still only play if the image result differs.
+ *    Thank-you (correct_dumping) plays once per situation, not every photo.
  */
 
 const { AUTO_AUDIO_ON_PREDICT } = require("../config/env");
@@ -19,12 +21,16 @@ const deviceCommandService = require("./deviceCommandService");
 const audioSettingsService = require("./audioSettingsService");
 const audioPriorityService = require("./audioPriorityService");
 
-/** First replay of same/suitable voice while motion continues. */
+/** classic: first replay of same/suitable voice while motion continues. */
 const SESSION_REPLAY_AFTER_MS = 30_000;
-/** After this from first play, further session shots are spam. */
+/** After this from first play: classic mutes all; quality only allows change. */
 const SESSION_SPAM_AFTER_MS = 60_000;
-/** Max auto plays for one motion session (first + one reminder). */
+/** classic max auto plays for one motion session. */
 const SESSION_MAX_PLAYS = 2;
+/** quality: cap scenario-change announces so flapping models cannot loop forever. */
+const QUALITY_MAX_PLAYS = 6;
+/** Optional confidence floor for quality first/change announces. */
+const QUALITY_MIN_CONFIDENCE = 0.35;
 
 /** @type {Map<string, { firstPlayAt: number, playCount: number, scenario: string, track: number }>} */
 const sessionAnnounce = new Map();
@@ -57,36 +63,93 @@ function rememberSessionAnnounce(sessionId, resolved, at = Date.now()) {
 }
 
 /**
- * @returns {false | { reason: string }} — false = allow play
+ * Classic (old) timed policy.
+ * @returns {false | { reason: string }}
  */
-function sessionVoiceDecision(sessionId, resolved, now = Date.now()) {
+function sessionVoiceDecisionClassic(sessionId, resolved, now = Date.now()) {
   if (!sessionId || !resolved) return false;
   const prev = sessionAnnounce.get(String(sessionId));
-  if (!prev) return false; // first photo of session
+  if (!prev) return false;
 
   const age = now - prev.firstPlayAt;
   if (age >= SESSION_SPAM_AFTER_MS) {
-    return { reason: "session_spam_after_60s" };
+    return { reason: "classic_spam_after_60s" };
   }
   if ((prev.playCount || 0) >= SESSION_MAX_PLAYS) {
-    return { reason: "session_max_plays" };
+    return { reason: "classic_max_plays" };
   }
 
   const same =
     prev.scenario === resolved.scenario_key && prev.track === resolved.track;
-  if (!same) {
-    // New situation before spam window — allow suitable voice.
-    return false;
-  }
+  if (!same) return false;
   if (age < SESSION_REPLAY_AFTER_MS) {
-    return { reason: "same_scenario_wait_30s" };
+    return { reason: "classic_same_wait_30s" };
   }
-  // Same or updated suitable track after 30s, still under 60s / max plays.
   return false;
 }
 
-function suppressSameSessionAnnounce(sessionId, resolved, now = Date.now()) {
-  return Boolean(sessionVoiceDecision(sessionId, resolved, now));
+/**
+ * Quality (new) change-based policy.
+ * - First photo → play suitable (incl. thank-you / correct_dumping)
+ * - Same scenario → spam (no thank-you every 10s)
+ * - Different scenario → play suitable (correct vs illegal, etc.)
+ * - After 60s: same → spam; different → still play
+ * @returns {false | { reason: string }}
+ */
+function sessionVoiceDecisionQuality(sessionId, resolved, now = Date.now()) {
+  if (!sessionId || !resolved) return false;
+
+  const conf = Number(resolved.confidence);
+  if (Number.isFinite(conf) && conf < QUALITY_MIN_CONFIDENCE) {
+    return { reason: "quality_low_confidence" };
+  }
+
+  const prev = sessionAnnounce.get(String(sessionId));
+  if (!prev) return false; // first confident announce
+
+  const same =
+    prev.scenario === resolved.scenario_key && prev.track === resolved.track;
+
+  if (same) {
+    // Includes repeated thank-you / correct_dumping while motion continues.
+    return { reason: "quality_same_scenario_spam" };
+  }
+
+  if ((prev.playCount || 0) >= QUALITY_MAX_PLAYS) {
+    return { reason: "quality_max_plays" };
+  }
+
+  // Different result (before or after 60s) → play suitable command.
+  return false;
+}
+
+/**
+ * @param {string} sessionId
+ * @param {object} resolved
+ * @param {number} [now]
+ * @param {"classic"|"quality"} [policy]
+ * @returns {false | { reason: string }}
+ */
+function sessionVoiceDecision(
+  sessionId,
+  resolved,
+  now = Date.now(),
+  policy = "classic"
+) {
+  const mode = audioSettingsService.normalizeVoicePolicy(policy);
+  if (mode === "quality") {
+    return sessionVoiceDecisionQuality(sessionId, resolved, now);
+  }
+  return sessionVoiceDecisionClassic(sessionId, resolved, now);
+}
+
+function suppressSameSessionAnnounce(
+  sessionId,
+  resolved,
+  now = Date.now(),
+  policy = "classic"
+) {
+  return Boolean(sessionVoiceDecision(sessionId, resolved, now, policy));
 }
 
 function resetSessionAnnounce() {
@@ -131,9 +194,11 @@ async function maybeQueueFromPredict(input) {
     return { command: null, resolved: null };
   }
 
+  const settings = audioSettingsService.getSettings();
+  const voicePolicy = settings.voice_policy || "classic";
+
   let resolved = input?.resolvedOverride || null;
   if (!resolved?.track || !resolved?.scenario_key) {
-    const settings = audioSettingsService.getSettings();
     resolved = audioPriorityService.resolveAudioScenario({
       risk: input.risk,
       bin_fill_level: input.bin_fill_level,
@@ -157,10 +222,10 @@ async function maybeQueueFromPredict(input) {
     : "";
   const eventId = input.eventId ? String(input.eventId).trim() : "";
 
-  const decision = sessionVoiceDecision(sessionId, resolved);
+  const decision = sessionVoiceDecision(sessionId, resolved, Date.now(), voicePolicy);
   if (decision) {
     console.log(
-      `[audioTrigger] suppress ${decision.reason} session=${sessionId} event=${eventId} scenario=${resolved.scenario_key} track=${resolved.track}`
+      `[audioTrigger] policy=${voicePolicy} suppress ${decision.reason} session=${sessionId} event=${eventId} scenario=${resolved.scenario_key} track=${resolved.track}`
     );
     return { command: null, resolved };
   }
@@ -171,7 +236,7 @@ async function maybeQueueFromPredict(input) {
   );
   if (skip) {
     console.log(
-      `[audioTrigger] skip track=${resolved.track} for ${esp32Id} (max plays in cooldown window)`
+      `[audioTrigger] policy=${voicePolicy} skip track=${resolved.track} for ${esp32Id} (max plays in cooldown window)`
     );
     return { command: null, resolved };
   }
@@ -182,7 +247,7 @@ async function maybeQueueFromPredict(input) {
     });
     rememberSessionAnnounce(sessionId, resolved);
     console.log(
-      `[audioTrigger] scenario=${resolved.scenario_key} track=${resolved.track} conf=${(resolved.confidence * 100).toFixed(0)}% source=${resolved.source || "models"} session=${sessionId} event=${eventId} command_id=${cmd?.command_id}`
+      `[audioTrigger] policy=${voicePolicy} scenario=${resolved.scenario_key} track=${resolved.track} conf=${(Number(resolved.confidence) * 100 || 0).toFixed(0)}% source=${resolved.source || "models"} session=${sessionId} event=${eventId} command_id=${cmd?.command_id}`
     );
     return { command: cmd, resolved };
   } catch (e) {
@@ -198,7 +263,11 @@ module.exports = {
   rememberSessionAnnounce,
   resetSessionAnnounce,
   sessionVoiceDecision,
+  sessionVoiceDecisionClassic,
+  sessionVoiceDecisionQuality,
   SESSION_REPLAY_AFTER_MS,
   SESSION_SPAM_AFTER_MS,
   SESSION_MAX_PLAYS,
+  QUALITY_MAX_PLAYS,
+  QUALITY_MIN_CONFIDENCE,
 };

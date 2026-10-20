@@ -18,6 +18,7 @@ import GeminiSettingsCard from "../components/dashboard/GeminiSettingsCard";
 import CapturesCleanupCard from "../components/dashboard/CapturesCleanupCard";
 import VoicePolicyCard from "../components/dashboard/VoicePolicyCard";
 import AnimalAutoPredictCard from "../components/dashboard/AnimalAutoPredictCard";
+import LitterPopupSettingsCard from "../components/litter/LitterPopupSettingsCard";
 import { useAuth } from "../context/AuthContext";
 import useDashboardSettings, {
   removeDashboardHero,
@@ -333,6 +334,7 @@ export default function DashboardSettingsPage() {
           refreshAudio();
         }}
       />
+      <LitterPopupSettingsCard isAdmin={isAdmin} />
       <CapturesCleanupCard authFetch={authFetch} isAdmin={isAdmin} />
 
       <GeminiSettingsCard authFetch={authFetch} isAdmin={isAdmin} />

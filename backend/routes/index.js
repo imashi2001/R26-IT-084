@@ -55,7 +55,7 @@ router.get("/", (_req, res) => {
     littering_action:
       "POST /littering-action (multipart: image) — requires MODEL_LITTERING_ACTION_URL (littering-event microservice)",
     litter_insights:
-      "GET /litter-insights/summary?days=&device_id=&tz_offset=, GET /litter-insights/evidence?type=littering|high|all, POST /litter-insights/feedback, GET /litter-insights/feedback/export, GET|PUT|DELETE /litter-insights/outlines/:deviceId (PUT/DELETE admin)",
+      "GET|PUT /litter-insights/settings (dashboard popup switches; PUT admin), GET /litter-insights/summary?days=&device_id=&tz_offset=, GET /litter-insights/evidence?type=littering|high|all, POST /litter-insights/feedback, GET /litter-insights/feedback/export, GET|PUT|DELETE /litter-insights/outlines/:deviceId (PUT/DELETE admin)",
     dashboard:
       "GET /dashboard/settings, GET /dashboard/settings/audio, PUT /dashboard/settings/audio (admin), GET /dashboard/settings/gemini, PUT /dashboard/settings/gemini (admin), POST /dashboard/settings/gemini/predict (admin, multipart image), POST /dashboard/settings/hero (admin), DELETE /dashboard/settings/hero (admin), POST /dashboard/settings/promo (admin), DELETE /dashboard/settings/promo (admin)",
     collection: "POST /collection/plan — ordered Half+Overflow stops for route planning",

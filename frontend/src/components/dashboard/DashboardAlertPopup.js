@@ -172,6 +172,13 @@ export default function DashboardAlertPopup({
                 label="Detected at"
                 value={formatTs(alert.ts)}
               />
+              {alert.litterLsi != null ? (
+                <DetailRow
+                  icon={Trash2}
+                  label="Litter severity"
+                  value={`${String(alert.litterSeverity || "—").toUpperCase()} · LSI ${Number(alert.litterLsi).toFixed(1)}`}
+                />
+              ) : null}
               {alert.kind === "animal" && alert.animalCount != null ? (
                 <DetailRow
                   icon={Icon}

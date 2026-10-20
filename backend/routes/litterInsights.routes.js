@@ -4,6 +4,8 @@ const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = Router();
 
+router.get("/settings", requireAuth, c.getAlertSettings);
+router.put("/settings", requireAuth, requireRole("admin"), c.saveAlertSettings);
 router.get("/summary", requireAuth, c.summary);
 router.get("/evidence", requireAuth, c.evidence);
 router.post("/feedback", requireAuth, c.feedback);

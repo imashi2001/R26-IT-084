@@ -5,6 +5,7 @@
 
 const litterInsightsService = require("../services/litterInsightsService");
 const litterBinOutlineService = require("../services/litterBinOutlineService");
+const litterAlertSettingsService = require("../services/litterAlertSettingsService");
 
 function sendError(res, err, next) {
   if (err && Number(err.status) >= 400 && Number(err.status) < 600) {
@@ -120,7 +121,21 @@ async function deleteOutline(req, res, next) {
   }
 }
 
+function getAlertSettings(_req, res) {
+  return res.json(litterAlertSettingsService.getPublicSettings());
+}
+
+function saveAlertSettings(req, res, next) {
+  try {
+    return res.json(litterAlertSettingsService.saveSettings(req.body));
+  } catch (err) {
+    return sendError(res, err, next);
+  }
+}
+
 module.exports = {
+  getAlertSettings,
+  saveAlertSettings,
   summary,
   evidence,
   feedback,

@@ -39,8 +39,34 @@ function litterSeverityExtras(litterPayload) {
       detection_count: count,
       metrics: litterPayload.metrics || null,
       model: litterPayload.model || "litter_severity",
+      bin_polygon_applied: Boolean(litterPayload.bin_polygon_applied),
+      ignored_inside_bin: Number(litterPayload.ignored_inside_bin) || 0,
     },
   };
+}
+
+/**
+ * Early warning: has LSI climbed by at least `delta` from the lowest earlier
+ * reading in `points` (same bin, recent window)? Only MEDIUM qualifies — HIGH
+ * already has its own alert and LOW is not worth escalating.
+ * @param {Array<{ captured_at: any, litter_lsi: number }>} points earlier readings
+ * @returns {null | { from_lsi, to_lsi, rise, from_at }}
+ */
+function detectLitterRise(points, current, { delta = 20 } = {}) {
+  const sev = normalizeSeverity(current?.severity);
+  const to = Number(current?.lsi);
+  if (sev !== "MEDIUM" || !Number.isFinite(to)) return null;
+
+  let low = null;
+  for (const p of points || []) {
+    const v = Number(p?.litter_lsi);
+    if (!Number.isFinite(v)) continue;
+    if (!low || v < low.lsi) low = { lsi: v, at: p.captured_at };
+  }
+  if (!low) return null;
+  const rise = to - low.lsi;
+  if (rise < delta) return null;
+  return { from_lsi: low.lsi, to_lsi: to, rise, from_at: low.at };
 }
 
 /**
@@ -91,5 +117,6 @@ module.exports = {
   trailingHighLitterStreak,
   trailingLitteringEventStreak,
   qualifiesForAddBinAlert,
+  detectLitterRise,
   formatBinCode,
 };

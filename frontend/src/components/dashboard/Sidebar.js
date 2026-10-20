@@ -19,6 +19,7 @@ import {
   Volume2,
   CircleCheck,
   CircleAlert,
+  BarChart3,
 } from "lucide-react";
 import axios from "axios";
 import { apiUrl } from "../../utils/apiBase";
@@ -26,7 +27,7 @@ import useAlertBadgeCount from "../../hooks/useAlertBadgeCount";
 import BrandLogo from "../BrandLogo";
 import PromoFooter from "./PromoFooter";
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/live-monitoring", icon: Activity, label: "Live Monitoring" },
   { to: "/hygienic-risk", icon: ShieldAlert, label: "Risk Dashboard" },
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { to: "/animals", icon: PawPrint, label: "Animal Detection" },
   { to: "/littering-event", icon: UserRoundX, label: "Littering Detection" },
   { to: "/litter-severity", icon: ScanSearch, label: "Litter Severity" },
+  { to: "/litter-insights", icon: BarChart3, label: "Litter Insights" },
   { to: "/forecast", icon: TrendingUp, label: "Forecasting" },
   { to: "/waste-update", icon: Database, label: "Waste Update" },
   { to: "/alerts", icon: Bell, label: "Alerts & Notifications", badge: true },
@@ -169,7 +171,7 @@ export default function Sidebar() {
   const alertCount = useAlertBadgeCount();
 
   return (
-    <aside className="relative z-10 flex h-screen w-64 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
+    <aside className="sticky top-0 z-10 flex h-screen w-64 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
       <div className="border-b border-slate-800/80 px-4 py-4">
         <BrandLogo variant="sidebar" theme="dark" />
       </div>

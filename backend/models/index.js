@@ -14,6 +14,8 @@ const defineCapture = require("./Capture");
 const definePrediction = require("./Prediction");
 const defineAlert = require("./Alert");
 const defineWasteEntry = require("./WasteEntry");
+const defineLitterBinConfig = require("./LitterBinConfig");
+const defineLitterFeedback = require("./LitterFeedback");
 
 let models = null;
 
@@ -30,6 +32,8 @@ function init() {
   const Prediction = definePrediction(sequelize);
   const Alert = defineAlert(sequelize);
   const WasteEntry = defineWasteEntry(sequelize);
+  const LitterBinConfig = defineLitterBinConfig(sequelize);
+  const LitterFeedback = defineLitterFeedback(sequelize);
 
   User.hasMany(Device, { foreignKey: "user_id", as: "devices" });
   Device.belongsTo(User, { foreignKey: "user_id", as: "user" });
@@ -73,6 +77,8 @@ function init() {
     Prediction,
     Alert,
     WasteEntry,
+    LitterBinConfig,
+    LitterFeedback,
   };
   return models;
 }

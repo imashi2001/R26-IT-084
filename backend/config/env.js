@@ -157,6 +157,34 @@ module.exports = {
       Number(process.env.LITTER_ADD_BIN_COOLDOWN_SECONDS || 3600) || 3600
     ) * 1000,
 
+  /** Littering frames needed (same bin, within the window) before an alert is raised. 1 = alert on any single frame. */
+  LITTERING_CONFIRM_MIN_FRAMES: Math.max(
+    1,
+    Math.trunc(Number(process.env.LITTERING_CONFIRM_MIN_FRAMES || 2) || 2)
+  ),
+  LITTERING_CONFIRM_WINDOW_MS:
+    Math.max(
+      10,
+      Number(process.env.LITTERING_CONFIRM_WINDOW_SECONDS || 30) || 30
+    ) * 1000,
+  /** A single frame at or above this confidence is confirmed on its own. */
+  LITTERING_STRONG_CONFIDENCE: parseFloatSafe(
+    process.env.LITTERING_STRONG_CONFIDENCE,
+    0.8
+  ),
+
+  /** Early warning: LSI rose by at least this much inside the window (not yet HIGH). */
+  LITTER_RISE_DELTA: parseFloatSafe(process.env.LITTER_RISE_DELTA, 20),
+  LITTER_RISE_WINDOW_MS:
+    Math.max(1, Number(process.env.LITTER_RISE_WINDOW_HOURS || 6) || 6) *
+    3600 *
+    1000,
+  LITTER_RISE_COOLDOWN_MS:
+    Math.max(
+      60,
+      Number(process.env.LITTER_RISE_COOLDOWN_SECONDS || 10800) || 10800
+    ) * 1000,
+
   /** XGBoost waste forecast microservice (services/forecast-api). Empty = local Python fallback. */
   MODEL_FORECAST_URL: MODEL_FORECAST_URL_RAW.trim()
     ? normalizeModelServiceUrl(MODEL_FORECAST_URL_RAW, "http://localhost:8006")

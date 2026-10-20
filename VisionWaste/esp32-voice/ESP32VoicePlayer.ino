@@ -1,15 +1,36 @@
 /*
- * VisionWaste ESP32 voice board — DFPlayer only (no camera).
+ * =============================================================================
+ *  VisionWaste — ESP32 Voice Player  (speaker board only)
+ * =============================================================================
  *
- * Flash this on a second AI-Thinker ESP32-CAM with the camera module removed.
- * It polls Railway for PLAY_AUDIO / STOP_AUDIO and never uploads photos.
+ * ROLE IN THE SYSTEM
+ *   Companion board to ESP32CamDirectPredict.ino. This firmware NEVER takes
+ *   photos. It only:
+ *     1) Polls Railway  GET /devices/commands?esp32_id=<ESP32_ID>
+ *     2) Plays DFPlayer tracks for PLAY_AUDIO (or stops on STOP_AUDIO)
+ *     3) ACKs           POST /devices/commands/:id/ack
  *
- * Wiring (same as before):
- *   ESP32 GPIO13 (U0TXD / pin labeled 13)  ->  DFPlayer RX
- *   ESP32 GND                              ->  DFPlayer GND
- *   5V                                     ->  DFPlayer VCC
- *   Speaker                                ->  DFPlayer SPK_1 / SPK_2
- *   SD card: /MP3/0001.mp3 ... 0004.mp3
+ *   Camera analyze → backend audioTriggerService queues PLAY_AUDIO for
+ *   Device.audio_esp32_id (must equal ESP32_ID below, e.g. "esp-voice-1").
+ *
+ * HARDWARE
+ *   Flash on a second AI-Thinker ESP32-CAM with the camera module removed
+ *   (or any ESP32 with free UART TX). Wiring:
+ *
+ *     ESP32 GPIO13 (U0TXD / labeled 13)  ---->  DFPlayer RX
+ *     ESP32 GND                          ---->  DFPlayer GND
+ *     5V                                 ---->  DFPlayer VCC
+ *     Speaker                            ---->  DFPlayer SPK_1 / SPK_2
+ *
+ *   MicroSD on the DFPlayer must contain:
+ *     /MP3/0001.mp3  …  /MP3/000N.mp3
+ *   Track numbers match Speaker Check → Audio track assignment on the web UI
+ *   (illegal_dumping, waste_full, animal_detected, correct_dumping, …).
+ *
+ * CREDENTIALS
+ *   Wi-Fi + BACKEND_BASE + DEVICE_API_KEY live in secrets.h (git-ignored).
+ *   Copy secrets.example.h → secrets.h and fill values.
+ * =============================================================================
  */
 
 #include <Arduino.h>
@@ -17,23 +38,27 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
-// Wi-Fi, backend URL and device key live in secrets.h (git-ignored).
-// Copy secrets.example.h to secrets.h and fill in your values.
 #include "secrets.h"
 
+/* Must match Device.audio_esp32_id for the bin that owns the camera. */
 const char* ESP32_ID = "esp-voice-1";
 
+/* UART TX only (no RX from DFPlayer required for basic play/stop). */
 #define MP3_TX_PIN 13
-#define MP3_VOLUME 30
-#define STARTUP_AUDIO true
+#define MP3_VOLUME 30          // DFPlayer volume 0–30
+#define STARTUP_AUDIO true     // Play track 1 once at boot (wiring smoke test)
 
-const unsigned long COMMAND_INTERVAL = 2000;
+const unsigned long COMMAND_INTERVAL = 2000;       // Poll period
 const unsigned long COMMAND_HTTP_TIMEOUT_MS = 10000;
 const int COMMAND_ACK_RETRIES = 3;
 
-HardwareSerial MP3Serial(1);
+HardwareSerial MP3Serial(1);   // UART1 → DFPlayer
 unsigned long lastCommandCheck = 0;
-String lastPlayedCommandId = "";
+String lastPlayedCommandId = ""; // Deduplicate if poll returns the same command twice
+
+/* =============================================================================
+ * Wi-Fi
+ * ========================================================================== */
 
 bool connectWiFi()
 {
@@ -57,6 +82,11 @@ bool connectWiFi()
   return true;
 }
 
+/* =============================================================================
+ * DFPlayer Mini — serial protocol (0x7E … 0xEF packets)
+ * Commands used: 0x03 play track, 0x06 volume, 0x0C reset, 0x16 stop
+ * ========================================================================== */
+
 void sendMP3Command(uint8_t command, uint16_t parameter)
 {
   uint8_t packet[10];
@@ -64,7 +94,7 @@ void sendMP3Command(uint8_t command, uint16_t parameter)
   packet[1] = 0xFF;
   packet[2] = 0x06;
   packet[3] = command;
-  packet[4] = 0x00;
+  packet[4] = 0x00; // no feedback requested
   packet[5] = (parameter >> 8) & 0xFF;
   packet[6] = parameter & 0xFF;
   uint16_t sum = packet[1] + packet[2] + packet[3] + packet[4] + packet[5] + packet[6];
@@ -74,7 +104,7 @@ void sendMP3Command(uint8_t command, uint16_t parameter)
   packet[9] = 0xEF;
   MP3Serial.write(packet, sizeof(packet));
   MP3Serial.flush();
-  delay(80);
+  delay(80); // Give the module time to latch the command
 }
 
 void resetMP3()
@@ -90,6 +120,7 @@ void setMP3Volume(uint8_t volume)
   sendMP3Command(0x06, volume);
 }
 
+/** Play /MP3/000N.mp3 where N = track (1 → 0001.mp3). */
 bool playMP3(uint16_t track)
 {
   if (track == 0) return false;
@@ -104,6 +135,11 @@ bool stopMP3()
   delay(120);
   return true;
 }
+
+/* =============================================================================
+ * Tiny JSON helpers (no ArduinoJson dependency — keeps flash small)
+ * Finds "key": "value" or "key": 123 in the poll/ack payloads.
+ * ========================================================================== */
 
 int findJsonKeyColon(const String& json, const String& key)
 {
@@ -158,6 +194,11 @@ int getJsonInt(const String& json, const String& key)
   return json.substring(start, end).toInt();
 }
 
+/* =============================================================================
+ * Backend ACK — tells Railway the command finished (or failed) so it is not
+ * re-delivered forever. Status strings: "completed" | "failed"
+ * ========================================================================== */
+
 bool acknowledgeCommand(const String& commandId, const String& status,
                         const String& errorMessage)
 {
@@ -198,10 +239,17 @@ void acknowledgeCommandWithRetry(const String& commandId, const String& status,
   Serial.println("[ACK] failed after retries");
 }
 
+/**
+ * Parse one poll response and act.
+ * Backend field names vary slightly across revisions; we accept several aliases:
+ *   id / command_id / audio_command_id
+ *   action / audio_action
+ *   track / audio_track
+ */
 void handleQueuedCommand(const String& response)
 {
   if (response.indexOf("PLAY_AUDIO") < 0 && response.indexOf("STOP_AUDIO") < 0) {
-    return;
+    return; // Empty queue or unrelated JSON
   }
 
   String commandId = getJsonString(response, "audio_command_id");
@@ -223,6 +271,7 @@ void handleQueuedCommand(const String& response)
 
   if (command == "PLAY_AUDIO") {
     if (commandId.length() == 0 || track <= 0) return;
+    /* Same command id again → already handled; ACK completed to clear queue. */
     if (commandId == lastPlayedCommandId) {
       acknowledgeCommandWithRetry(commandId, "completed", "");
       return;
@@ -244,6 +293,7 @@ void handleQueuedCommand(const String& response)
   }
 }
 
+/** Pull the next pending command for this voice ESP32 id (if any). */
 void checkForCommand()
 {
   if (WiFi.status() != WL_CONNECTED) return;
@@ -276,6 +326,10 @@ void checkForCommand()
   http.end();
 }
 
+/* =============================================================================
+ * Arduino entry points
+ * ========================================================================== */
+
 void setup()
 {
   Serial.begin(115200);
@@ -286,6 +340,7 @@ void setup()
   Serial.printf("Voice ID: %s\n", ESP32_ID);
   Serial.println("DFPlayer TX GPIO13 -> DFPlayer RX");
 
+  /* RX pin -1: we only transmit commands to the DFPlayer. */
   MP3Serial.begin(9600, SERIAL_8N1, -1, MP3_TX_PIN);
   delay(1000);
   resetMP3();

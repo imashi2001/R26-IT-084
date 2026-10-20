@@ -301,8 +301,8 @@ export default function DashboardSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Gemini voice source, API key, capture cleanup, dashboard images, and
-          account.
+          Animal auto-detect, voice method, capture cleanup, Gemini, dashboard
+          images, and account.
         </p>
       </div>
 
@@ -312,17 +312,7 @@ export default function DashboardSettingsPage() {
         </div>
       ) : null}
 
-      <GeminiSettingsCard authFetch={authFetch} isAdmin={isAdmin} />
-      <VoicePolicyCard
-        authFetch={authFetch}
-        isAdmin={isAdmin}
-        settings={audioSettings}
-        loading={audioLoading}
-        onSaved={(saved) => {
-          setAudioSettings(saved);
-          refreshAudio();
-        }}
-      />
+      {/* Pipeline toggles first so they are not buried under the long Gemini card. */}
       <AnimalAutoPredictCard
         authFetch={authFetch}
         isAdmin={isAdmin}
@@ -333,7 +323,19 @@ export default function DashboardSettingsPage() {
           refreshAudio();
         }}
       />
+      <VoicePolicyCard
+        authFetch={authFetch}
+        isAdmin={isAdmin}
+        settings={audioSettings}
+        loading={audioLoading}
+        onSaved={(saved) => {
+          setAudioSettings(saved);
+          refreshAudio();
+        }}
+      />
       <CapturesCleanupCard authFetch={authFetch} isAdmin={isAdmin} />
+
+      <GeminiSettingsCard authFetch={authFetch} isAdmin={isAdmin} />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <ImageUploadPanel

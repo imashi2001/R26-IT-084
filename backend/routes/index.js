@@ -13,6 +13,7 @@ const weatherRoutes = require("./weather.routes");
 const alertsRoutes = require("./alerts.routes");
 const litterRoutes = require("./litter.routes");
 const litteringActionRoutes = require("./litteringAction.routes");
+const litterInsightsRoutes = require("./litterInsights.routes");
 const bridgeRoutes = require("./bridge.routes");
 const dashboardSettingsRoutes = require("./dashboardSettings.routes");
 const collectionRoutes = require("./collection.routes");
@@ -52,6 +53,8 @@ router.get("/", (_req, res) => {
       "POST /litter-severity (multipart: image) — requires MODEL_LITTER_URL (litter microservice)",
     littering_action:
       "POST /littering-action (multipart: image) — requires MODEL_LITTERING_ACTION_URL (littering-event microservice)",
+    litter_insights:
+      "GET /litter-insights/summary?days=&device_id=&tz_offset=, GET /litter-insights/evidence?type=littering|high|all, POST /litter-insights/feedback, GET /litter-insights/feedback/export, GET|PUT|DELETE /litter-insights/outlines/:deviceId (PUT/DELETE admin)",
     dashboard:
       "GET /dashboard/settings, GET /dashboard/settings/audio, PUT /dashboard/settings/audio (admin), GET /dashboard/settings/gemini, PUT /dashboard/settings/gemini (admin), POST /dashboard/settings/gemini/predict (admin, multipart image), POST /dashboard/settings/hero (admin), DELETE /dashboard/settings/hero (admin), POST /dashboard/settings/promo (admin), DELETE /dashboard/settings/promo (admin)",
     collection: "POST /collection/plan — ordered Half+Overflow stops for route planning",
@@ -79,5 +82,6 @@ router.use("/weather", weatherRoutes);
 router.use("/alerts", alertsRoutes);
 router.use("/litter-severity", litterRoutes);
 router.use("/littering-action", litteringActionRoutes);
+router.use("/litter-insights", litterInsightsRoutes);
 
 module.exports = router;

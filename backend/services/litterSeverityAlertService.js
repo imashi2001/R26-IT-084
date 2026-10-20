@@ -9,12 +9,16 @@ const modelsRegistry = require("../models");
 const {
   LITTERING_ALERT_COOLDOWN_MS,
   LITTER_ADD_BIN_COOLDOWN_MS,
+  LITTER_RISE_DELTA,
+  LITTER_RISE_WINDOW_MS,
+  LITTER_RISE_COOLDOWN_MS,
 } = require("../config/env");
 const {
   isHighSeverity,
   qualifiesForAddBinAlert,
   trailingHighLitterStreak,
   trailingLitteringEventStreak,
+  detectLitterRise,
   formatBinCode,
   ADD_BIN_STREAK,
 } = require("./litterSeverityUtils");
@@ -67,6 +71,60 @@ function buildAddBinSummary(device, captures) {
   }
   const detail = parts.length ? parts.join(" · ") : "Repeated litter pressure";
   return `${binCode} · ${location} · ${detail}. Capacity here is not enough — register another bin.`;
+}
+
+async function maybeCreateRisingAlert({
+  models,
+  captureId,
+  deviceId,
+  device,
+  litterPayload,
+}) {
+  const { Alert, Capture } = models;
+  const now = Date.now();
+  const earlier = await Capture.findAll({
+    where: {
+      device_id: deviceId,
+      captured_at: { [Op.gte]: new Date(now - LITTER_RISE_WINDOW_MS) },
+      litter_lsi: { [Op.ne]: null },
+      ...(captureId ? { id: { [Op.ne]: captureId } } : {}),
+    },
+    order: [["captured_at", "ASC"]],
+    limit: 200,
+    attributes: ["id", "captured_at", "litter_lsi"],
+  });
+  const rise = detectLitterRise(
+    earlier.map((r) => r.toJSON()),
+    litterPayload,
+    { delta: LITTER_RISE_DELTA }
+  );
+  if (!rise) return null;
+
+  const recent = await Alert.findOne({
+    where: {
+      device_id: deviceId,
+      alert_type: "litter_rising",
+      created_at: { [Op.gte]: new Date(now - LITTER_RISE_COOLDOWN_MS) },
+    },
+  });
+  if (recent) return null;
+
+  const hours = Math.max(
+    0.1,
+    (now - new Date(rise.from_at).getTime()) / 3600000
+  );
+  const location =
+    (device?.location || device?.address || device?.name || "").toString().trim();
+  const row = await Alert.create({
+    capture_id: captureId,
+    device_id: deviceId,
+    alert_type: "litter_rising",
+    severity: "info",
+    title: "Litter building up",
+    summary: `${formatBinCode(deviceId)}${location ? ` · ${location}` : ""} · LSI rose from ${rise.from_lsi.toFixed(1)} to ${rise.to_lsi.toFixed(1)} in ${hours.toFixed(1)}h. Clean before it reaches HIGH.`,
+    status: "open",
+  });
+  return row.toJSON();
 }
 
 /**
@@ -122,7 +180,15 @@ async function maybeCreateLitterSeverityAlerts({
     }
   }
 
-  if (!hasHigh) return null;
+  if (!hasHigh) {
+    return maybeCreateRisingAlert({
+      models,
+      captureId,
+      deviceId,
+      device,
+      litterPayload,
+    });
+  }
 
   const sinceHigh = new Date(Date.now() - LITTERING_ALERT_COOLDOWN_MS);
   const recentHigh = await Alert.findOne({

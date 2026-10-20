@@ -8,6 +8,7 @@ const {
   qualifiesForAddBinAlert,
   ADD_BIN_STREAK,
 } = require("./litterSeverityUtils");
+const { annotateLitteringEpisodes } = require("./litteringConfirmation");
 
 const STATUSES = new Set([
   "open",
@@ -93,7 +94,11 @@ function classifyCaptureForAlert(c) {
 
   const litteringDetected = Boolean(c.littering_event_detected);
   const litteringConf = Number(c.littering_max_confidence) || 0;
-  if (litteringDetected && litteringConf >= LITTERING_ALERT_CONFIDENCE) {
+  if (
+    litteringDetected &&
+    litteringConf >= LITTERING_ALERT_CONFIDENCE &&
+    c._littering_confirmed !== false
+  ) {
     const count = Number(c.littering_event_count) || 0;
     return {
       alert_type: "littering_detected",
@@ -147,9 +152,13 @@ async function syncAlertsFromCaptures({ lookbackDays = 30, scanLimit = 400 } = {
     ],
   });
 
+  const captures = rows.map((row) => row.toJSON());
+  const episodes = annotateLitteringEpisodes(captures);
+
   let created = 0;
-  for (const row of rows) {
-    const c = row.toJSON();
+  for (const c of captures) {
+    const episode = episodes.get(c.id);
+    if (episode) c._littering_confirmed = episode.first_confirming;
     const classified = classifyCaptureForAlert(c);
     if (!classified) continue;
 

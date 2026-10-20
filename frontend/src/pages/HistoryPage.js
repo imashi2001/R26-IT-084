@@ -123,6 +123,7 @@ const ALERT_TYPE_LABEL = {
   littering_detected: "Littering event",
   litter_severity_high: "High litter severity",
   litter_add_bin: "Add a new bin",
+  litter_rising: "Litter building up",
   animal: "Animal activity",
 };
 

@@ -1,20 +1,20 @@
 
-import json, sys, os, pandas as pd, warnings
+import json, sys, os, pandas as pd, warnings, xgboost as xgb
 from pathlib import Path
 warnings.filterwarnings('ignore')
 
 ROOT_DIR = Path(os.getcwd()).parents[0]
 WASTE_FORECAST_DIR = ROOT_DIR / "waste_forecast"
+MODEL_PATH = WASTE_FORECAST_DIR / "models" / "model.json"
+FEATURE_COLUMNS_PATH = WASTE_FORECAST_DIR / "models" / "feature_columns.json"
 
 sys.path.insert(0, str(WASTE_FORECAST_DIR))
 sys.path.insert(0, str(WASTE_FORECAST_DIR / "src"))
 
 try:
-    from calendar_features import calendar_flags_for_date
     from daily_forecast import estimate_daily_waste
     from load_data import INSTITUTE_SHARES, CATEGORY_SHARES
 except ImportError:
-    from src.calendar_features import calendar_flags_for_date
     from src.daily_forecast import estimate_daily_waste
     from src.load_data import INSTITUTE_SHARES, CATEGORY_SHARES
 
@@ -62,38 +62,27 @@ seasonal_multipliers = {
 }
 
 adjusted = []
-calendar_by_date = {}
-daily_by_date = {}
 
 for idx, row in enumerate(input_data):
-    row_date = row.get('dateStr')
-    if row_date and row_date not in calendar_by_date:
-        calendar_by_date[row_date] = calendar_flags_for_date(row_date)
-    is_poya = bool(row_date) and calendar_by_date[row_date]["isPoya"]
-
-    # Each trend day is evaluated at its own date through the same path as the main
-    # forecast (run_model.py), so day_weight, holidays and long weekends apply per day.
-    if not row_date:
-        raise ValueError("input_trend.json row has no dateStr; cannot evaluate the trend day")
-    if row_date not in daily_by_date:
-        daily_by_date[row_date] = estimate_daily_waste(row_date, mode="auto")
-    base_daily_tons = float(daily_by_date[row_date]["estimated_daily_waste"])
+    month = row.get('Month', 9)
+    date_str = f"2025-{month:02d}-15"
+    daily_res = estimate_daily_waste(date_str, mode="forecast")
+    base_daily_tons = float(daily_res["estimated_daily_waste"])
 
     inst_id = identify_institute_id(row)
     cat_name = identify_category_name(row)
 
     inst_share = INSTITUTE_SHARES.get(inst_id, 0.090)
-    # C & D is excluded from CATEGORY_SHARES (see load_data.py); default to 0.0.
-    cat_share = CATEGORY_SHARES.get(cat_name, 0.0)
+    cat_share = CATEGORY_SHARES.get(cat_name, 0.045)
 
     item_base_tons = base_daily_tons * inst_share * cat_share
     val = max(0, float(item_base_tons * 1000.0))
 
-    # No weekend / long-weekend multiplier: day_weight in daily_profile.py already
-    # models the calendar effect on collection.
+    if row.get('Is_Weekend') == 1 or row.get('Is_Long_Weekend') == 1:
+        val *= 1.5
     if row.get('Month') == 12 and row.get('Institute_Moratuwa M.C.') == 1:
         val *= seasonal_multipliers['Moratuwa_December']
-    if is_poya:
+    if row.get('Is_Poya_Day') == 1:
         if row.get('Category_Unburnable') == 1:
             val *= seasonal_multipliers['Poya_Day_Unburnable']
         elif row.get('Category_SOW') == 1:

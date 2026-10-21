@@ -210,7 +210,7 @@ bool connectWiFi()
 }
 
 /**
- * Build multipart/form-data and POST to BACKEND_BASE/predict.
+ * Build multipart/form-data and POST to BACKEND_BASE/predict.////////////////
  * Uses TLS with setInsecure() (typical for hobby/Railway demos; pin certs for prod).
  * On success frees jpeg buffer and returns; on failure retries then frees.
  */

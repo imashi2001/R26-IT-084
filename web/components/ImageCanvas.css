@@ -1,0 +1,12 @@
+.canvas-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.detection-canvas {
+  max-width: 100%;
+  border-radius: 8px;
+  display: block;
+}

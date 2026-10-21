@@ -1,0 +1,5 @@
+class,mAP50-95,split
+cat,0.6183,test
+crow,0.6279,test
+dog,0.6630,test
+monkey,0.5311,test

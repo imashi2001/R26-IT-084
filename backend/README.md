@@ -18,15 +18,24 @@ backend/
 ├── routes/
 │   ├── index.js                   mounts feature routers
 │   ├── health.routes.js
+│   ├── auth.routes.js
+│   ├── devices.routes.js
+│   ├── geo.routes.js
 │   ├── predict.routes.js
 │   └── captures.routes.js
 ├── controllers/
 │   ├── health.controller.js
+│   ├── auth.controller.js
+│   ├── devices.controller.js
+│   ├── geo.controller.js
 │   ├── predict.controller.js
+│   ├── latest.controller.js
 │   └── captures.controller.js
 ├── services/
 │   ├── modelClient.js             talks to model microservices via HTTP
-│   └── captureService.js          DB persistence helpers (no-op when DB off)
+│   ├── captureService.js          DB persistence helpers (no-op when DB off)
+│   ├── deviceService.js           devices + latest capture queries
+│   └── latestState.js             in-memory latest snapshot per device
 ├── models/                        Sequelize models (DB schema)
 │   ├── index.js                   defines associations
 │   ├── User.js
@@ -35,8 +44,12 @@ backend/
 │   └── Prediction.js
 ├── middleware/
 │   ├── upload.js                  multer (in-memory) for image uploads
+│   ├── auth.js                    JWT guards + admin role
 │   └── errorHandler.js            404 + central error handler
-├── utils/                         (place shared helpers here)
+├── utils/
+│   ├── fillLevel.js               derive Empty/Half/Overflow from YOLO preds
+│   ├── geo.js                     Haversine distance helpers
+│   └── publicUrl.js               Railway-safe public API base URL
 ├── package.json
 ├── .env / .env.example
 └── README.md
@@ -47,50 +60,223 @@ backend/
 The backend works both **with** and **without** a database:
 
 - **Without `DATABASE_URL`** - persistence features are silently skipped.
-  `/predict` still works; `/captures*` returns 503.
+  `/predict` still works; `/captures*` and `/devices*` return **503**.
 - **With `DATABASE_URL`** - captures and predictions are saved per request.
   Set `DB_SYNC=true` (dev only) to auto-create tables on startup.
 
 ## Endpoints
 
-| Method | Path             | Body / Query                                | Returns                                     |
-|--------|------------------|---------------------------------------------|---------------------------------------------|
-| GET    | /health          | -                                           | gateway + models + database health          |
-| POST   | /predict         | multipart `image`, optional `model`, `conf` | `[{label, confidence, box}, ...]`           |
-| GET    | /captures        | `?limit=20&offset=0`                        | `{ count, limit, offset, captures: [...] }` |
-| GET    | /captures/:id    | -                                           | `{ ...capture, predictions: [...] }`        |
+| Method | Path | Notes |
+|--------|------|--------|
+| GET | / | API discovery JSON |
+| GET | /health | Gateway + model + DB |
+| POST | /auth/register | JSON `{ name, email, password, adminInvite? }` — optional invite creates admin |
+| POST | /auth/login | JSON `{ email, password }` → JWT |
+| POST | /predict | multipart `image`, **`bridge_instance_id`** (ESP32 bridge), optional **`esp32_id`** / **`device_id`**, optional **`source_type`** (`esp32` \| `mobile` \| `admin`), **`lat`** / **`lon`** (weather + stored on capture when DB enabled), optional **`model`**, **`conf`** |
+| GET | /captures | Query `limit`, `offset`, optional **`device_id`** |
+| GET | /captures/:id | Capture metadata + predictions (`has_image` when JPEG stored; image blob omitted) |
+| GET | /captures/:id/image | Raw JPEG bytes for that capture row |
+| GET | /alerts | **JWT** — list alerts (auto-sync from recent captures); query **`status`** (`open` \| `acknowledged` \| `actioned` \| `rejected` \| `dismissed` \| `all`), **`limit`**, **`offset`** |
+| PATCH | /alerts/:id | **Admin JWT** — JSON **`{ status, admin_note? }`** to update workflow + audit note |
+| GET | /devices | All bins; add **`?latest=1`** for each bin’s resolved **`latest_fill_level`** / **`latest_fill_percentage`** (for dashboards without map coords) |
+| GET | /devices/map | Bins with coordinates + latest fill + image URL + latest source / fill % |
+| GET | /devices/nearest | Query `lat`, `lng`, `limit` |
+| GET | /devices/:id | Bin metadata |
+| GET | /devices/:id/latest | Latest snapshot JSON (+ predictions + image link) |
+| GET | /devices/:id/captures | Paginated capture history for the bin (`limit`, `offset`) |
+| GET | /devices/:id/image/latest | Raw JPEG bytes (DB or in-memory fallback) |
+| POST | /devices | **Admin JWT** — create bin |
+| PATCH | /devices/:id | **Admin JWT** — update bin |
+| GET | /geo/search?q= | Nominatim proxy for admin UI |
+| GET | /api/waste-data | Query **`date`=`YYYY-MM-DD`** — holiday/long-weekend adjusted demo levels (`backend/holiday_cache.json`); **`geocode_cache`** in JSON mirrors **`backend/geocode_cache.json`** |
+| POST | /litter-severity | multipart **`image`** — proxies to litter microservice (**`MODEL_LITTER_URL`**); returns LSI, severity, detections, optional annotated JPEG |
+
+**`POST /predict` response — `animal`:** Each item in **`detections`** includes **`label`**, **`confidence`**, and **`box`** `[x1,y1,x2,y2]` (the gateway normalizes **`box_xyxy`** / **`class_name`** from the animal microservice). **`annotated_image_base64`** is a JPEG with bounding boxes rendered server-side (YOLO plot).
+
+**`POST /predict` response — `bin_fill`:** Present when **`MODEL_FILL_URL`** is set on the gateway (optional **`fill-api`** service). Same JSON shape as the bin-fill microservice: **`predictions`** / **`detections`**, optional **`annotated_image_base64`**. Top-level **`bin_fill_level`** is **`Empty`** \| **`Half`** \| **`Overflow`** when at least one prediction has label **`empty`** \| **`half`** \| **`overflow`** (case-insensitive); otherwise **`null`**.
+
+## Railway Postgres (first deploy)
+
+1. Add **PostgreSQL** plugin to your Railway project.
+2. On **backend** service → Variables → add **`DATABASE_URL`** (reference from Postgres plugin).
+3. Set **`DB_SYNC=true`** for the **first** deploy to create tables; then set **`DB_SYNC=false`** for normal operation.
+4. Set **`JWT_SECRET`** to a long random string (required for `/auth/*`).
+5. **`ADMIN_INVITE_SECRET`** — the first account registers without a code; every later `POST /auth/register` must send `"adminInvite"` equal to this value. Leave it empty to close sign-up after the first admin.
+6. Set **`CORS_ORIGIN`** to your frontend Railway URL (and `http://localhost:3000` for dev).
+7. Set **`DEVICE_API_KEY`** to a long random string and put the same value in `VisionWaste/esp32-*/secrets.h` and the bridge's `DEVICE_API_KEY` env var.
+
+### Which endpoints need what
+
+| Access | Endpoints |
+|--------|-----------|
+| Public | `/health`, `/auth/login`, `/auth/register` (rate limited), `GET /devices`, `/devices/map`, `/devices/nearest`, `/devices/:id`, `/devices/:id/latest`, `/geo/*`, `/forecast*`, `/weather`, `/api/waste-data`, `/api/waste-trend`, `/api/waste-insights`, `/collection/plan`, `GET /dashboard/settings*` |
+| Device key **or** login | `POST /predict`, `GET /devices/commands`, `POST /devices/commands/:id/ack`, `/bridge/*` (open when `DEVICE_API_KEY` is unset) |
+| Login | `/captures*`, `/latest*`, `/devices/:id/captures`, `/devices/:id/image/latest`, `/alerts`, `/litter-severity`, `/littering-action`, `GET /api/waste-entries*` |
+| Admin | device create/edit/audio, `PATCH /alerts/:id`, dashboard settings writes, `POST/PUT/DELETE /api/waste-entries`, `POST /api/waste-entries/trigger-retrain` |
+
+Image endpoints also accept `?token=<jwt>` so `<img src>` can load them; the frontend adds it with `withAuthToken()` in `src/utils/authTransport.js`.
 
 `POST /predict` adds a response header `X-Capture-Id` whenever the row was saved.
 
+After adding columns in production, set **`DB_SYNC=true`** and **`DB_SYNC_ALTER=true`** for **one** redeploy (sync runs only when `DB_SYNC` is on). Confirm logs show `[db] tables synced (alter=true)`, then set **`DB_SYNC=false`** and **`DB_SYNC_ALTER=false`** again.
+
+---
+
+### Bridge ↔ bin binding
+
+- **`POST /predict`** should include **`bridge_instance_id`** (VisionWaste laptop bridge) for ESP32-origin uploads.
+- If **`devices.bridge_instance_id`** is **null**, matching is by **`esp32_id`** (and **`device_id`** when sent).
+- If **`devices.bridge_instance_id`** is **set**, **`device_id`** is attached when the incoming **`bridge_instance_id`** matches **or** when the client sets **`source_type`** to **`mobile`** or **`admin`** and sends a valid **`device_id`** (phone / trusted tooling).
+
+### Mobile camera upload (`source_type=mobile`)
+
+Multipart fields typical for the React **`/mobile-report`** flow:
+
+- **`image`** (required) — JPEG/PNG file  
+- **`device_id`** — target bin id  
+- **`source_type`** = `mobile`  
+- **`lat`**, **`lon`** — optional capture GPS (also used for weather)  
+- Omit **`bridge_instance_id`** when reporting from a phone (unless you intentionally emulate the laptop bridge).
+
+---
+
 ## Database schema (Sequelize)
 
-| Table         | Key columns                                                                          |
-|---------------|--------------------------------------------------------------------------------------|
-| users         | id, name, email, password_hash, role, timestamps                                     |
-| devices       | id, user_id, name, esp32_id (unique), location, timestamps                           |
-| captures      | id, user_id, device_id, image_url, model_name, captured_at, timestamps               |
-| predictions   | id, capture_id, label, confidence, box_x1..box_y2, timestamps                        |
+| Table | Key columns |
+|-------|-------------|
+| users | id, name, email, password_hash, role (`user` \| `admin`), timestamps |
+| devices | id, user_id, **name** (display “Bin name”), **esp32_id** (unique), **location** (“Location name”), address, latitude, longitude, **status** (`active` \| `inactive` \| `maintenance`), **bridge_instance_id** (optional laptop binding), **camera_base_url**, **bin_type** (`smart` \| `virtual`), **manual_fill_level**, **manual_fill_percentage** (virtual bins), **pending_speaker_action**, **pending_speaker_at**, **last_seen_at** (ESP32 command poll), timestamps |
+| device_commands | **id** (UUID PK), **device_id**, **esp32_id**, **command** (e.g. `PLAY_AUDIO`), **track**, **status** (`pending` \| `sent` \| `completed` \| `failed`), **sent_at**, **completed_at**, **error_message**, timestamps |
+| captures | id, user_id, device_id, **bridge_instance_id**, image_url, image_buffer, image_mimetype, fill_level, model_name, captured_at, **source_type**, **latitude**, **longitude**, **fill_percentage**, **prediction_class**, waste_*, risk_*, weather fields, timestamps |
+| predictions | id, capture_id, label, confidence, box_x1..box_y2, timestamps |
 
 Associations:
+
 - User 1—N Device, User 1—N Capture
 - Device 1—N Capture
+- Device 1—N DeviceCommand
 - Capture 1—N Prediction (cascade delete)
+
+Index on `(device_id, captured_at)` for latest-per-bin queries.
+
+### Remote audio test (ESP32 DFPlayer)
+
+Independent from the laptop-bridge speaker relay (`pending_speaker_*` / `/bridge/speaker-*`).
+
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/devices/:id/audio-test` | Admin JWT — queues `PLAY_AUDIO` with body `{ "track": N }` (1–9999) |
+| POST | `/devices/:id/audio-stop` | Admin JWT — cancels pending commands, queues `STOP_AUDIO` |
+| GET | `/devices/commands?esp32_id=` | None — ESP32 poll; marks `pending`→`sent`; updates `last_seen_at` |
+| POST | `/devices/commands/:command_id/ack` | None — body `{ esp32_id, status: completed\|failed, error_message? }` |
+| GET | `/devices/commands/:command_id` | Admin JWT — status for dashboard UX |
+
+ESP32 response when idle: `{ "command": null }`.
+
+Play: `{ "command_id", "command": "PLAY_AUDIO", "track": 1 }`.
+
+Stop: `{ "command_id", "command": "STOP_AUDIO", "track": null }`.
+
+**Auto audio after `/predict`** (ESP32 uploads with `source_type=esp32`, env `AUTO_AUDIO_ON_PREDICT=true`):
+
+Track numbers are **not hardcoded**. Configure them in the dashboard (**Speaker Check → Audio track assignment**) or via **`GET/PUT /dashboard/settings/audio`**.
+
+**Gemini voice source** (dashboard **Settings** or **`GET/PUT /dashboard/settings/gemini`**):
+
+| `voice_source` | Behaviour |
+|----------------|-----------|
+| `models` | YOLO / existing pipeline only (default) |
+| `gemini` | Gemini Vision only for the voice track |
+| `both` | Run both; Gemini wins when valid, else YOLO |
+
+Latest YOLO vs Gemini vs final voice prediction is stored and shown on the Settings page.
+
+When an **ESP32** uploads a photo (`source_type=esp32`), the gateway runs **every configured model** (waste, animal, fill, littering). Auto-audio picks the scenario with the **highest confidence %** among active results and plays its mapped track.
+
+| Scenario | Typical source | Maps to track |
+|----------|----------------|---------------|
+| `illegal_dumping` | Littering model **or** litter-on-ground | `tracks.illegal_dumping` |
+| `waste_full` | Fill overflow confidence | `tracks.waste_full` |
+| `animal_detected` | Best animal detection confidence | `tracks.animal_detected` |
+| Custom rules | Risk tier (HIGH/MEDIUM/CRITICAL) | custom `track` |
+| `correct_dumping` | Empty bin / clean capture confidence | `tracks.correct_dumping` |
+
+Default tracks if unset: 1 / 2 / 3 / 4 → `/MP3/0001.mp3` … `/MP3/0004.mp3`.
+
+`/predict` response includes **`audio_trigger`**: `{ scenario, label, track, confidence_pct, candidates, command_id, queued }`.
+
+Cooldown: `AUDIO_TRIGGER_COOLDOWN_SECONDS` (default 60) per `esp32_id`. Manual tests use **`POST /devices/:id/audio-test`** with any configured track.
+
+Direct ESP32 `/predict` uploads bypass `devices.bridge_instance_id` laptop lock when `source_type=esp32` (same as mobile/admin).
+
+Appendix — additive columns if you manage schema manually (Postgres):
+
+```sql
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS status VARCHAR(255) DEFAULT 'active';
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS camera_base_url VARCHAR(255);
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS pending_speaker_action VARCHAR(16);
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS pending_speaker_at TIMESTAMPTZ;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS bin_type VARCHAR(16) NOT NULL DEFAULT 'smart';
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS manual_fill_level VARCHAR(24);
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS manual_fill_percentage DOUBLE PRECISION;
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS source_type VARCHAR(16);
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS fill_percentage DOUBLE PRECISION;
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS prediction_class VARCHAR(160);
+
+CREATE TABLE IF NOT EXISTS device_commands (
+  id UUID PRIMARY KEY,
+  device_id INTEGER NOT NULL REFERENCES devices(id),
+  esp32_id VARCHAR(80) NOT NULL,
+  command VARCHAR(40) NOT NULL,
+  track INTEGER,
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  sent_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS device_commands_esp32_status_idx
+  ON device_commands (esp32_id, status, created_at);
+```
+
+(Adjust lengths/types to match `backend/models`. Use **`DB_SYNC=true`** + **`DB_SYNC_ALTER=true`** once on Railway instead if preferred.)
+
+---
 
 ## Environment variables
 
 See `.env.example`:
 
-| Variable                | Default                  | Notes                                              |
-|-------------------------|--------------------------|----------------------------------------------------|
-| `MODEL_YOLO_URL`        | `http://localhost:6000`  | URL of the YOLO model microservice                 |
-| `DEFAULT_MODEL`         | `yolo`                   | Default model when client doesn't pick one         |
-| `INFER_TIMEOUT_SECONDS` | `60`                     | Max wait per model inference                       |
-| `MAX_UPLOAD_MB`         | `25`                     | Max upload size                                    |
-| `PORT`                  | `5000`                   | Listening port (Railway sets this automatically)   |
-| `DATABASE_URL`          | (empty)                  | Postgres connection string (Railway plugin)        |
-| `DB_SYNC`               | `false`                  | Auto-create tables on boot (dev only)              |
-| `DB_SYNC_ALTER`         | `false`                  | If syncing, also alter columns to match models     |
-| `DB_LOGGING`            | `false`                  | Echo SQL to stdout                                 |
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `MODEL_WASTE_URL` | `http://localhost:8001` | Waste classifier microservice; scheme added if omitted (except localhost) |
+| `MODEL_ANIMAL_URL` | `http://localhost:8002` | Animal / detection microservice |
+| `MODEL_FILL_URL` | (empty) | Optional **`fill-api`** bin-fill service (`POST /predict`, multipart **`file`**). Legacy alias: `MODEL_YOLO_URL`. When empty, **`bin_fill`** is omitted from **`inferAll`** |
+| `MODEL_LITTER_URL` | (empty) | Optional **`litter-severity-api`** (`POST /predict`, multipart **`file`** via gateway **`POST /litter-severity`** with **`image`**) |
+| `CORS_ORIGIN` | (empty) | Comma-separated allowed frontend origins; empty keeps permissive CORS |
+| `JWT_SECRET` | (empty) | Required for auth routes; production refuses to start without it (32+ random chars recommended) |
+| `JWT_EXPIRES_IN` | `7d` | JWT expiry passed to `jsonwebtoken` |
+| `ADMIN_INVITE_SECRET` | (empty) | Invite code required for every registration after the first; empty = sign-up closed |
+| `DEVICE_API_KEY` | (empty) | Shared key ESP32 boards / bridge send as `X-Device-Key`; empty = device endpoints open |
+| `AUTH_RATE_LIMIT_MAX` | `20` | Login/register attempts per IP per window |
+| `AUTH_RATE_LIMIT_WINDOW_MINUTES` | `15` | Rate-limit window |
+| `DEFAULT_MODEL` | `waste` | Default when client picks a single model |
+| `INFER_TIMEOUT_SECONDS` | `60` | Max wait per model inference |
+| `MAX_UPLOAD_MB` | `25` | Max upload size |
+| `PORT` | `5000` | Listening port (Railway sets this automatically) |
+| `DATABASE_URL` | (empty) | Postgres connection string (Railway plugin) |
+| `DB_SYNC` | `false` | Auto-create tables on boot (dev / first deploy only) |
+| `DB_SYNC_ALTER` | `false` | If syncing, also alter columns to match models |
+| `DB_LOGGING` | `false` | Echo SQL to stdout |
+| `OPENWEATHER_API_KEY` | (empty) | Optional real weather; stub otherwise |
+| `GEMINI_API_KEY` | (empty) | Fallback if Settings → Gemini key is empty |
+| `MAPTILER_KEY` | (empty) | Public MapTiler key for `GET /map/config` (mobile app) |
+
+---
 
 ## Run locally
 
@@ -100,14 +286,19 @@ npm install
 npm start
 ```
 
-The model service must already be running (`../model-yolo/`).
+Start the **waste** and **animal** FastAPI services (see repo `services/waste-api` and `services/animal-api`), optional **`model-yolo`** Flask service for bin fill, or point **`MODEL_*_URL`** variables at deployed URLs.
 
 ## Deploy on Railway
 
 - Root directory: `backend`
 - Start command: `npm start`
 - Variables:
-  - `MODEL_YOLO_URL` -> public URL of the deployed model service
-  - `DATABASE_URL` -> referenced from Railway Postgres plugin
-  - `DB_SYNC=true` (only on first deploy to create tables; turn off afterwards)
+  - **`MODEL_WASTE_URL`**, **`MODEL_ANIMAL_URL`**, optional **`MODEL_FILL_URL`**, optional **`MODEL_LITTER_URL`** → public URLs of the deployed model services
+  - `DATABASE_URL` → referenced from Railway Postgres plugin
+  - `JWT_SECRET` → random secret string
+  - `DB_SYNC=true` only on first deploy to create tables; turn off afterwards
+  - **`OPENWEATHER_API_KEY`** (optional)
+  - **`GEMINI_API_KEY`** (optional) — or paste the key in dashboard **Settings → Gemini**
+  - **`MAPTILER_KEY`** (optional) — same MapTiler key as the website; mobile app reads it from `GET /map/config`
+  - `CORS_ORIGIN` → your frontend URL(s)
 - Railway auto-detects Node and runs `npm install`.

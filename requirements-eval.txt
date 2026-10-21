@@ -1,0 +1,11 @@
+# Dependencies for evaluate_all.py (offline model evaluation)
+numpy
+pillow
+pyyaml
+scikit-learn
+matplotlib
+tensorflow-cpu
+ultralytics
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision

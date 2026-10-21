@@ -1,0 +1,305 @@
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+
+const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "dashboard");
+const SETTINGS_PATH = path.join(UPLOAD_DIR, "audio_settings.json");
+
+const BUILTIN_KEYS = [
+  "illegal_dumping",
+  "waste_full",
+  "animal_detected",
+  "correct_dumping",
+];
+
+const BUILTIN_LABELS = {
+  illegal_dumping: "Illegal dumping",
+  waste_full: "Waste full / overflow",
+  animal_detected: "Animal detected",
+  correct_dumping: "Correct dumping",
+};
+
+const DEFAULT_TRACKS = {
+  illegal_dumping: 1,
+  waste_full: 2,
+  animal_detected: 3,
+  correct_dumping: 4,
+};
+
+const AUTO_CONDITIONS = new Set([
+  "manual_only",
+  "risk_high",
+  "risk_critical",
+  "risk_medium",
+]);
+
+/** classic = viva-safe timed policy; quality = change-based + thank-you. */
+const VOICE_POLICIES = new Set(["classic", "quality"]);
+const DEFAULT_VOICE_POLICY = "classic";
+
+function ensureDir() {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+function normalizeVoicePolicy(value) {
+  const v = String(value || DEFAULT_VOICE_POLICY)
+    .trim()
+    .toLowerCase();
+  return VOICE_POLICIES.has(v) ? v : DEFAULT_VOICE_POLICY;
+}
+
+function normalizeTrack(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const t = Math.trunc(n);
+  if (t < 1 || t > 9999) return fallback;
+  return t;
+}
+
+function normalizeBool(value, fallback) {
+  if (value === true || value === "true" || value === 1 || value === "1") {
+    return true;
+  }
+  if (value === false || value === "false" || value === 0 || value === "0") {
+    return false;
+  }
+  return Boolean(fallback);
+}
+
+function defaultSettings() {
+  return {
+    tracks: { ...DEFAULT_TRACKS },
+    custom_scenarios: [],
+    voice_policy: DEFAULT_VOICE_POLICY,
+    /** When false, ESP32 /predict (all models) skips animal microservice. Manual model=animal still works. */
+    enable_animal_on_predict: false,
+    updated_at: null,
+  };
+}
+
+function readRaw() {
+  ensureDir();
+  try {
+    if (!fs.existsSync(SETTINGS_PATH)) return null;
+    return JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function normalizeCustomScenario(row, index) {
+  const id =
+    row?.id && String(row.id).trim()
+      ? String(row.id).trim()
+      : crypto.randomUUID();
+  const label = String(row?.label || `Custom ${index + 1}`).trim().slice(0, 120);
+  const track = normalizeTrack(row?.track, 5 + index);
+  const auto_condition = AUTO_CONDITIONS.has(String(row?.auto_condition || ""))
+    ? String(row.auto_condition)
+    : "manual_only";
+  return { id, label, track, auto_condition };
+}
+
+function normalizeSettings(raw) {
+  const base = defaultSettings();
+  if (!raw || typeof raw !== "object") return base;
+
+  const tracks = { ...base.tracks };
+  if (raw.tracks && typeof raw.tracks === "object") {
+    for (const key of BUILTIN_KEYS) {
+      tracks[key] = normalizeTrack(raw.tracks[key], DEFAULT_TRACKS[key]);
+    }
+  }
+
+  const custom_scenarios = Array.isArray(raw.custom_scenarios)
+    ? raw.custom_scenarios
+        .slice(0, 20)
+        .map((row, i) => normalizeCustomScenario(row, i))
+    : [];
+
+  return {
+    tracks,
+    custom_scenarios,
+    voice_policy: normalizeVoicePolicy(raw.voice_policy),
+    enable_animal_on_predict: normalizeBool(
+      raw.enable_animal_on_predict,
+      base.enable_animal_on_predict
+    ),
+    updated_at: raw.updated_at || null,
+  };
+}
+
+function getSettings() {
+  return normalizeSettings(readRaw());
+}
+
+function validateForSave(body) {
+  if (!body || typeof body !== "object") {
+    return { ok: false, error: "Request body must be a JSON object." };
+  }
+
+  const current = getSettings();
+  const hasTracks = body.tracks && typeof body.tracks === "object";
+  const hasCustom = Array.isArray(body.custom_scenarios);
+  const hasPolicy = body.voice_policy !== undefined && body.voice_policy !== null;
+  const hasAnimalFlag =
+    body.enable_animal_on_predict !== undefined &&
+    body.enable_animal_on_predict !== null;
+
+  if (!hasTracks && !hasCustom && !hasPolicy && !hasAnimalFlag) {
+    return {
+      ok: false,
+      error:
+        "Provide tracks, custom_scenarios, voice_policy, and/or enable_animal_on_predict.",
+    };
+  }
+
+  if (hasPolicy) {
+    const raw = String(body.voice_policy).trim().toLowerCase();
+    if (!VOICE_POLICIES.has(raw)) {
+      return {
+        ok: false,
+        error: `voice_policy must be one of: ${[...VOICE_POLICIES].join(", ")}.`,
+      };
+    }
+  }
+
+  let tracks = { ...current.tracks };
+  if (hasTracks) {
+    const tracksIn = body.tracks;
+    tracks = {};
+    for (const key of BUILTIN_KEYS) {
+      if (tracksIn[key] === undefined || tracksIn[key] === "") {
+        return { ok: false, error: `tracks.${key} is required.` };
+      }
+      const t = normalizeTrack(tracksIn[key], null);
+      if (t == null) {
+        return {
+          ok: false,
+          error: `tracks.${key} must be an integer from 1 to 9999.`,
+        };
+      }
+      tracks[key] = t;
+    }
+  }
+
+  let custom_scenarios = current.custom_scenarios || [];
+  if (hasCustom) {
+    const customIn = body.custom_scenarios;
+    if (customIn.length > 20) {
+      return { ok: false, error: "At most 20 custom scenarios allowed." };
+    }
+
+    custom_scenarios = customIn.map((row, i) => {
+      const label = String(row?.label || "").trim();
+      if (!label) {
+        const err = new Error(`custom_scenarios[${i}].label is required.`);
+        err.status = 400;
+        throw err;
+      }
+      const track = normalizeTrack(row?.track, null);
+      if (track == null) {
+        const err = new Error(
+          `custom_scenarios[${i}].track must be an integer from 1 to 9999.`
+        );
+        err.status = 400;
+        throw err;
+      }
+      const auto_condition = String(row?.auto_condition || "manual_only");
+      if (!AUTO_CONDITIONS.has(auto_condition)) {
+        const err = new Error(
+          `custom_scenarios[${i}].auto_condition must be one of: ${[...AUTO_CONDITIONS].join(", ")}.`
+        );
+        err.status = 400;
+        throw err;
+      }
+      return normalizeCustomScenario(
+        {
+          id: row?.id,
+          label,
+          track,
+          auto_condition,
+        },
+        i
+      );
+    });
+  }
+
+  const voice_policy = hasPolicy
+    ? normalizeVoicePolicy(body.voice_policy)
+    : current.voice_policy;
+
+  const enable_animal_on_predict = hasAnimalFlag
+    ? normalizeBool(body.enable_animal_on_predict, false)
+    : current.enable_animal_on_predict;
+
+  return {
+    ok: true,
+    data: { tracks, custom_scenarios, voice_policy, enable_animal_on_predict },
+  };
+}
+
+function saveSettings(body) {
+  let validated;
+  try {
+    validated = validateForSave(body);
+  } catch (e) {
+    if (e.status) throw e;
+    return { ok: false, error: e.message };
+  }
+  if (!validated.ok) return validated;
+
+  const updated_at = new Date().toISOString();
+  const next = {
+    tracks: validated.data.tracks,
+    custom_scenarios: validated.data.custom_scenarios,
+    voice_policy: validated.data.voice_policy,
+    enable_animal_on_predict: validated.data.enable_animal_on_predict,
+    updated_at,
+  };
+  ensureDir();
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2), "utf8");
+  return { ok: true, settings: next };
+}
+
+function trackForBuiltin(key, settings) {
+  const s = settings || getSettings();
+  const k = String(key || "").trim();
+  if (!BUILTIN_KEYS.includes(k)) return null;
+  return normalizeTrack(s.tracks?.[k], DEFAULT_TRACKS[k]);
+}
+
+function allTestTracks(settings) {
+  const s = settings || getSettings();
+  const rows = BUILTIN_KEYS.map((key) => ({
+    key,
+    label: BUILTIN_LABELS[key],
+    track: trackForBuiltin(key, s),
+    builtin: true,
+  }));
+  for (const c of s.custom_scenarios || []) {
+    rows.push({
+      key: c.id,
+      label: c.label,
+      track: c.track,
+      builtin: false,
+      auto_condition: c.auto_condition,
+    });
+  }
+  return rows;
+}
+
+module.exports = {
+  BUILTIN_KEYS,
+  BUILTIN_LABELS,
+  DEFAULT_TRACKS,
+  AUTO_CONDITIONS,
+  VOICE_POLICIES,
+  DEFAULT_VOICE_POLICY,
+  normalizeVoicePolicy,
+  getSettings,
+  saveSettings,
+  validateForSave,
+  trackForBuiltin,
+  allTestTracks,
+};

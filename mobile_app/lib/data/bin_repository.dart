@@ -1,0 +1,114 @@
+import 'package:dio/dio.dart';
+import '../domain/models.dart';
+import '../services/api_client.dart';
+
+class BinRepository {
+  BinRepository._();
+  static final instance = BinRepository._();
+
+  Dio get _dio => ApiClient.instance.dio;
+
+  // ── Auth ────────────────────────────────────────────────────────────────────
+
+  Future<({String token, AuthUser user})> login(
+      String email, String password) async {
+    final res = await _dio.post('/auth/login',
+        data: {'email': email, 'password': password});
+    final token = res.data['token'] as String;
+    final user = AuthUser.fromJson(res.data['user'] as Map<String, dynamic>);
+    return (token: token, user: user);
+  }
+
+  // ── Devices ─────────────────────────────────────────────────────────────────
+
+  Future<List<NearestBinResult>> nearest(
+      double lat, double lng, {int limit = 5}) async {
+    final res = await _dio.get('/devices/nearest', queryParameters: {
+      'lat': lat,
+      'lng': lng,
+      'limit': limit,
+    });
+    final list = (res.data['results'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    return list.map(NearestBinResult.fromJson).toList();
+  }
+
+  Future<List<Bin>> mapBins() async {
+    final res = await _dio.get('/devices/map');
+    final list = (res.data['bins'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    return list.map(Bin.fromJson).toList();
+  }
+
+  Future<BinLatest> latestForDevice(int id) async {
+    final res = await _dio.get('/devices/$id/latest');
+    return BinLatest.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<List<StaffAlert>> alerts({String status = 'all', int limit = 50}) async {
+    final res = await _dio.get('/alerts', queryParameters: {
+      'status': status,
+      'limit': limit,
+    });
+    final list = (res.data['alerts'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    return list.map(StaffAlert.fromJson).toList();
+  }
+
+  Future<Map<String, int>> alertStatusCounts() async {
+    final res = await _dio.get('/alerts', queryParameters: {'limit': 1});
+    final counts = res.data['status_counts'];
+    if (counts is Map) {
+      return counts.map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
+    }
+    return {};
+  }
+
+  Future<DashboardSettings> dashboardSettings() async {
+    final res = await _dio.get('/dashboard/settings');
+    return DashboardSettings.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<List<CaptureRecord>> deviceCaptures(int id, {int limit = 12}) async {
+    final res = await _dio.get('/devices/$id/captures',
+        queryParameters: {'limit': limit});
+    final list = (res.data['captures'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    return list.map(CaptureRecord.fromJson).toList();
+  }
+
+  Future<RiskForecast> forecastForDevice(int id, {int hours = 24}) async {
+    final res =
+        await _dio.get('/forecast/$id', queryParameters: {'hours': hours});
+    return RiskForecast.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<RiskForecast> defaultForecast({int hours = 24}) async {
+    final res = await _dio.get('/forecast', queryParameters: {'hours': hours});
+    return RiskForecast.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<WeatherNow> weather({double? lat, double? lng}) async {
+    final res = await _dio.get('/weather', queryParameters: {
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+    });
+    return WeatherNow.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  /// status: acknowledged | actioned | dismissed | rejected | open (admin).
+  Future<void> updateAlertStatus(int id, String status) async {
+    await _dio.patch('/alerts/$id', data: {'status': status});
+  }
+
+  Future<CollectionPlan> collectionPlan({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final res = await _dio.post('/collection/plan', data: {
+      'start': {'latitude': latitude, 'longitude': longitude},
+      'start_mode': 'gps',
+    });
+    return CollectionPlan.fromJson(res.data as Map<String, dynamic>);
+  }
+}

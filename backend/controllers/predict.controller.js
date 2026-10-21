@@ -1,6 +1,639 @@
-const { DEFAULT_MODEL } = require("../config/env");
+/**
+ * /predict controller.
+ *
+ * One image in -> waste classification + animal detection + weather snapshot
+ *              + rule-based risk + rotting estimate + persisted capture.
+ *
+ * Multipart fields (test-branch contract preserved):
+ *   image                  (file, required)         binary
+ *   bridge_instance_id     (string, recommended)    laptop bridge UUID
+ *   esp32_id               (string, optional)       binds to a Device row
+ *   device_id              (number, optional)       direct Device id override
+ *   model                  (string, optional)       "waste" | "animal" | "yolo"| "fill"| "bin_fill" —
+ *                                                   when set, call only that service; omit / "all" runs waste+animal (+ MODEL_FILL_URL bin-fill).
+ *   lat / lon              (number, optional)       weather + stored on capture
+ *   source_type            (string, optional)       esp32 | mobile | admin
+ *
+ * Response (when both models run):
+ *   {
+ *     waste:    { label, confidence, ... raw waste-api payload ... },
+ *     animal:   { detection_count, detections, annotated_image_base64, ... },
+ *     weather:  { temp_c, humidity_pct, condition, source, ... },
+ *     risk:     { level, case, message, rules_fired, alert, rotting_hours, ... },
+ *     bin:      { id, name, esp32_id, ... }   (null when no DB / no match),
+ *     timestamp: ISO,
+ *     model: "waste+animal+bin_fill" | ...
+ *   }
+ *
+ * Response sets X-Capture-Id header when the row is saved.
+ */
+
+const { DEFAULT_WEATHER_LAT, DEFAULT_WEATHER_LON } =
+  require("../config/env");
 const modelClient = require("../services/modelClient");
 const captureService = require("../services/captureService");
+const latestState = require("../services/latestState");
+const deviceService = require("../services/deviceService");
+const audioTriggerService = require("../services/audioTriggerService");
+const audioSettingsService = require("../services/audioSettingsService");
+const audioPriorityService = require("../services/audioPriorityService");
+const geminiSettingsService = require("../services/geminiSettingsService");
+const geminiVisionService = require("../services/geminiVisionService");
+const litteringAlertService = require("../services/litteringAlertService");
+const litterSeverityAlertService = require("../services/litterSeverityAlertService");
+const litterBinOutlineService = require("../services/litterBinOutlineService");
+const { litterSeverityExtras } = require("../services/litterSeverityUtils");
+const weatherService = require("../services/weatherService");
+const { computeRisk } = require("../services/riskEngine");
+const {
+  inferSourceType,
+  deriveFillPercentage,
+  derivePredictionClass,
+} = require("../utils/predictCaptureMeta");
+const { deriveFillLevel } = require("../utils/fillLevel");
+
+function trimBridgeInstanceId(body) {
+  if (
+    !body ||
+    body.bridge_instance_id === undefined ||
+    body.bridge_instance_id === null
+  ) {
+    return "";
+  }
+  return String(body.bridge_instance_id).trim();
+}
+
+async function resolveDeviceId(body, { bypassBridgeCheck = false } = {}) {
+  const bridgeRaw = trimBridgeInstanceId(body);
+
+  const rawEsp =
+    body &&
+    body.esp32_id !== undefined &&
+    body.esp32_id !== null &&
+    body.esp32_id !== ""
+      ? String(body.esp32_id).trim()
+      : "";
+  const rawDid = body && body.device_id;
+
+  if (
+    rawDid !== undefined &&
+    rawDid !== null &&
+    String(rawDid).trim() !== ""
+  ) {
+    const id = parseInt(rawDid, 10);
+    if (!Number.isFinite(id)) return null;
+
+    const device = await deviceService.getDeviceById(id);
+    if (!device) return null;
+
+    const bound = device.bridge_instance_id
+      ? String(device.bridge_instance_id).trim()
+      : "";
+    if (bound && bound !== bridgeRaw && !bypassBridgeCheck) {
+      return null;
+    }
+    return id;
+  }
+
+  if (rawEsp) {
+    return deviceService.findDeviceIdForPredict(rawEsp, bridgeRaw || null, {
+      bypassBridgeCheck,
+    });
+  }
+
+  return null;
+}
+
+function pickWeatherLocation(body, device) {
+  const bodyLat = Number(body?.lat);
+  const bodyLon = Number(body?.lon);
+  if (Number.isFinite(bodyLat) && Number.isFinite(bodyLon)) {
+    return { lat: bodyLat, lon: bodyLon, source: "body" };
+  }
+  if (
+    device &&
+    Number.isFinite(Number(device.latitude)) &&
+    Number.isFinite(Number(device.longitude))
+  ) {
+    return {
+      lat: Number(device.latitude),
+      lon: Number(device.longitude),
+      source: "device",
+    };
+  }
+  return {
+    lat: DEFAULT_WEATHER_LAT,
+    lon: DEFAULT_WEATHER_LON,
+    source: "default",
+  };
+}
+
+function animalsForRiskEngine(animalPayload) {
+  if (!animalPayload || animalPayload.error) return [];
+  const detections = Array.isArray(animalPayload.detections)
+    ? animalPayload.detections
+    : [];
+  return detections.map((d) => ({
+    class_name: d.label || d.class_name || "?",
+    label: d.label,
+    confidence: Number(d.confidence) || 0,
+    box: Array.isArray(d.box) ? d.box.map(Number) : [0, 0, 0, 0],
+  }));
+}
+
+function predictionsToPersist(animalPayload) {
+  if (!animalPayload || animalPayload.error) return [];
+  const detections = Array.isArray(animalPayload.detections)
+    ? animalPayload.detections
+    : [];
+  return detections.map((d) => ({
+    label: d.label || "?",
+    confidence: Number(d.confidence) || 0,
+    box: Array.isArray(d.box) ? d.box.map(Number) : [0, 0, 0, 0],
+  }));
+}
+
+function predictionsFromLitteringAction(litteringPayload) {
+  if (!litteringPayload || litteringPayload.error) return [];
+  const detections = Array.isArray(litteringPayload.detections)
+    ? litteringPayload.detections
+    : [];
+  return detections.map((d) => ({
+    label: d.class_name || d.label || "littering",
+    confidence: Number(d.confidence) || 0,
+    box: Array.isArray(d.box) ? d.box.map(Number) : [0, 0, 0, 0],
+    model_type: "littering_action",
+  }));
+}
+
+function litteringActionForResponse(litteringPayload) {
+  if (!litteringPayload) return null;
+  if (litteringPayload.error) return null;
+  return {
+    event_detected: Boolean(litteringPayload.event_detected),
+    event_count: Number(litteringPayload.event_count) || 0,
+    max_confidence: Number(litteringPayload.max_confidence) || 0,
+    detections: Array.isArray(litteringPayload.detections)
+      ? litteringPayload.detections.map((d) => ({
+          class_id: d.class_id,
+          class_name: d.class_name || d.label,
+          confidence: Number(d.confidence) || 0,
+          bbox: d.bbox,
+          bbox_normalized: d.bbox_normalized,
+        }))
+      : [],
+  };
+}
+
+/** Littering-action reply → capture columns (littering_event_detected, count, max confidence). */
+function litteringExtras(litteringPayload) {
+  if (!litteringPayload || litteringPayload.error) {
+    return {
+      littering_event_detected: null,
+      littering_event_count: null,
+      littering_max_confidence: null,
+      littering_action_summary: null,
+    };
+  }
+  return {
+    littering_event_detected: Boolean(litteringPayload.event_detected),
+    littering_event_count: Number(litteringPayload.event_count) || 0,
+    littering_max_confidence: Number(litteringPayload.max_confidence) || 0,
+    littering_action_summary: {
+      event_detected: Boolean(litteringPayload.event_detected),
+      event_count: Number(litteringPayload.event_count) || 0,
+      max_confidence: Number(litteringPayload.max_confidence) || 0,
+      inference_ms: litteringPayload.inference_ms ?? null,
+      model: litteringPayload.model || null,
+      detections: litteringPayload.detections || [],
+    },
+  };
+}
+
+function predictionsFromBinFill(binFillPayload) {
+  if (!binFillPayload || binFillPayload.error) return [];
+  const preds = Array.isArray(binFillPayload.predictions)
+    ? binFillPayload.predictions
+    : [];
+  return preds.map((p) => ({
+    label: p.label || "?",
+    confidence: Number(p.confidence) || 0,
+    box: Array.isArray(p.box) ? p.box.map(Number) : [0, 0, 0, 0],
+  }));
+}
+
+function predictionsFromLitter(litterPayload) {
+  if (!litterPayload || litterPayload.error) return [];
+  const detections = Array.isArray(litterPayload.detections)
+    ? litterPayload.detections
+    : [];
+  return detections.map((d) => ({
+    label: d.label || "litter",
+    confidence: Number(d.confidence) || 0,
+    box: Array.isArray(d.box) ? d.box.map(Number) : [0, 0, 0, 0],
+    model_type: "litter",
+  }));
+}
+
+const YOLO_FILL_TIER_TO_PCT = { Empty: 25, Half: 50, Overflow: 85 };
+
+function persistModelLabel(bodyModel, registryFlags = {}) {
+  const rm = (bodyModel || "").toString().trim().toLowerCase();
+  if (rm === "waste") return "waste";
+  if (rm === "animal") return "animal";
+  if (rm === "yolo" || rm === "fill" || rm === "bin_fill") return "bin_fill_yolo";
+  const parts = ["waste", "animal"];
+  if (registryFlags.hasFill) parts.push("bin_fill");
+  if (registryFlags.hasLitter) parts.push("litter");
+  if (registryFlags.hasLitteringAction) parts.push("littering_action");
+  return parts.join("+");
+}
+
+async function resolveBinForPredict(body, { sourceType, bypassBridge }) {
+  let deviceId = await resolveDeviceId(body, {
+    bypassBridgeCheck: bypassBridge,
+  });
+  if (!deviceId && (body.esp32_id || sourceType === "esp32")) {
+    const fallback = await deviceService.findDeviceByEsp32Id(
+      body.esp32_id || "esp-cam-1"
+    );
+    if (fallback?.id) deviceId = fallback.id;
+  }
+  const device = deviceId ? await deviceService.getDeviceById(deviceId) : null;
+  if (!deviceId) {
+    console.warn(
+      "[predict] capture has no device_id (esp32_id=%s) — website will keep the old photo",
+      body.esp32_id || ""
+    );
+  } else {
+    console.log("[predict] binding capture to device", deviceId);
+  }
+  return { deviceId, device };
+}
+
+async function runRequestedModels({
+  imageBuffer,
+  filename,
+  imageMimetype,
+  requestedModel,
+  runAllModels,
+  binFillOnly,
+  deviceId,
+  includeAnimal = true,
+}) {
+  const warnings = [];
+  let waste = null;
+  let animal = null;
+  let bin_fill = null;
+  let littering_action = null;
+  let litter_severity = null;
+
+  if (runAllModels) {
+    const all = await modelClient.inferAll({
+      fileBuffer: imageBuffer,
+      filename,
+      mimetype: imageMimetype,
+      // This bin's outline (if drawn) so litter inside the bin is not counted.
+      litterBinPolygon: await litterBinOutlineService.polygonForDevice(deviceId),
+      includeAnimal,
+    });
+    waste = all.waste;
+    animal = all.animal;
+    if (!includeAnimal) {
+      animal = modelClient.emptyAnimalPayload("disabled_in_settings");
+    }
+    bin_fill = all.bin_fill;
+    littering_action = all.littering_action;
+    litter_severity = all.litter_severity;
+    if (littering_action?.error) {
+      warnings.push(`littering_action: ${littering_action.error}`);
+      console.warn("[predict] littering_action:", littering_action.error);
+      littering_action = null;
+    }
+    if (litter_severity?.error) {
+      warnings.push(`litter_severity: ${litter_severity.error}`);
+      console.warn("[predict] litter_severity:", litter_severity.error);
+      litter_severity = null;
+    }
+  } else if (requestedModel === "waste") {
+    try {
+      waste = await modelClient.inferWaste({
+        fileBuffer: imageBuffer,
+        filename,
+        mimetype: imageMimetype,
+      });
+    } catch (e) {
+      waste = { error: e.message };
+    }
+  } else if (requestedModel === "animal") {
+    try {
+      animal = await modelClient.inferAnimal({
+        fileBuffer: imageBuffer,
+        filename,
+        mimetype: imageMimetype,
+      });
+    } catch (e) {
+      animal = { error: e.message };
+    }
+  } else if (binFillOnly) {
+    bin_fill = await modelClient.inferBinFillYolo({
+      fileBuffer: imageBuffer,
+      filename,
+      mimetype: imageMimetype,
+    });
+  }
+
+  return {
+    waste,
+    animal,
+    bin_fill,
+    littering_action,
+    litter_severity,
+    warnings,
+  };
+}
+
+async function finishPredictAnalysis({
+  imageBuffer,
+  filename,
+  imageMimetype,
+  requestedModel,
+  runAllModels,
+  binFillOnly,
+  persistLabel,
+  sourceType,
+  captureLat,
+  captureLon,
+  deviceId,
+  device,
+  savedCapture,
+  motionSessionId,
+  eventId,
+  includeAnimal = true,
+}) {
+  const predictStarted = Date.now();
+  const inferred = await runRequestedModels({
+    imageBuffer,
+    filename,
+    imageMimetype,
+    requestedModel,
+    runAllModels,
+    binFillOnly,
+    deviceId,
+    includeAnimal,
+  });
+  const { waste, animal, bin_fill } = inferred;
+  let { littering_action, litter_severity, warnings } = inferred;
+
+  const { lat, lon, source: locationSource } = pickWeatherLocation(
+    { lat: captureLat, lon: captureLon },
+    device
+  );
+  const weather = await weatherService.getCurrentWeather(lat, lon);
+  const animalsForEngine = animalsForRiskEngine(animal);
+  const tierPredictions =
+    bin_fill && !bin_fill.error && Array.isArray(bin_fill.predictions)
+      ? bin_fill.predictions
+      : [];
+  const bin_fill_level = deriveFillLevel(tierPredictions);
+  const risk = computeRisk({
+    waste:
+      waste && !waste.error
+        ? { label: waste.label, confidence: waste.confidence }
+        : null,
+    animals: animalsForEngine,
+    weather,
+    binDoc: device ? { name: device.name, hours_since_clean: 0 } : null,
+  });
+
+  const extras = {
+    waste_label: waste?.label || null,
+    waste_confidence: Number.isFinite(Number(waste?.confidence))
+      ? Number(waste.confidence)
+      : null,
+    animal_count: animalsForEngine.length,
+    risk_level: risk.level,
+    risk_case: risk.case,
+    rotting_hours: risk.rotting_hours,
+    temp_c: weather?.temp_c ?? null,
+    humidity_pct: weather?.humidity_pct ?? null,
+    weather_condition: weather?.condition ?? null,
+    source_type: sourceType,
+    latitude: captureLat,
+    longitude: captureLon,
+    fill_percentage:
+      bin_fill_level != null && YOLO_FILL_TIER_TO_PCT[bin_fill_level] != null
+        ? YOLO_FILL_TIER_TO_PCT[bin_fill_level]
+        : deriveFillPercentage(risk),
+    prediction_class: (() => {
+      if (waste && !waste.error && waste.label)
+        return String(waste.label).slice(0, 160);
+      if (bin_fill_level) return String(bin_fill_level).slice(0, 160);
+      return derivePredictionClass(waste, animalsForEngine.length, risk);
+    })(),
+    ...litteringExtras(littering_action),
+    ...litterSeverityExtras(litter_severity),
+    motion_session_id: motionSessionId || null,
+    event_id: eventId || null,
+  };
+
+  const predictionsToStore = [
+    ...predictionsToPersist(animal),
+    ...predictionsFromBinFill(bin_fill),
+    ...predictionsFromLitter(litter_severity),
+    ...predictionsFromLitteringAction(littering_action),
+  ];
+
+  try {
+    latestState.setLatest({
+      deviceId,
+      imageBuffer,
+      mimetype: imageMimetype,
+      filename,
+      modelName: persistLabel,
+      predictions: predictionsToStore,
+      extras,
+    });
+  } catch (e) {
+    console.error("[predict] failed to set latest state:", e.message);
+  }
+
+  if (savedCapture?.id) {
+    try {
+      await captureService.updateCaptureAnalysis(savedCapture.id, {
+        modelName: persistLabel,
+        fillLevel: bin_fill_level || null,
+        extras,
+        predictions: predictionsToStore,
+      });
+    } catch (err) {
+      console.error("[predict] failed to update capture analysis:", err.message);
+    }
+  }
+
+  // Litter component alerts: littering first (multi-frame confirmed), then
+  // litter severity (add-bin / building up / HIGH). Failures never break /predict.
+  try {
+    await litteringAlertService.maybeCreateLitteringAlert({
+      captureId: savedCapture?.id || null,
+      deviceId,
+      litteringAction: littering_action,
+    });
+  } catch (alertErr) {
+    console.error("[predict] littering alert skipped:", alertErr.message);
+  }
+
+  try {
+    await litterSeverityAlertService.maybeCreateLitterSeverityAlerts({
+      captureId: savedCapture?.id || null,
+      deviceId,
+      device,
+      litterPayload: litter_severity,
+      litteringAction: littering_action,
+    });
+  } catch (sevAlertErr) {
+    console.error("[predict] litter severity alert skipped:", sevAlertErr.message);
+  }
+
+  const audioSettings = audioSettingsService.getSettings();
+  const yoloResolved = audioPriorityService.resolveAudioScenario({
+    risk,
+    bin_fill_level,
+    fill_percentage: extras.fill_percentage,
+    animal,
+    littering_action,
+    litter_severity,
+    bin_fill,
+    waste,
+    settings: audioSettings,
+  });
+
+  const geminiSettings = geminiSettingsService.getSettings();
+  const voiceSource = geminiSettings.voice_source || "models";
+  let geminiResolved = null;
+
+  if (voiceSource === "gemini" || voiceSource === "both") {
+    try {
+      geminiResolved = await geminiVisionService.analyzeImage({
+        imageBuffer,
+        mimetype: imageMimetype,
+      });
+      if (geminiResolved?.error) {
+        console.warn(
+          `[predict] Gemini: ${geminiResolved.error} event=${eventId || "-"}`
+        );
+      }
+    } catch (gemErr) {
+      console.error("[predict] Gemini skipped:", gemErr.message);
+      geminiResolved = {
+        ok: false,
+        error: gemErr.message,
+        scenario_key: null,
+        track: null,
+        source: "gemini",
+      };
+    }
+  }
+
+  const finalResolved = geminiVisionService.pickFinalVoiceScenario(
+    voiceSource,
+    yoloResolved,
+    geminiResolved
+  );
+
+  try {
+    geminiSettingsService.saveLastPrediction({
+      at: new Date().toISOString(),
+      capture_id: savedCapture?.id || null,
+      event_id: eventId || null,
+      motion_session_id: motionSessionId || null,
+      voice_source: voiceSource,
+      yolo: yoloResolved
+        ? {
+            scenario: yoloResolved.scenario_key,
+            label: yoloResolved.label,
+            track: yoloResolved.track,
+            confidence: yoloResolved.confidence,
+            reason: yoloResolved.reason,
+          }
+        : null,
+      gemini: geminiResolved
+        ? {
+            ok: geminiResolved.ok !== false && Boolean(geminiResolved.scenario_key),
+            scenario: geminiResolved.scenario_key,
+            label: geminiResolved.label,
+            track: geminiResolved.track,
+            confidence: geminiResolved.confidence,
+            fill_level: geminiResolved.fill_level,
+            litter_on_ground: geminiResolved.litter_on_ground,
+            animal_detected: geminiResolved.animal_detected,
+            reason: geminiResolved.reason,
+            error: geminiResolved.error || null,
+            inference_ms: geminiResolved.inference_ms ?? null,
+          }
+        : null,
+      final: finalResolved
+        ? {
+            scenario: finalResolved.scenario_key,
+            label: finalResolved.label,
+            track: finalResolved.track,
+            confidence: finalResolved.confidence,
+            winner: finalResolved.winner || voiceSource,
+            source: finalResolved.source || voiceSource,
+            reason: finalResolved.reason,
+          }
+        : null,
+    });
+  } catch (savePredErr) {
+    console.warn(
+      "[predict] could not save Gemini last_prediction:",
+      savePredErr.message
+    );
+  }
+
+  let audioTriggerResult = null;
+  try {
+    audioTriggerResult = await audioTriggerService.maybeQueueFromPredict({
+      device,
+      risk,
+      sourceType,
+      bin_fill_level,
+      fill_percentage: extras.fill_percentage,
+      animal,
+      littering_action,
+      litter_severity,
+      bin_fill,
+      waste,
+      motionSessionId: extras.motion_session_id,
+      eventId: extras.event_id,
+      resolvedOverride: finalResolved,
+    });
+  } catch (audioErr) {
+    console.error("[predict] audio trigger skipped:", audioErr.message);
+  }
+
+  console.log(
+    `[predict] event=${eventId || "-"} session=${motionSessionId || "-"} fill=${bin_fill_level || "-"} voice_source=${voiceSource} winner=${finalResolved?.winner || "-"} scenario=${finalResolved?.scenario_key || audioTriggerResult?.resolved?.scenario_key || "-"} queued=${Boolean(audioTriggerResult?.command)} predict_ms=${Date.now() - predictStarted}`
+  );
+
+  return {
+    timestamp: new Date().toISOString(),
+    waste,
+    animal,
+    bin_fill,
+    bin_fill_level,
+    littering_action,
+    litter_severity,
+    warnings,
+    weather,
+    locationSource,
+    lat,
+    lon,
+    risk,
+    extras,
+    audioTriggerResult,
+  };
+}
 
 async function predict(req, res, next) {
   try {
@@ -15,33 +648,231 @@ async function predict(req, res, next) {
       return res.status(400).json({ error: "Empty image received." });
     }
 
-    const modelName = (req.body.model || DEFAULT_MODEL).toString();
-    const conf = req.body.conf || "0.25";
+    const body = req.body || {};
+    const sourceType = inferSourceType(body);
+    const bypassBridge =
+      sourceType === "mobile" ||
+      sourceType === "admin" ||
+      sourceType === "esp32";
 
-    const predictions = await modelClient.infer({
-      modelName,
-      fileBuffer: req.file.buffer,
-      filename: req.file.originalname,
-      mimetype: req.file.mimetype,
-      conf,
+    const bridgeInstanceId =
+      trimBridgeInstanceId(body) !== ""
+        ? trimBridgeInstanceId(body)
+        : null;
+
+    const reportLat = Number(body.lat);
+    const reportLon = Number(body.lon);
+    const captureLat = Number.isFinite(reportLat) ? reportLat : null;
+    const captureLon = Number.isFinite(reportLon) ? reportLon : null;
+
+    // Allow back-compat: model=waste|animal|fill calls one service; omit / all => inferAll.
+    // ESP32 captures always run every model so audio can pick the highest-confidence result.
+    const requestedModel = (body.model || "").toString().trim().toLowerCase();
+    const callBoth = !requestedModel || requestedModel === "all";
+    const isEsp32Source = sourceType === "esp32";
+    const runAllModels = callBoth || isEsp32Source;
+    const binFillOnly =
+      requestedModel === "yolo" ||
+      requestedModel === "fill" ||
+      requestedModel === "bin_fill";
+    const hasFillRegistry = Boolean(modelClient.getModelUrl("fill"));
+    const hasLitterRegistry = Boolean(modelClient.getModelUrl("litter"));
+    const hasLitteringActionRegistry = modelClient.isLitteringActionConfigured();
+
+    if (
+      requestedModel &&
+      !callBoth &&
+      !binFillOnly &&
+      requestedModel !== "waste" &&
+      requestedModel !== "animal"
+    ) {
+      return res.status(400).json({
+        error: `Unknown model '${requestedModel}'. Use 'waste', 'animal', 'yolo', 'fill', 'bin_fill', 'all', or omit.`,
+      });
+    }
+
+    const persistLabel = persistModelLabel(body.model, {
+      hasFill: hasFillRegistry,
+      hasLitter: hasLitterRegistry,
+      hasLitteringAction: hasLitteringActionRegistry,
     });
 
+    const { deviceId, device } = await resolveBinForPredict(body, {
+      sourceType,
+      bypassBridge,
+    });
+    if (deviceId && sourceType === "esp32") {
+      deviceService
+        .updateDevice(deviceId, { last_seen_at: new Date() })
+        .catch((err) => {
+          console.warn("[predict] last_seen update skipped:", err.message);
+        });
+    }
+
+    const imageBuffer = Buffer.from(req.file.buffer);
+    const imageMimetype = req.file.mimetype || "image/jpeg";
+    const filename = req.file.originalname || "capture.jpg";
+
+    let savedCapture = null;
     try {
-      const capture = await captureService.saveCaptureWithPredictions({
-        modelName,
+      savedCapture = await captureService.saveCaptureWithPredictions({
+        modelName: persistLabel,
         imageUrl: null,
+        imageBuffer,
+        imageMimetype,
+        fillLevel: null,
         userId: null,
-        deviceId: null,
-        predictions,
+        deviceId,
+        bridgeInstanceId,
+        predictions: [],
+        extras: {
+          source_type: sourceType,
+          latitude: captureLat,
+          longitude: captureLon,
+        },
       });
-      if (capture) res.set("X-Capture-Id", String(capture.id));
+      if (savedCapture) res.set("X-Capture-Id", String(savedCapture.id));
     } catch (saveErr) {
       console.error("[predict] failed to persist capture:", saveErr.message);
     }
 
-    res.json(predictions);
+    try {
+      latestState.setLatest({
+        deviceId,
+        imageBuffer,
+        mimetype: imageMimetype,
+        filename,
+        modelName: persistLabel,
+        predictions: [],
+        extras: { source_type: sourceType },
+      });
+    } catch (e) {
+      console.error("[predict] failed to set latest state:", e.message);
+    }
+
+    const motionSessionId = body.motion_session_id
+      ? String(body.motion_session_id).trim()
+      : "";
+    const eventId = body.event_id ? String(body.event_id).trim() : "";
+
+    // Manual Animal Detection tab uses model=animal — always allowed.
+    // ESP32 / "all" auto path respects Settings → enable_animal_on_predict.
+    const audioSettings = audioSettingsService.getSettings();
+    const includeAnimal =
+      requestedModel === "animal" ||
+      Boolean(audioSettings.enable_animal_on_predict);
+
+    const analysisInput = {
+      imageBuffer,
+      filename,
+      imageMimetype,
+      requestedModel,
+      runAllModels,
+      binFillOnly,
+      persistLabel,
+      sourceType,
+      captureLat,
+      captureLon,
+      deviceId,
+      device,
+      savedCapture,
+      motionSessionId,
+      eventId,
+      includeAnimal,
+    };
+
+    // ESP32 only needs the JPEG stored. Models + audio continue after the reply
+    // so the camera is free in ~2s instead of waiting ~30s for every model.
+    if (isEsp32Source) {
+      const timestamp = new Date().toISOString();
+      res.json({
+        accepted: true,
+        analyzing: true,
+        timestamp,
+        model: persistLabel,
+        bin: device
+          ? {
+              id: device.id,
+              name: device.name,
+              esp32_id: device.esp32_id,
+              audio_esp32_id: device.audio_esp32_id,
+              latitude: device.latitude,
+              longitude: device.longitude,
+            }
+          : null,
+        bridge_instance_id: bridgeInstanceId,
+        source_type: sourceType,
+        capture_id: savedCapture?.id || null,
+      });
+      setImmediate(() => {
+        finishPredictAnalysis(analysisInput).catch((err) => {
+          console.error("[predict] background analysis failed:", err.message);
+        });
+      });
+      return;
+    }
+
+    const analyzed = await finishPredictAnalysis(analysisInput);
+    return res.json({
+      timestamp: analyzed.timestamp,
+      model: persistLabel,
+      waste: analyzed.waste,
+      animal: analyzed.animal,
+      bin_fill: analyzed.bin_fill,
+      bin_fill_level: analyzed.bin_fill_level,
+      littering_action: litteringActionForResponse(analyzed.littering_action),
+      litter_severity:
+        analyzed.litter_severity && !analyzed.litter_severity.error
+          ? {
+              severity: analyzed.litter_severity.severity,
+              lsi: analyzed.litter_severity.lsi,
+              detection_count: analyzed.litter_severity.detection_count,
+              metrics: analyzed.litter_severity.metrics,
+              bin_polygon_applied: Boolean(
+                analyzed.litter_severity.bin_polygon_applied
+              ),
+              ignored_inside_bin:
+                Number(analyzed.litter_severity.ignored_inside_bin) || 0,
+            }
+          : null,
+      audio_trigger: analyzed.audioTriggerResult?.resolved
+        ? {
+            scenario: analyzed.audioTriggerResult.resolved.scenario_key,
+            label: analyzed.audioTriggerResult.resolved.label,
+            track: analyzed.audioTriggerResult.resolved.track,
+            confidence: analyzed.audioTriggerResult.resolved.confidence,
+            confidence_pct: Math.round(
+              (analyzed.audioTriggerResult.resolved.confidence || 0) * 100
+            ),
+            reason: analyzed.audioTriggerResult.resolved.reason,
+            source: analyzed.audioTriggerResult.resolved.source,
+            candidates: analyzed.audioTriggerResult.resolved.candidates,
+            command_id: analyzed.audioTriggerResult.command?.command_id ?? null,
+            queued: Boolean(analyzed.audioTriggerResult.command),
+          }
+        : null,
+      warnings: analyzed.warnings.length ? analyzed.warnings : undefined,
+      weather: {
+        ...analyzed.weather,
+        location_source: analyzed.locationSource,
+        lat: analyzed.lat,
+        lon: analyzed.lon,
+      },
+      risk: analyzed.risk,
+      bin: device
+        ? {
+            id: device.id,
+            name: device.name,
+            esp32_id: device.esp32_id,
+            latitude: device.latitude,
+            longitude: device.longitude,
+          }
+        : null,
+      bridge_instance_id: bridgeInstanceId,
+      source_type: sourceType,
+    });
   } catch (err) {
-    next(err);
+    return next(err);
   }
 }
 

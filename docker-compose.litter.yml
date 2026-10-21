@@ -1,0 +1,24 @@
+# Littering-event + litter-severity local stack
+# From repository root:
+#   docker compose -f docker-compose.litter.yml up --build
+
+services:
+  litter-severity-api:
+    build:
+      context: ./services/litter-severity-api
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      PORT: "8000"
+
+  littering-action-api:
+    build:
+      context: ./services/littering-action-api
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      PORT: "8000"
+      LITTERING_MODEL_PATH: /app/weights/best.pt
+      LITTERING_DEVICE: cpu

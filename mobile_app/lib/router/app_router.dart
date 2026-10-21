@@ -1,0 +1,148 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../data/providers.dart';
+import '../presentation/home_screen.dart';
+import '../presentation/public/public_nearest_screen.dart';
+import '../presentation/shared/in_app_navigation_screen.dart';
+import '../domain/navigation_args.dart';
+import '../presentation/staff/staff_alerts_screen.dart';
+import '../presentation/staff/staff_bin_detail_screen.dart';
+import '../presentation/staff/staff_bins_screen.dart';
+import '../presentation/staff/staff_dashboard_screen.dart';
+import '../presentation/staff/staff_login_screen.dart';
+import '../presentation/staff/staff_more_screen.dart';
+import '../presentation/staff/staff_routes_screen.dart';
+import '../presentation/staff/staff_shell.dart';
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+
+final routerProvider = Provider<GoRouter>((ref) {
+  // Recreating GoRouter on every auth change resets to `/` (home).
+  // Keep one instance and only refresh redirects when login state changes.
+  final refresh = ValueNotifier<int>(0);
+  ref.listen<AuthState>(authProvider, (prev, next) {
+    if (prev?.isLoggedIn != next.isLoggedIn) {
+      refresh.value++;
+    }
+  });
+  ref.onDispose(refresh.dispose);
+
+  return GoRouter(
+    navigatorKey: _rootNavigatorKey,
+    initialLocation: '/',
+    refreshListenable: refresh,
+    redirect: (context, state) {
+      final loggedIn = ref.read(authProvider).isLoggedIn;
+      final path = state.fullPath ?? state.uri.path;
+      final isStaffPath = path.startsWith('/staff');
+      final isLoginPath = path == '/staff/login';
+
+      if (isStaffPath && !isLoginPath && !loggedIn) {
+        return '/staff/login';
+      }
+      if (isLoginPath && loggedIn) {
+        return '/staff/dashboard';
+      }
+      // Legacy alias
+      if (path == '/staff/bins' && state.uri.queryParameters.isEmpty) {
+        return null;
+      }
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (_, __) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/public',
+        builder: (_, __) => const PublicNearestScreen(),
+      ),
+      GoRoute(
+        path: '/navigate',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, state) {
+          final args = state.extra as InAppNavigationArgs?;
+          if (args == null) {
+            return const Scaffold(
+              body: Center(child: Text('No navigation target')),
+            );
+          }
+          return InAppNavigationScreen(args: args);
+        },
+      ),
+      GoRoute(
+        path: '/staff/login',
+        builder: (_, __) => const StaffLoginScreen(),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return StaffShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/staff/dashboard',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: StaffDashboardScreen(),
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/staff/bins',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: StaffBinsScreen(),
+                ),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (_, state) => StaffBinDetailScreen(
+                      binId: int.parse(state.pathParameters['id']!),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/staff/routes',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: StaffRoutesScreen(),
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/staff/alerts',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: StaffAlertsScreen(),
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/staff/more',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: StaffMoreScreen(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+});

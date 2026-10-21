@@ -5,6 +5,7 @@ const db = require("../config/db");
 async function getHealth(_req, res, next) {
   try {
     const models = await modelClient.pingAllModels();
+    const littering_action = await modelClient.pingLitteringActionHealth();
 
     const database = db.isDbEnabled()
       ? await pingDb()
@@ -16,6 +17,7 @@ async function getHealth(_req, res, next) {
       runtime: "express",
       default_model: DEFAULT_MODEL,
       models,
+      littering_action,
       database,
     });
   } catch (err) {

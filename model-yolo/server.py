@@ -7,6 +7,7 @@ on an uploaded image and returns predictions in a common JSON shape.
 The main backend (gateway) is the only component that calls this service.
 """
 
+import base64
 import io
 import os
 from pathlib import Path
@@ -72,7 +73,8 @@ def infer():
     results = model(image, conf=conf_threshold)
 
     predictions = []
-    for r in results:
+    r = results[0]
+    if r.boxes is not None and len(r.boxes):
         for box in r.boxes:
             coords = box.xyxy.tolist()[0]
             predictions.append(
@@ -83,10 +85,19 @@ def infer():
                 }
             )
 
+    plot_bgr = r.plot()
+    rgb = plot_bgr[:, :, ::-1]
+    out_buf = io.BytesIO()
+    Image.fromarray(rgb).save(out_buf, format="JPEG", quality=88)
+    annotated_b64 = base64.standard_b64encode(out_buf.getvalue()).decode("ascii")
+
     return jsonify(
         {
             "model": MODEL_NAME,
             "predictions": predictions,
+            "detections": predictions,
+            "detection_count": len(predictions),
+            "annotated_image_base64": annotated_b64,
         }
     )
 

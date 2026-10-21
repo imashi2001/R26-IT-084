@@ -1,0 +1,14 @@
+# Railway backend service — Settings → Build:
+#   Branch          = test
+#   Root Directory  = backend   (recommended)
+#   Dockerfile Path = Dockerfile
+#
+# Also works with Root Directory = . and Dockerfile Path = backend/Dockerfile.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"

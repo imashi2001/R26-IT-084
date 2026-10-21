@@ -1,0 +1,259 @@
+{
+  "note": "These figures were computed on the deprecated approximately 29 t/month synthetic series and must not be cited.",
+  "data": {
+    "frequency": "daily",
+    "source": "reconstructed from monthly totals using daily_profile.json",
+    "rows": 1082,
+    "date_start": "2023-01-15",
+    "date_end": "2025-12-31",
+    "seed": 42
+  },
+  "model": {
+    "path": "C:\\Reasearch\\SLIIT\\R26-IT-084\\waste_forecast\\models\\trained_model_daily.pkl",
+    "feature_columns": [
+      "lag_1",
+      "lag_7",
+      "lag_14",
+      "rolling_mean_7",
+      "rolling_std_7",
+      "day_of_week_num",
+      "day_sin",
+      "day_cos",
+      "month_sin",
+      "month_cos",
+      "is_weekend",
+      "is_holiday",
+      "is_off_day",
+      "is_long_weekend",
+      "is_long_weekend_bridge",
+      "n_long_weekend_days",
+      "n_bridge_days"
+    ]
+  },
+  "cross_validation": {
+    "method": "TimeSeriesSplit",
+    "n_splits": 5,
+    "folds": [
+      {
+        "n": 180,
+        "RMSE": 0.08034521556168031,
+        "MAE": 0.05649886959523253,
+        "MAPE_percent": 6.02011193198591,
+        "R2": 0.8444933961988575,
+        "fold": 1,
+        "train_n": 182,
+        "test_n": 180,
+        "train_start": "2023-01-15",
+        "train_end": "2023-07-15",
+        "test_start": "2023-07-16",
+        "test_end": "2024-01-11"
+      },
+      {
+        "n": 180,
+        "RMSE": 0.061505837151971506,
+        "MAE": 0.04803373882499786,
+        "MAPE_percent": 5.47353416995511,
+        "R2": 0.9560653188320164,
+        "fold": 2,
+        "train_n": 362,
+        "test_n": 180,
+        "train_start": "2023-01-15",
+        "train_end": "2024-01-11",
+        "test_start": "2024-01-12",
+        "test_end": "2024-07-09"
+      },
+      {
+        "n": 180,
+        "RMSE": 0.035074089137806436,
+        "MAE": 0.02497758725482926,
+        "MAPE_percent": 2.698060532316613,
+        "R2": 0.9770580923701115,
+        "fold": 3,
+        "train_n": 542,
+        "test_n": 180,
+        "train_start": "2023-01-15",
+        "train_end": "2024-07-09",
+        "test_start": "2024-07-10",
+        "test_end": "2025-01-05"
+      },
+      {
+        "n": 180,
+        "RMSE": 0.026877733294016756,
+        "MAE": 0.020464158514387994,
+        "MAPE_percent": 2.1239265945996157,
+        "R2": 0.9895119244719123,
+        "fold": 4,
+        "train_n": 722,
+        "test_n": 180,
+        "train_start": "2023-01-15",
+        "train_end": "2025-01-05",
+        "test_start": "2025-01-06",
+        "test_end": "2025-07-04"
+      },
+      {
+        "n": 180,
+        "RMSE": 0.02294425144850576,
+        "MAE": 0.017384529800158,
+        "MAPE_percent": 1.7602818141740977,
+        "R2": 0.9910516221531634,
+        "fold": 5,
+        "train_n": 902,
+        "test_n": 180,
+        "train_start": "2023-01-15",
+        "train_end": "2025-07-04",
+        "test_start": "2025-07-05",
+        "test_end": "2025-12-31"
+      }
+    ],
+    "headline_mean_plus_minus_std": {
+      "RMSE": {
+        "mean": 0.045349425318796155,
+        "std": 0.024670390826331233,
+        "fold_values": [
+          0.08034521556168031,
+          0.061505837151971506,
+          0.035074089137806436,
+          0.026877733294016756,
+          0.02294425144850576
+        ]
+      },
+      "MAE": {
+        "mean": 0.03347177679792113,
+        "std": 0.017624178322301516,
+        "fold_values": [
+          0.05649886959523253,
+          0.04803373882499786,
+          0.02497758725482926,
+          0.020464158514387994,
+          0.017384529800158
+        ]
+      },
+      "MAPE_percent": {
+        "mean": 3.6151830086062695,
+        "std": 1.9838579797538491,
+        "fold_values": [
+          6.02011193198591,
+          5.47353416995511,
+          2.698060532316613,
+          2.1239265945996157,
+          1.7602818141740977
+        ]
+      },
+      "R2": {
+        "mean": 0.9516360708052123,
+        "std": 0.06150938164088591,
+        "fold_values": [
+          0.8444933961988575,
+          0.9560653188320164,
+          0.9770580923701115,
+          0.9895119244719123,
+          0.9910516221531634
+        ]
+      }
+    }
+  },
+  "final_test_fold": {
+    "n": 180,
+    "date_start": "2025-07-05",
+    "date_end": "2025-12-31",
+    "metrics": {
+      "n": 180,
+      "RMSE": 0.02294425144850576,
+      "MAE": 0.017384529800158,
+      "MAPE_percent": 1.7602818141740977,
+      "R2": 0.9910516221531634
+    },
+    "bootstrap_95_percent_CI": {
+      "RMSE": {
+        "estimate": 0.02294425144850576,
+        "lower": 0.019996214311241246,
+        "upper": 0.02602080528866527,
+        "iterations": 1000,
+        "seed": 42
+      },
+      "MAE": {
+        "estimate": 0.017384529800158,
+        "lower": 0.015222507161842883,
+        "upper": 0.01974010052523964,
+        "iterations": 1000,
+        "seed": 42
+      },
+      "R2": {
+        "estimate": 0.9910516221531634,
+        "lower": 0.9860410692240766,
+        "upper": 0.9939737747343764,
+        "iterations": 1000,
+        "seed": 42
+      }
+    },
+    "baseline_RMSE_improvement_percent_CI": {
+      "naive_1": {
+        "estimate_percent": 91.1061742445438,
+        "lower_percent": 89.02727729554299,
+        "upper_percent": 92.74063527222084,
+        "iterations": 1000,
+        "seed": 42,
+        "n": 180
+      },
+      "seasonal_7": {
+        "estimate_percent": 91.64405597431201,
+        "lower_percent": 89.56525286771684,
+        "upper_percent": 93.12683309581598,
+        "iterations": 1000,
+        "seed": 42,
+        "n": 180
+      },
+      "historical_day_of_week_mean": {
+        "estimate_percent": 87.84218455680734,
+        "lower_percent": 84.26887196768848,
+        "upper_percent": 90.31656736244976,
+        "iterations": 1000,
+        "seed": 42,
+        "n": 180
+      }
+    },
+    "residual_diagnostics": {
+      "mean": 0.003347958906317161,
+      "std": 0.02276199078991319,
+      "shapiro_wilk": {
+        "statistic": 0.9459126268700798,
+        "p_value": 2.4476128042944464e-06
+      },
+      "ljung_box": {
+        "lag": 10,
+        "statistic": 407.3166838392089,
+        "p_value": 0.0
+      }
+    }
+  },
+  "statistical_power": {
+    "n_test": 180,
+    "degrees_of_freedom": 179,
+    "predictor_count": 17,
+    "supports_claimed_R2": true,
+    "interpretation": "Supports a descriptive out-of-sample R2 estimate under the reconstructed daily-data assumption."
+  },
+  "feature_importance": {
+    "is_off_day": 0.23220645335441223,
+    "is_long_weekend": 0.1087653754470683,
+    "is_holiday": 0.02460720003825092,
+    "month_cos": 0.016437936408857417,
+    "lag_1": 0.01367941883331505,
+    "rolling_mean_7": 0.009535393934970705,
+    "rolling_std_7": 0.006122337876183473,
+    "lag_7": 0.0006678295142310113,
+    "lag_14": 0.00029003777830003476,
+    "day_sin": 0.0001660002746228009,
+    "day_of_week_num": 0.00015357843220436472,
+    "day_cos": 4.701184294425443e-05,
+    "is_weekend": 0.0,
+    "n_long_weekend_days": 0.0,
+    "is_long_weekend_bridge": 0.0,
+    "n_bridge_days": 0.0,
+    "month_sin": -0.003680279483884553
+  },
+  "limitations": [
+    "No measured daily historical CSV exists in the repository; daily targets are reconstructed from monthly totals and assumed profile shares.",
+    "The reconstructed daily rows are not independent observations, so confidence intervals should not be interpreted as equivalent to intervals from measured daily data."
+  ]
+}

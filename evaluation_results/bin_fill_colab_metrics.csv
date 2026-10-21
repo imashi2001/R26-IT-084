@@ -1,0 +1,21 @@
+model,metric,value,split,class_name,notes
+bin_fill_yolov8,precision,0.84,val,,Colab training garbage_fill_level_detection_v1 epoch 50 Tesla T4
+bin_fill_yolov8,recall,0.781,val,,Colab training garbage_fill_level_detection_v1 epoch 50 Tesla T4
+bin_fill_yolov8,mAP50,0.861,val,,Colab training garbage_fill_level_detection_v1 epoch 50 Tesla T4
+bin_fill_yolov8,mAP50-95,0.611,val,,Colab training garbage_fill_level_detection_v1 epoch 50 Tesla T4
+bin_fill_yolov8,precision,0.85,val,Empty,Colab validation on best.pt
+bin_fill_yolov8,recall,0.814,val,Empty,Colab validation on best.pt
+bin_fill_yolov8,mAP50,0.794,val,Empty,Colab validation on best.pt
+bin_fill_yolov8,mAP50-95,0.574,val,Empty,Colab validation on best.pt
+bin_fill_yolov8,precision,0.778,val,Half,Colab validation on best.pt
+bin_fill_yolov8,recall,1.0,val,Half,Colab validation on best.pt
+bin_fill_yolov8,mAP50,0.995,val,Half,Colab validation on best.pt
+bin_fill_yolov8,mAP50-95,0.691,val,Half,Colab validation on best.pt
+bin_fill_yolov8,precision,0.894,val,Overflow,Colab validation on best.pt
+bin_fill_yolov8,recall,0.529,val,Overflow,Colab validation on best.pt
+bin_fill_yolov8,mAP50,0.794,val,Overflow,Colab validation on best.pt
+bin_fill_yolov8,mAP50-95,0.569,val,Overflow,Colab validation on best.pt
+bin_fill_yolov8,val_images,23,val,,Colab validation set
+bin_fill_yolov8,val_instances,29,val,,Colab validation set
+bin_fill_yolov8,training_epochs,50,,,YOLOv8n imgsz=640 batch=16
+bin_fill_yolov8,hardware,,,,NVIDIA Tesla T4 GPU

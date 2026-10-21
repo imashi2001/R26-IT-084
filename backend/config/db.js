@@ -13,22 +13,16 @@
 const { Sequelize } = require("sequelize");
 
 const { DATABASE_URL, DB_LOGGING, IS_PROD } = require("./env");
+const { resolveDialect } = require("./resolveDialect");
 
 let sequelize = null;
 let isEnabled = false;
 
 if (DATABASE_URL) {
+  const dialect = resolveDialect(DATABASE_URL);
   sequelize = new Sequelize(DATABASE_URL, {
-    dialect: "postgres",
+    dialect,
     logging: DB_LOGGING ? console.log : false,
-    dialectOptions: IS_PROD
-      ? {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false,
-          },
-        }
-      : {},
     pool: {
       max: 10,
       min: 0,
@@ -57,7 +51,7 @@ async function connect() {
 
   try {
     await sequelize.authenticate();
-    console.log("[db] connected to Postgres.");
+    console.log(`[db] connected (${resolveDialect(DATABASE_URL)}).`);
     return true;
   } catch (err) {
     console.error("[db] failed to connect:", err.message);

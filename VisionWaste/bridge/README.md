@@ -1,0 +1,126 @@
+# VisionWaste bridge
+
+Python script that polls your **ESP32-CAM** snapshot URL on the LAN and POSTs each JPEG to your **Express** backend on Railway (`POST /predict`).
+
+Railway **cannot** reach `http://10.x.x.x` — only a machine on your Wi‑Fi (this laptop) can. This bridge closes that gap.
+
+## Prerequisites
+
+- ESP32 serving a JPEG at e.g. `http://10.134.126.191/capture`
+- Railway **backend** URL including **`https://`** and path **`/predict`**
+
+## Install
+
+**PowerShell:**
+
+```powershell
+cd VisionWaste\bridge
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**bash:**
+
+```bash
+cd VisionWaste/bridge
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Run
+
+Set **`BACKEND_PREDICT_URL`** to your real Express service (must start with `https://`):
+
+**PowerShell:**
+
+```powershell
+$env:ESP32_CAPTURE_URL = "http://10.134.126.191/capture"
+$env:BACKEND_PREDICT_URL = "https://caring-light-production.up.railway.app/predict"
+$env:DEVICE_ESP32_ID = "esp-cam-1"
+$env:DEVICE_API_KEY = "same-value-as-backend"   # only if the backend sets DEVICE_API_KEY
+python bridge.py
+```
+
+**bash:**
+
+```bash
+export ESP32_CAPTURE_URL=http://10.134.126.191/capture
+export BACKEND_PREDICT_URL=https://caring-light-production.up.railway.app/predict
+export DEVICE_ESP32_ID=esp-cam-1
+export DEVICE_API_KEY=same-value-as-backend   # only if the backend sets DEVICE_API_KEY
+python bridge.py
+```
+
+### Optional environment variables
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `VISIONWASTE_BRIDGE_ID` | (auto) | Override persisted laptop ID; otherwise stored in `.bridge_id` |
+| `DEVICE_ESP32_ID` | (empty) | Sent as multipart `esp32_id` — **must match** Admin `devices.esp32_id` |
+| `POLL_INTERVAL_SEC` | `60` | Seconds between capture cycles |
+| `VISIONWASTE_POLL_SECONDS` | (same as above) | Alias for `POLL_INTERVAL_SEC` if set |
+| `ESP32_TIMEOUT` | `10` | GET snapshot timeout (seconds) |
+| `BACKEND_TIMEOUT` | `120` | POST /predict timeout (YOLO can be slow) |
+| `BACKEND_MAX_RETRIES` | `3` | Retries if backend returns 5xx or network error |
+| `BACKEND_RETRY_DELAY_SEC` | `2` | Pause between retries |
+| `ESP32_ALARM_ENABLED` | `1` | Set `0` to disable auto `/alarm` after HIGH risk |
+| `ALARM_ON_RISK` | `HIGH,CRITICAL` | Risk levels that trigger `/alarm` |
+| `SPEAKER_POLL_SEC` | `5` | How often to poll `/bridge/speaker-pending` |
+| `SPEAKER_TIMEOUT` | `8` | Timeout for ESP32 `/speaker/test` and `/alarm` |
+
+(JPEG files under `captures/` are gitignored; **`.bridge_id`** is gitignored — stable laptop bridge UUID.)
+
+## Speaker / alarm (buzzer on ESP32)
+
+HTTPS Railway **cannot** call the camera on Wi‑Fi. This bridge:
+
+1. After each successful `/predict`, if `risk.level` is HIGH/CRITICAL (or animals are detected), calls **`GET {ESP32_BASE}/alarm`**.
+2. Every `SPEAKER_POLL_SEC` seconds, polls **`GET /bridge/speaker-pending`** and relays website **Test speaker** commands to **`GET /speaker/test`** (or `/alarm`), then **`POST /bridge/speaker-ack`**.
+
+ESP32 firmware helpers live in [`../esp32-cam/`](../esp32-cam/). Flash those routes first and verify `http://<IP>/speaker/test` on the same Wi‑Fi.
+
+Admin: set **Camera base URL** (e.g. `http://10.158.245.191`) and matching **ESP32 ID**. Website: **Speaker check** → Test speaker while this bridge is running.
+
+## Laptop bridge ID (`bridge_instance_id`)
+
+On first run the bridge creates **`BRIDGE_<hex>`** in **`.bridge_id`** next to `bridge.py` and sends it as **`bridge_instance_id`** on every **`POST /predict`**.
+
+Override with env **`VISIONWASTE_BRIDGE_ID`** (e.g. shared CI token).
+
+Paste this value into **Admin → Bridge / Laptop ID** on a bin so only that laptop can attach **`device_id`** to captures (same **`esp32_id`** still required).
+
+## Output files
+
+- `captures/latest.jpg` — overwritten each cycle
+- `captures/snapshot_YYYYMMDD_HHMMSS.jpg` — archive per fetch
+
+## Console messages
+
+Each cycle prints:
+
+1. `Getting image from ESP32...`
+2. `Sending image to backend...`
+3. `Prediction received` plus pretty-printed JSON from Express
+
+## Backend contract (Express)
+
+This repo gateway expects:
+
+- **Method:** `POST`
+- **Path:** `/predict`
+- **Body:** `multipart/form-data`
+  - **`image`** — JPEG file (required)
+  - **`bridge_instance_id`** — required from VisionWaste bridge (stable per laptop, see `.bridge_id`)
+  - **`esp32_id`** — optional; must match `devices.esp32_id` for bin linkage
+  - **`source_type`** — bridge sends `esp32` explicitly (backend also infers from context when omitted)
+  - **`device_id`** — optional numeric alternative to `esp32_id`
+
+Response: JSON **array** of detections, e.g.
+
+```json
+[
+  { "label": "Half", "confidence": 0.87, "box": [10.2, 20.5, 200.0, 180.0] }
+]
+```

@@ -1,0 +1,66 @@
+const { Router } = require("express");
+const upload = require("../middleware/upload");
+const { requireAuth, requireRole } = require("../middleware/auth");
+const dashboardSettings = require("../controllers/dashboardSettings.controller");
+
+const router = Router();
+
+router.get("/settings", dashboardSettings.getSettings);
+
+router.get("/settings/audio", dashboardSettings.getAudioSettings);
+
+router.put(
+  "/settings/audio",
+  requireAuth,
+  requireRole("admin"),
+  dashboardSettings.putAudioSettings
+);
+
+router.get("/settings/gemini", dashboardSettings.getGeminiSettings);
+
+router.put(
+  "/settings/gemini",
+  requireAuth,
+  requireRole("admin"),
+  dashboardSettings.putGeminiSettings
+);
+
+router.post(
+  "/settings/gemini/predict",
+  requireAuth,
+  requireRole("admin"),
+  upload.single("image"),
+  dashboardSettings.predictGeminiPhoto
+);
+
+router.post(
+  "/settings/hero",
+  requireAuth,
+  requireRole("admin"),
+  upload.single("image"),
+  dashboardSettings.uploadHero
+);
+
+router.delete(
+  "/settings/hero",
+  requireAuth,
+  requireRole("admin"),
+  dashboardSettings.deleteHero
+);
+
+router.post(
+  "/settings/promo",
+  requireAuth,
+  requireRole("admin"),
+  upload.single("image"),
+  dashboardSettings.uploadPromo
+);
+
+router.delete(
+  "/settings/promo",
+  requireAuth,
+  requireRole("admin"),
+  dashboardSettings.deletePromo
+);
+
+module.exports = router;

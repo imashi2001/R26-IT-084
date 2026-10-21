@@ -7,10 +7,12 @@ Avoiding inconvenience to people due to irregular waste.
 ```
 frontend/      React app (UI)
 backend/       Express.js API gateway (no ML, talks to model services + DB)
-model-yolo/    Standalone YOLOv8 inference microservice (Python)
+services/      Model microservices (waste, animal, fill, litter, …)
+garbage_fill_level_detection_v1/  Trained fill-level weights (copy to services/fill-api/model/)
 dataset/       Training data (only needed for training)
-train.py       YOLO training entrypoint -> writes to model-yolo/model/best.pt
+train.py       YOLO training entrypoint -> writes to services/fill-api/model/best.pt
 test.py        Quick CLI inference test
+VisionWaste/   ESP32 bridge (Python, LAN laptop → Railway backend)
 ```
 
 The frontend talks **only** to `backend`.
@@ -20,27 +22,75 @@ never leak into the gateway and other team members' models.
 
 ```
 Frontend (3000)
-   |  fetch /predict
+   |  POST /predict
    v
-Backend gateway (5000) -- Express.js
-   |  POST /infer  (multipart image)
+Backend gateway (5000) — Express.js
+   |  POST /predict  (multipart file)
    v
-model-yolo service (6000) -- Python  (best.pt lives here)
+fill-api service (8005) — FastAPI  (garbage_fill_level_detection_v1 / best.pt)
 ```
 
 When new models are added, deploy them as additional services
-(e.g. `model-binlevel/`) and register their URL in the backend's
-`MODEL_REGISTRY` (`backend/server.js`).
+(e.g. `model-binlevel/`) and register their URL in `MODEL_REGISTRY` inside
+[backend/config/env.js](backend/config/env.js).
+
+## ESP32-CAM and LAN constraint
+
+Private IPs (`http://10.x.x.x/...`) are **not reachable from Railway**.
+Use **`VisionWaste/bridge/`** on a laptop on the same Wi‑Fi: it snapshots the ESP32 and POSTs to your HTTPS backend.
+
+See [VisionWaste/bridge/README.md](VisionWaste/bridge/README.md).
+
+From **`npm start` on HTTP localhost**, you can also use **Load from ESP32** in the UI.
+Deployed **`https://`** frontend **cannot** fetch **`http://`** ESP32 (mixed content); use the bridge.
+
+## Railway / env reminders
+
+Always use **full URLs with scheme**:
+
+| Variable | Example |
+|----------|---------|
+| `MODEL_FILL_URL` (backend) | `https://fill-api-xxx.up.railway.app` |
+| `VITE_API_URL` (frontend build) | `https://your-backend.up.railway.app` |
+| Bridge `BACKEND_PREDICT_URL` | `https://your-backend.up.railway.app/predict` |
+
+Host-only strings like `something.up.railway.app` are normalized to **`https://`** where applicable (`MODEL_FILL_URL`, `VITE_API_URL`).
+
+Optional backend **`CORS_ORIGIN`**: comma-separated allowed frontend origins (empty = allow all). See [backend/.env.example](backend/.env.example).
+
+Frontend local overrides: copy [frontend/.env.example](frontend/.env.example) to **`frontend/.env.local`** (`VITE_API_URL`, `VITE_ESP32_CAPTURE_URL`).
+
+## Security setup (production)
+
+Set these on the backend before going live (details in [backend/README.md](backend/README.md)):
+
+| Variable | Why |
+|----------|-----|
+| `JWT_SECRET` | Signs admin logins. Production refuses to start without it. |
+| `ADMIN_INVITE_SECRET` | After the first admin, new accounts need this invite code. |
+| `DEVICE_API_KEY` | ESP32 boards and the bridge send it as `X-Device-Key`; put the same value in `VisionWaste/esp32-*/secrets.h` and the bridge env. |
+| `CORS_ORIGIN` | Your frontend URL, so other websites cannot call the API. |
+
+ESP32 Wi-Fi credentials live in `VisionWaste/esp32-*/secrets.h` (git-ignored); copy `secrets.example.h` to create it.
+
+## Tests
+
+```powershell
+cd backend;  npm test        # node:test, backend/test/
+cd frontend; npx vitest run
+```
+
+CI runs both (plus a Python syntax check of `services/`) on every push and PR: [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## Run locally (3 terminals)
 
-Terminal 1 - YOLO model service:
+Terminal 1 - Bin fill model service:
 ```powershell
-cd model-yolo
-C:\genv\Scripts\python.exe -m pip install -r requirements.txt
-C:\genv\Scripts\python.exe server.py
+cd services\fill-api
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8005
 ```
-Listens on http://localhost:6000
+Listens on http://localhost:8005
 
 Terminal 2 - Backend gateway (Express):
 ```powershell
@@ -49,7 +99,7 @@ npm install
 npm start
 ```
 Listens on http://localhost:5000. Reads config from `backend/.env`
-(create one based on `.env.example`).
+(create one based on `.env.example`). Root **`GET /`** returns API pointers JSON.
 
 Terminal 3 - Frontend:
 ```powershell
@@ -61,11 +111,12 @@ Open http://localhost:3000.
 
 ## Deploy on Railway
 
-Create one Railway project with three services:
+Create one Railway project with separate services:
 
-1. **model-yolo** - root: `model-yolo`; uses `Dockerfile` (leave Railway **custom start command** empty so `$PORT` is not passed literally).
-2. **backend** - root: `backend`, start: `npm start`,
-   set `MODEL_YOLO_URL` to the public URL of the `model-yolo` service.
-3. **frontend** - root: `frontend`, build: `npm run build`, set `REACT_APP_API_URL` to the public URL of `backend`.
+1. **fill-api** — root: `services/fill-api`; ensure `model/best.pt` is in repo (run `scripts/install_fill_model.ps1`).
+2. **backend** — root: `backend`, start: `npm start`,
+   set `MODEL_FILL_URL` to the **https://** public URL of the `fill-api` service.
+   Also set `MODEL_WASTE_URL`, `MODEL_ANIMAL_URL` as needed.
+3. **frontend** — root: `frontend`, build: `npm run build`, start: `npm run serve`, set `VITE_API_URL` to the **https://** public URL of `backend`.
 
 Add Railway Postgres later when you wire users / history into the gateway.

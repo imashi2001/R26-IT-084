@@ -1,0 +1,7 @@
+scenario,expected_case,expected_level,actual_case,actual_level,pass
+CASE_3 organic + dog,CASE_3,HIGH,CASE_3,HIGH,yes
+"CASE_2 organic + hot humid, no animals",CASE_2,MEDIUM,CASE_2,MEDIUM,yes
+CASE_1 organic + normal weather,CASE_1,LOW,CASE_1,LOW,yes
+EXTRA non-organic + crow,EXTRA_NONORGANIC_WITH_ANIMAL,HIGH,EXTRA_NONORGANIC_WITH_ANIMAL,HIGH,yes
+EXTRA non-organic + clear,EXTRA_NONORGANIC_CLEAR,LOW,EXTRA_NONORGANIC_CLEAR,LOW,yes
+Organic + high temp only (not CASE_2),CASE_1,LOW,CASE_1,LOW,yes

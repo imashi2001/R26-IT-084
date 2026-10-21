@@ -4,6 +4,7 @@ from ultralytics import YOLO
 
 DATA_YAML = Path(__file__).parent / "dataset" / "data.yaml"
 PROJECT_DIR = Path(__file__).parent / "runs"
+FILL_RUN_NAME = "garbage_fill_level_detection_v1"
 EPOCHS = 50
 IMG_SIZE = 640
 BATCH = 16
@@ -21,12 +22,12 @@ def main():
         imgsz=IMG_SIZE,
         batch=BATCH,
         project=str(PROJECT_DIR),
-        name="garbage_detect",
+        name=FILL_RUN_NAME,
         exist_ok=True,
     )
 
     best_weights = Path(results.save_dir) / "weights" / "best.pt"
-    dest = Path(__file__).parent / "model-yolo" / "model" / "best.pt"
+    dest = Path(__file__).parent / "services" / "fill-api" / "model" / "best.pt"
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     import shutil

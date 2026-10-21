@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Production build (Vite)
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Local env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Large local hero media (keep on disk; do not commit ~100MB+ clips)
+public/videos/*.mov
+public/videos/*.webm
+!public/videos/hero-bg.mp4
+!public/videos/.gitkeep
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

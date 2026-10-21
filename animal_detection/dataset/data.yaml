@@ -1,0 +1,14 @@
+path: C:/Users/ranaw/Documents/Research_Project/R26-IT-084/animal_detection/dataset
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 4
+names: ['cat', 'crow', 'dog', 'monkey']
+
+roboflow:
+  workspace: imashi-ranaweera
+  project: animal-deterrence-detection
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/imashi-ranaweera/animal-deterrence-detection/dataset/1

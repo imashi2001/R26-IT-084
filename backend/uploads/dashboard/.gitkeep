@@ -1,0 +1,3 @@
+# Persisted dashboard hero uploads (Railway: ephemeral unless volume mounted)
+uploads/dashboard/*
+!uploads/dashboard/.gitkeep

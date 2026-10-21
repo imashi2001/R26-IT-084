@@ -1,0 +1,7 @@
+.bridge_id
+captures/*.jpg
+captures/*.jpeg
+captures/*.png
+__pycache__/
+.venv/
+venv/

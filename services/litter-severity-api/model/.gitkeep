@@ -1,0 +1,2 @@
+# Place trained weights here as best.pt for Docker / Railway builds.
+# Tracked copy: see root .gitignore exception for services/litter-severity-api/model/best.pt

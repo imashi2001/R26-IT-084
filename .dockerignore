@@ -1,0 +1,32 @@
+.git
+.github
+.vscode
+
+**/node_modules
+**/.venv
+**/__pycache__
+**/.env
+**/.env.*
+!**/.env.example
+
+# ML / training / mobile — not part of the Express gateway image
+animal_detection
+dataset
+evaluation_results
+frontend
+forecasting dashboard
+garbage_fill_level_detection_v1
+litter_severity_detection
+mobile_app
+model-yolo
+runs
+scripts
+VisionWaste
+waste_classification
+web
+
+*.pt
+*.h5
+*.pdf
+*.log
+output.json

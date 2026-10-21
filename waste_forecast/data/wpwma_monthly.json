@@ -1,0 +1,3981 @@
+{
+  "source": "Western Province Waste Management Authority - Waste Data & Service Charge workbooks (Dec_2023.xlsx, Dec_2024.xlsx, Dec_2025.xlsx)",
+  "units": "metric tons",
+  "period": {
+    "start": "2023-01",
+    "end": "2025-12",
+    "months": 36
+  },
+  "note": "Monthly totals reconcile with each workbook's own Total row within 1 t. 'other' and 'kdu-hospital' are real reporting entities present in the source and together carry ~13.5% of total intake.",
+  "monthly_totals": [
+    {
+      "year": 2023,
+      "month": 1,
+      "waste_tons": 8963.75,
+      "date": "2023-01-01"
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "waste_tons": 8210.8,
+      "date": "2023-02-01"
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "waste_tons": 10036.2,
+      "date": "2023-03-01"
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "waste_tons": 9590.07,
+      "date": "2023-04-01"
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "waste_tons": 11208.4,
+      "date": "2023-05-01"
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "waste_tons": 10404.76,
+      "date": "2023-06-01"
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "waste_tons": 10635.02,
+      "date": "2023-07-01"
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "waste_tons": 9749.9,
+      "date": "2023-08-01"
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "waste_tons": 9653.0,
+      "date": "2023-09-01"
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "waste_tons": 12787.1,
+      "date": "2023-10-01"
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "waste_tons": 13052.2,
+      "date": "2023-11-01"
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "waste_tons": 12174.1,
+      "date": "2023-12-01"
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "waste_tons": 12382.8,
+      "date": "2024-01-01"
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "waste_tons": 10079.8,
+      "date": "2024-02-01"
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "waste_tons": 11865.5,
+      "date": "2024-03-01"
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "waste_tons": 11898.2,
+      "date": "2024-04-01"
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "waste_tons": 12830.5,
+      "date": "2024-05-01"
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "waste_tons": 12206.1,
+      "date": "2024-06-01"
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "waste_tons": 13550.5,
+      "date": "2024-07-01"
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "waste_tons": 12753.8,
+      "date": "2024-08-01"
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "waste_tons": 11358.7,
+      "date": "2024-09-01"
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "waste_tons": 13545.7,
+      "date": "2024-10-01"
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "waste_tons": 13671.3,
+      "date": "2024-11-01"
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "waste_tons": 15186.1,
+      "date": "2024-12-01"
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "waste_tons": 14470.5,
+      "date": "2025-01-01"
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "waste_tons": 11928.8,
+      "date": "2025-02-01"
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "waste_tons": 13938.1,
+      "date": "2025-03-01"
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "waste_tons": 13357.97,
+      "date": "2025-04-01"
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "waste_tons": 15489.0,
+      "date": "2025-05-01"
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "waste_tons": 14084.1,
+      "date": "2025-06-01"
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "waste_tons": 15125.9,
+      "date": "2025-07-01"
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "waste_tons": 14401.4,
+      "date": "2025-08-01"
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "waste_tons": 17853.7,
+      "date": "2025-09-01"
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "waste_tons": 16139.8,
+      "date": "2025-10-01"
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "waste_tons": 14312.6,
+      "date": "2025-11-01"
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "waste_tons": 17002.7,
+      "date": "2025-12-01"
+    }
+  ],
+  "institute_shares_observed": {
+    "dehiwala-mtlavinia": 0.2489,
+    "maharagama-uc": 0.1698,
+    "kesbewa-uc": 0.1429,
+    "other": 0.1337,
+    "moratuwa-mc": 0.1259,
+    "kotte-mc": 0.0657,
+    "boralesgamuwa-uc": 0.0654,
+    "homagama-ps": 0.0458,
+    "kdu-campus": 0.0012,
+    "kdu-hospital": 0.0009,
+    "nd-akuregoda": 0.0
+  },
+  "category_shares_observed": {
+    "SOW": 0.4732,
+    "Burnable": 0.2851,
+    "C & D": 0.1337,
+    "Unburnable": 0.0674,
+    "Bulky Waste": 0.0299,
+    "Slaughter House Waste": 0.0093,
+    "Sanitary Waste": 0.0014,
+    "Industrial Waste": 0.0001
+  },
+  "institute_monthly": [
+    {
+      "year": 2023,
+      "month": 1,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 699.79
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2773.83
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "location_id": "homagama-ps",
+      "waste_tons": 635.48
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1522.09
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "location_id": "kotte-mc",
+      "waste_tons": 582.62
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1334.96
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1414.98
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 629.4
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2321.63
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "location_id": "homagama-ps",
+      "waste_tons": 553.61
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1418.32
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "location_id": "kotte-mc",
+      "waste_tons": 483.38
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1752.27
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1052.19
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 777.4
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2754.5
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "location_id": "homagama-ps",
+      "waste_tons": 653.6
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1641.0
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "location_id": "kotte-mc",
+      "waste_tons": 650.5
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2295.0
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1264.2
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 708.33
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2577.44
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "location_id": "homagama-ps",
+      "waste_tons": 672.59
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1610.06
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "location_id": "kotte-mc",
+      "waste_tons": 623.55
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2222.86
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1175.24
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 907.64
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3053.0
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "location_id": "homagama-ps",
+      "waste_tons": 815.42
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 2008.31
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "location_id": "kotte-mc",
+      "waste_tons": 706.99
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2116.79
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1600.25
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 822.12
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2983.78
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "location_id": "homagama-ps",
+      "waste_tons": 818.81
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1877.89
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "location_id": "kotte-mc",
+      "waste_tons": 663.75
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1703.5
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1534.91
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 791.55
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3012.3
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "location_id": "homagama-ps",
+      "waste_tons": 669.09
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1724.31
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "location_id": "kotte-mc",
+      "waste_tons": 686.58
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2289.37
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1461.82
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 774.2
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2763.8
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "location_id": "homagama-ps",
+      "waste_tons": 670.1
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1548.5
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "location_id": "kotte-mc",
+      "waste_tons": 652.3
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1928.8
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1412.2
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 797.8
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3094.9
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "location_id": "homagama-ps",
+      "waste_tons": 680.4
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1771.6
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "location_id": "kotte-mc",
+      "waste_tons": 536.1
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1297.3
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1474.9
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 766.6
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3098.5
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "homagama-ps",
+      "waste_tons": 743.1
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "kdu-campus",
+      "waste_tons": 54.5
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1827.3
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "kotte-mc",
+      "waste_tons": 425.5
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1838.0
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1615.1
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "location_id": "other",
+      "waste_tons": 2418.9
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 827.7
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3248.7
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "homagama-ps",
+      "waste_tons": 722.1
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "kdu-campus",
+      "waste_tons": 56.9
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1780.2
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "kotte-mc",
+      "waste_tons": 485.9
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1889.7
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1562.0
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "location_id": "other",
+      "waste_tons": 2479.0
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 830.1
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3271.0
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "homagama-ps",
+      "waste_tons": 774.4
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "kdu-campus",
+      "waste_tons": 32.0
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "kdu-hospital",
+      "waste_tons": 11.6
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1865.5
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "kotte-mc",
+      "waste_tons": 410.6
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1817.3
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1532.9
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "location_id": "other",
+      "waste_tons": 1628.7
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 769.7
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3172.6
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "homagama-ps",
+      "waste_tons": 695.9
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "kdu-campus",
+      "waste_tons": 33.6
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "kdu-hospital",
+      "waste_tons": 6.4
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1736.4
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "kotte-mc",
+      "waste_tons": 433.8
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2143.8
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1517.7
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "location_id": "other",
+      "waste_tons": 1872.9
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 683.8
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2640.4
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "homagama-ps",
+      "waste_tons": 590.7
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "kdu-campus",
+      "waste_tons": 23.4
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "kdu-hospital",
+      "waste_tons": 13.1
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1472.6
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "kotte-mc",
+      "waste_tons": 402.3
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "maharagama-uc",
+      "waste_tons": 982.1
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1285.1
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "location_id": "other",
+      "waste_tons": 1986.3
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 776.1
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3046.5
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "homagama-ps",
+      "waste_tons": 647.9
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "kdu-campus",
+      "waste_tons": 9.5
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "kdu-hospital",
+      "waste_tons": 9.0
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1649.2
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "kotte-mc",
+      "waste_tons": 443.1
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1585.2
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1364.1
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "location_id": "other",
+      "waste_tons": 2334.9
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 678.1
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2810.2
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "homagama-ps",
+      "waste_tons": 948.8
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "kdu-campus",
+      "waste_tons": 6.0
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "kdu-hospital",
+      "waste_tons": 7.2
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1782.8
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "kotte-mc",
+      "waste_tons": 451.2
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1619.1
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1556.2
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "location_id": "other",
+      "waste_tons": 2038.6
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 736.6
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2966.7
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "homagama-ps",
+      "waste_tons": 1116.1
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "kdu-campus",
+      "waste_tons": 7.9
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "kdu-hospital",
+      "waste_tons": 9.4
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1947.5
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "kotte-mc",
+      "waste_tons": 446.4
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1250.5
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1605.3
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "location_id": "other",
+      "waste_tons": 2744.1
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 739.3
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2864.9
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "homagama-ps",
+      "waste_tons": 752.0
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "kdu-campus",
+      "waste_tons": 8.7
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "kdu-hospital",
+      "waste_tons": 11.0
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1680.6
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "kotte-mc",
+      "waste_tons": 478.0
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2113.3
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1643.4
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "location_id": "other",
+      "waste_tons": 1914.9
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 895.8
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3271.2
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "homagama-ps",
+      "waste_tons": 803.6
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "kdu-campus",
+      "waste_tons": 5.9
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "kdu-hospital",
+      "waste_tons": 13.2
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1888.6
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "kotte-mc",
+      "waste_tons": 685.7
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2498.1
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1737.1
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "location_id": "other",
+      "waste_tons": 1751.3
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 796.6
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3129.9
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "homagama-ps",
+      "waste_tons": 732.3
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "kdu-campus",
+      "waste_tons": 11.7
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "kdu-hospital",
+      "waste_tons": 14.6
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1716.6
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "kotte-mc",
+      "waste_tons": 995.4
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2169.6
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1513.4
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "location_id": "other",
+      "waste_tons": 1673.7
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 738.3
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2501.5
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "homagama-ps",
+      "waste_tons": 656.7
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "kdu-campus",
+      "waste_tons": 8.3
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "kdu-hospital",
+      "waste_tons": 12.1
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1564.9
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "kotte-mc",
+      "waste_tons": 982.6
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2043.2
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1352.4
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "location_id": "other",
+      "waste_tons": 1498.7
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 874.0
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3199.3
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "homagama-ps",
+      "waste_tons": 850.6
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "kdu-campus",
+      "waste_tons": 13.9
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "kdu-hospital",
+      "waste_tons": 11.4
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1882.0
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "kotte-mc",
+      "waste_tons": 1130.9
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2523.1
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1547.5
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "location_id": "other",
+      "waste_tons": 1513.0
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 843.4
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3222.6
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "homagama-ps",
+      "waste_tons": 827.7
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "kdu-campus",
+      "waste_tons": 14.2
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "kdu-hospital",
+      "waste_tons": 17.2
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1875.6
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "kotte-mc",
+      "waste_tons": 1090.4
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2271.1
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1608.5
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "location_id": "other",
+      "waste_tons": 1900.6
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 921.2
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3541.8
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "homagama-ps",
+      "waste_tons": 825.4
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "kdu-campus",
+      "waste_tons": 16.5
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "kdu-hospital",
+      "waste_tons": 15.5
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1984.9
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "kotte-mc",
+      "waste_tons": 1310.1
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2703.0
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1731.9
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "location_id": "other",
+      "waste_tons": 2135.8
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 888.9
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3428.9
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "homagama-ps",
+      "waste_tons": 179.9
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "kdu-campus",
+      "waste_tons": 20.2
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "kdu-hospital",
+      "waste_tons": 21.0
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1983.1
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "kotte-mc",
+      "waste_tons": 1142.4
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2708.3
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1764.0
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "location_id": "other",
+      "waste_tons": 2333.8
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 723.1
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 2859.1
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "homagama-ps",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "kdu-campus",
+      "waste_tons": 13.7
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "kdu-hospital",
+      "waste_tons": 21.7
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1658.1
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "kotte-mc",
+      "waste_tons": 988.2
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "maharagama-uc",
+      "waste_tons": 1547.6
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1515.8
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "location_id": "other",
+      "waste_tons": 2601.5
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 892.1
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3525.9
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "homagama-ps",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "kdu-campus",
+      "waste_tons": 20.3
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "kdu-hospital",
+      "waste_tons": 22.5
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1923.5
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "kotte-mc",
+      "waste_tons": 1167.3
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2414.8
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1784.6
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "location_id": "other",
+      "waste_tons": 2187.1
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 900.8
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3420.2
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "homagama-ps",
+      "waste_tons": 20.6
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "kdu-campus",
+      "waste_tons": 17.6
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "kdu-hospital",
+      "waste_tons": 23.3
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1961.8
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "kotte-mc",
+      "waste_tons": 1009.8
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2393.2
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1722.8
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "location_id": "other",
+      "waste_tons": 1887.87
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 967.0
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3644.8
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "homagama-ps",
+      "waste_tons": 286.1
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "kdu-campus",
+      "waste_tons": 21.0
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "kdu-hospital",
+      "waste_tons": 20.1
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 2160.5
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "kotte-mc",
+      "waste_tons": 1074.3
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2841.2
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1910.9
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "location_id": "other",
+      "waste_tons": 2563.1
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 891.6
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3591.7
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "homagama-ps",
+      "waste_tons": 346.9
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "kdu-campus",
+      "waste_tons": 16.5
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "kdu-hospital",
+      "waste_tons": 16.8
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1903.0
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "kotte-mc",
+      "waste_tons": 1110.9
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2817.3
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1939.1
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "location_id": "other",
+      "waste_tons": 1450.3
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 959.7
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3750.3
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "homagama-ps",
+      "waste_tons": 416.9
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "kdu-campus",
+      "waste_tons": 17.1
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "kdu-hospital",
+      "waste_tons": 25.4
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 2013.2
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "kotte-mc",
+      "waste_tons": 1358.0
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2906.3
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 2188.4
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "location_id": "other",
+      "waste_tons": 1490.6
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 895.4
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3376.2
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "homagama-ps",
+      "waste_tons": 345.6
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "kdu-campus",
+      "waste_tons": 17.5
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "kdu-hospital",
+      "waste_tons": 17.9
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1782.8
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "kotte-mc",
+      "waste_tons": 1128.1
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2533.0
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1744.7
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "location_id": "other",
+      "waste_tons": 2560.2
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 913.1
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3463.4
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "homagama-ps",
+      "waste_tons": 354.3
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "kdu-campus",
+      "waste_tons": 18.5
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "kdu-hospital",
+      "waste_tons": 14.1
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1896.2
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "kotte-mc",
+      "waste_tons": 1185.4
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2607.4
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1701.3
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "location_id": "other",
+      "waste_tons": 5700.0
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 1010.1
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3830.2
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "homagama-ps",
+      "waste_tons": 383.8
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "kdu-campus",
+      "waste_tons": 29.1
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "kdu-hospital",
+      "waste_tons": 24.4
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 2009.8
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "kotte-mc",
+      "waste_tons": 1431.7
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2748.2
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1892.5
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "location_id": "other",
+      "waste_tons": 2780.0
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 896.7
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 3224.1
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "homagama-ps",
+      "waste_tons": 298.3
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "kdu-campus",
+      "waste_tons": 26.2
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "kdu-hospital",
+      "waste_tons": 14.4
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 1956.7
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "kotte-mc",
+      "waste_tons": 1192.6
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "maharagama-uc",
+      "waste_tons": 2483.2
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 1569.4
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "nd-akuregoda",
+      "waste_tons": 0.8
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "location_id": "other",
+      "waste_tons": 2650.2
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "boralesgamuwa-uc",
+      "waste_tons": 1075.8
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "dehiwala-mtlavinia",
+      "waste_tons": 4037.0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "homagama-ps",
+      "waste_tons": 368.8
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "kdu-campus",
+      "waste_tons": 22.9
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "kdu-hospital",
+      "waste_tons": 25.5
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "kesbewa-uc",
+      "waste_tons": 2114.0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "kotte-mc",
+      "waste_tons": 1413.1
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "maharagama-uc",
+      "waste_tons": 3022.9
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "moratuwa-mc",
+      "waste_tons": 2082.3
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "nd-akuregoda",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "location_id": "other",
+      "waste_tons": 2840.4
+    }
+  ],
+  "category_monthly": [
+    {
+      "year": 2023,
+      "month": 1,
+      "category": "Bulky Waste",
+      "waste_tons": 536.67
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "category": "Burnable",
+      "waste_tons": 3058.74
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "category": "Industrial Waste",
+      "waste_tons": 22.78
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "category": "SOW",
+      "waste_tons": 3819.67
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.09
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "category": "Slaughter House Waste",
+      "waste_tons": 84.11
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "category": "Unburnable",
+      "waste_tons": 1435.69
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "category": "Bulky Waste",
+      "waste_tons": 167.64
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "category": "Burnable",
+      "waste_tons": 2930.22
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "category": "Industrial Waste",
+      "waste_tons": 1.02
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "category": "SOW",
+      "waste_tons": 3780.65
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "category": "Sanitary Waste",
+      "waste_tons": 5.68
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "category": "Slaughter House Waste",
+      "waste_tons": 94.43
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "category": "Unburnable",
+      "waste_tons": 1231.16
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "category": "Bulky Waste",
+      "waste_tons": 209.7
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "category": "Burnable",
+      "waste_tons": 3866.5
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "category": "SOW",
+      "waste_tons": 4742.1
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "category": "Sanitary Waste",
+      "waste_tons": 4.9
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "category": "Slaughter House Waste",
+      "waste_tons": 97.1
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "category": "Unburnable",
+      "waste_tons": 1115.9
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "category": "Bulky Waste",
+      "waste_tons": 204.09
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "category": "Burnable",
+      "waste_tons": 1691.72
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "category": "SOW",
+      "waste_tons": 4338.96
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "category": "Sanitary Waste",
+      "waste_tons": 5.42
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "category": "Slaughter House Waste",
+      "waste_tons": 104.07
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "category": "Unburnable",
+      "waste_tons": 3245.81
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "category": "Bulky Waste",
+      "waste_tons": 335.48
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "category": "Burnable",
+      "waste_tons": 1772.86
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "category": "SOW",
+      "waste_tons": 5626.75
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "category": "Sanitary Waste",
+      "waste_tons": 5.87
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "category": "Slaughter House Waste",
+      "waste_tons": 99.73
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "category": "Unburnable",
+      "waste_tons": 3367.71
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "category": "Bulky Waste",
+      "waste_tons": 335.92
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "category": "Burnable",
+      "waste_tons": 1611.16
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "category": "SOW",
+      "waste_tons": 5663.0
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.21
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "category": "Slaughter House Waste",
+      "waste_tons": 98.31
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "category": "Unburnable",
+      "waste_tons": 2690.16
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "category": "Bulky Waste",
+      "waste_tons": 392.88
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "category": "Burnable",
+      "waste_tons": 3419.36
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "category": "SOW",
+      "waste_tons": 5347.24
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.59
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "category": "Slaughter House Waste",
+      "waste_tons": 84.67
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "category": "Unburnable",
+      "waste_tons": 1384.28
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "category": "Bulky Waste",
+      "waste_tons": 445.7
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "category": "Burnable",
+      "waste_tons": 3165.1
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "category": "SOW",
+      "waste_tons": 5531.1
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.3
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "category": "Slaughter House Waste",
+      "waste_tons": 94.7
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "category": "Unburnable",
+      "waste_tons": 507.0
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "category": "Bulky Waste",
+      "waste_tons": 418.0
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "category": "Burnable",
+      "waste_tons": 3384.7
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "category": "C & D",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "category": "SOW",
+      "waste_tons": 5402.4
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "category": "Sanitary Waste",
+      "waste_tons": 5.4
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "category": "Slaughter House Waste",
+      "waste_tons": 95.8
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "category": "Unburnable",
+      "waste_tons": 346.7
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "category": "Bulky Waste",
+      "waste_tons": 270.0
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "category": "Burnable",
+      "waste_tons": 3337.1
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "category": "C & D",
+      "waste_tons": 2418.9
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "category": "SOW",
+      "waste_tons": 6515.1
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "category": "Sanitary Waste",
+      "waste_tons": 5.6
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "category": "Slaughter House Waste",
+      "waste_tons": 98.1
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "category": "Unburnable",
+      "waste_tons": 142.3
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "category": "Bulky Waste",
+      "waste_tons": 340.8
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "category": "Burnable",
+      "waste_tons": 3831.2
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "category": "C & D",
+      "waste_tons": 2479.0
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "category": "SOW",
+      "waste_tons": 6114.2
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "category": "Sanitary Waste",
+      "waste_tons": 7.5
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "category": "Slaughter House Waste",
+      "waste_tons": 107.0
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "category": "Unburnable",
+      "waste_tons": 172.5
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "category": "Bulky Waste",
+      "waste_tons": 308.6
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "category": "Burnable",
+      "waste_tons": 4020.6
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "category": "C & D",
+      "waste_tons": 1628.7
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "category": "SOW",
+      "waste_tons": 5980.4
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "category": "Sanitary Waste",
+      "waste_tons": 8.8
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "category": "Slaughter House Waste",
+      "waste_tons": 112.9
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "category": "Unburnable",
+      "waste_tons": 114.1
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "category": "Bulky Waste",
+      "waste_tons": 369.0
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "category": "Burnable",
+      "waste_tons": 4258.1
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "category": "C & D",
+      "waste_tons": 1872.9
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "category": "SOW",
+      "waste_tons": 5684.1
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.8
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "category": "Slaughter House Waste",
+      "waste_tons": 79.3
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "category": "Unburnable",
+      "waste_tons": 112.6
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "category": "Bulky Waste",
+      "waste_tons": 285.3
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "category": "Burnable",
+      "waste_tons": 2660.1
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "category": "C & D",
+      "waste_tons": 1986.3
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "category": "SOW",
+      "waste_tons": 4938.7
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "category": "Sanitary Waste",
+      "waste_tons": 8.1
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "category": "Slaughter House Waste",
+      "waste_tons": 98.2
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "category": "Unburnable",
+      "waste_tons": 103.1
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "category": "Bulky Waste",
+      "waste_tons": 323.0
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "category": "Burnable",
+      "waste_tons": 3504.5
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "category": "C & D",
+      "waste_tons": 2334.9
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "category": "SOW",
+      "waste_tons": 5551.8
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "category": "Sanitary Waste",
+      "waste_tons": 8.7
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "category": "Slaughter House Waste",
+      "waste_tons": 74.1
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "category": "Unburnable",
+      "waste_tons": 68.5
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "category": "Bulky Waste",
+      "waste_tons": 399.7
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "category": "Burnable",
+      "waste_tons": 3528.7
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "category": "C & D",
+      "waste_tons": 2038.6
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "category": "SOW",
+      "waste_tons": 5761.1
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.3
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "category": "Slaughter House Waste",
+      "waste_tons": 93.6
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "category": "Unburnable",
+      "waste_tons": 70.2
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "category": "Bulky Waste",
+      "waste_tons": 400.4
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "category": "Burnable",
+      "waste_tons": 2931.7
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "category": "C & D",
+      "waste_tons": 2744.1
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "category": "SOW",
+      "waste_tons": 6566.2
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.9
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "category": "Slaughter House Waste",
+      "waste_tons": 102.5
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "category": "Unburnable",
+      "waste_tons": 78.7
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "category": "Bulky Waste",
+      "waste_tons": 567.4
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "category": "Burnable",
+      "waste_tons": 3854.3
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "category": "C & D",
+      "waste_tons": 1914.9
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "category": "SOW",
+      "waste_tons": 5701.5
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.3
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "category": "Slaughter House Waste",
+      "waste_tons": 87.2
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "category": "Unburnable",
+      "waste_tons": 74.5
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "category": "Bulky Waste",
+      "waste_tons": 524.4
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "category": "Burnable",
+      "waste_tons": 4738.6
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "category": "C & D",
+      "waste_tons": 1751.3
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "category": "SOW",
+      "waste_tons": 6354.8
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "category": "Sanitary Waste",
+      "waste_tons": 8.5
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "category": "Slaughter House Waste",
+      "waste_tons": 119.4
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "category": "Unburnable",
+      "waste_tons": 53.5
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "category": "Bulky Waste",
+      "waste_tons": 388.9
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "category": "Burnable",
+      "waste_tons": 4680.4
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "category": "C & D",
+      "waste_tons": 1673.7
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "category": "SOW",
+      "waste_tons": 5762.0
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "category": "Sanitary Waste",
+      "waste_tons": 8.7
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "category": "Slaughter House Waste",
+      "waste_tons": 115.7
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "category": "Unburnable",
+      "waste_tons": 124.4
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "category": "Bulky Waste",
+      "waste_tons": 219.6
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "category": "Burnable",
+      "waste_tons": 4426.0
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "category": "C & D",
+      "waste_tons": 1498.7
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "category": "SOW",
+      "waste_tons": 4894.9
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "category": "Sanitary Waste",
+      "waste_tons": 7.2
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "category": "Slaughter House Waste",
+      "waste_tons": 109.0
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "category": "Unburnable",
+      "waste_tons": 203.3
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "category": "Bulky Waste",
+      "waste_tons": 246.1
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "category": "Burnable",
+      "waste_tons": 5458.2
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "category": "C & D",
+      "waste_tons": 1513.0
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "category": "SOW",
+      "waste_tons": 5896.6
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "category": "Sanitary Waste",
+      "waste_tons": 7.6
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "category": "Slaughter House Waste",
+      "waste_tons": 127.0
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "category": "Unburnable",
+      "waste_tons": 297.2
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "category": "Bulky Waste",
+      "waste_tons": 368.5
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "category": "Burnable",
+      "waste_tons": 3972.9
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "category": "C & D",
+      "waste_tons": 1900.6
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "category": "SOW",
+      "waste_tons": 6663.7
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "category": "Sanitary Waste",
+      "waste_tons": 7.6
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "category": "Slaughter House Waste",
+      "waste_tons": 147.8
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "category": "Unburnable",
+      "waste_tons": 610.2
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "category": "Bulky Waste",
+      "waste_tons": 485.8
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "category": "Burnable",
+      "waste_tons": 4535.4
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "category": "C & D",
+      "waste_tons": 2135.8
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "category": "SOW",
+      "waste_tons": 7033.5
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "category": "Sanitary Waste",
+      "waste_tons": 7.2
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "category": "Slaughter House Waste",
+      "waste_tons": 178.6
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "category": "Unburnable",
+      "waste_tons": 809.8
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "category": "Bulky Waste",
+      "waste_tons": 399.0
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "category": "Burnable",
+      "waste_tons": 4278.1
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "category": "C & D",
+      "waste_tons": 2333.8
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "category": "SOW",
+      "waste_tons": 6334.7
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "category": "Sanitary Waste",
+      "waste_tons": 8.9
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "category": "Slaughter House Waste",
+      "waste_tons": 165.8
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "category": "Unburnable",
+      "waste_tons": 950.2
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "category": "Bulky Waste",
+      "waste_tons": 377.7
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "category": "Burnable",
+      "waste_tons": 3131.9
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "category": "C & D",
+      "waste_tons": 2601.5
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "category": "SOW",
+      "waste_tons": 5301.1
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "category": "Sanitary Waste",
+      "waste_tons": 7.8
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "category": "Slaughter House Waste",
+      "waste_tons": 130.9
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "category": "Unburnable",
+      "waste_tons": 377.9
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "category": "Bulky Waste",
+      "waste_tons": 351.4
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "category": "Burnable",
+      "waste_tons": 3839.2
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "category": "C & D",
+      "waste_tons": 2187.1
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "category": "SOW",
+      "waste_tons": 6834.9
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "category": "Sanitary Waste",
+      "waste_tons": 8.2
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "category": "Slaughter House Waste",
+      "waste_tons": 145.7
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "category": "Unburnable",
+      "waste_tons": 571.6
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "category": "Bulky Waste",
+      "waste_tons": 314.0
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "category": "Burnable",
+      "waste_tons": 3613.6
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "category": "C & D",
+      "waste_tons": 1887.87
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "category": "SOW",
+      "waste_tons": 6307.6
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "category": "Sanitary Waste",
+      "waste_tons": 6.7
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "category": "Slaughter House Waste",
+      "waste_tons": 139.5
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "category": "Unburnable",
+      "waste_tons": 1088.7
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "category": "Bulky Waste",
+      "waste_tons": 339.1
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "category": "Burnable",
+      "waste_tons": 3295.9
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "category": "C & D",
+      "waste_tons": 2563.1
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "category": "SOW",
+      "waste_tons": 6728.0
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "category": "Sanitary Waste",
+      "waste_tons": 9.7
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "category": "Slaughter House Waste",
+      "waste_tons": 154.7
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "category": "Unburnable",
+      "waste_tons": 2398.5
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "category": "Bulky Waste",
+      "waste_tons": 676.5
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "category": "Burnable",
+      "waste_tons": 3382.4
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "category": "C & D",
+      "waste_tons": 1450.3
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "category": "SOW",
+      "waste_tons": 7126.4
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "category": "Sanitary Waste",
+      "waste_tons": 19.6
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "category": "Slaughter House Waste",
+      "waste_tons": 140.0
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "category": "Unburnable",
+      "waste_tons": 1288.9
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "category": "Bulky Waste",
+      "waste_tons": 697.7
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "category": "Burnable",
+      "waste_tons": 4032.1
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "category": "C & D",
+      "waste_tons": 1490.6
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "category": "SOW",
+      "waste_tons": 7680.5
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "category": "Sanitary Waste",
+      "waste_tons": 63.3
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "category": "Slaughter House Waste",
+      "waste_tons": 157.7
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "category": "Unburnable",
+      "waste_tons": 1004.0
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "category": "Bulky Waste",
+      "waste_tons": 514.2
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "category": "Burnable",
+      "waste_tons": 3648.3
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "category": "C & D",
+      "waste_tons": 2560.2
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "category": "SOW",
+      "waste_tons": 6670.5
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "category": "Sanitary Waste",
+      "waste_tons": 56.7
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "category": "Slaughter House Waste",
+      "waste_tons": 139.6
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "category": "Unburnable",
+      "waste_tons": 811.9
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "category": "Bulky Waste",
+      "waste_tons": 250.6
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "category": "Burnable",
+      "waste_tons": 3543.5
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "category": "C & D",
+      "waste_tons": 5700.0
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "category": "SOW",
+      "waste_tons": 7280.6
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "category": "Sanitary Waste",
+      "waste_tons": 68.1
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "category": "Slaughter House Waste",
+      "waste_tons": 145.1
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "category": "Unburnable",
+      "waste_tons": 865.8
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "category": "Bulky Waste",
+      "waste_tons": 378.7
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "category": "Burnable",
+      "waste_tons": 4109.9
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "category": "C & D",
+      "waste_tons": 2780.0
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "category": "SOW",
+      "waste_tons": 7563.2
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "category": "Sanitary Waste",
+      "waste_tons": 74.9
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "category": "Slaughter House Waste",
+      "waste_tons": 141.1
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "category": "Unburnable",
+      "waste_tons": 1092.0
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "category": "Bulky Waste",
+      "waste_tons": 365.3
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "category": "Burnable",
+      "waste_tons": 3740.1
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "category": "C & D",
+      "waste_tons": 2650.2
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "category": "SOW",
+      "waste_tons": 6513.7
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "category": "Sanitary Waste",
+      "waste_tons": 57.3
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "category": "Slaughter House Waste",
+      "waste_tons": 127.7
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "category": "Unburnable",
+      "waste_tons": 858.3
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "category": "Bulky Waste",
+      "waste_tons": 439.0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "category": "Burnable",
+      "waste_tons": 4717.0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "category": "C & D",
+      "waste_tons": 2840.4
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "category": "Industrial Waste",
+      "waste_tons": 0.0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "category": "SOW",
+      "waste_tons": 7717.7
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "category": "Sanitary Waste",
+      "waste_tons": 74.0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "category": "Slaughter House Waste",
+      "waste_tons": 166.9
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "category": "Unburnable",
+      "waste_tons": 1047.7
+    }
+  ]
+}
